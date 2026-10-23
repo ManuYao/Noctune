@@ -7,3 +7,5 @@ dist
 Maquette
 presentation/
 *.tsbuildinfo
+CLAUDE.md
+skills-lock.json
