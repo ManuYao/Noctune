@@ -17,3 +17,21 @@
   margin: 0;
   color: var(--text-muted);
 }
+
+.room__columns {
+  display: grid;
+  grid-template-columns: minmax(200px, 280px) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+/* On a phone the chat comes first: it is what people come for once the music plays. */
+@media (max-width: 760px) {
+  .room__columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .room__chat {
+    order: -1;
+  }
+}

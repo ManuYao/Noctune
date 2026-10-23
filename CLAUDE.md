@@ -59,7 +59,7 @@ Principes mobile :
 - Pas de compte obligatoire : le visiteur choisit pseudo + avatar, écoute, vote (J'aime, Passer) et chatte. Il ne peut pas passer DJ ni ajouter de morceau.
 - **Vote « Passer » (décidé) :** le morceau saute quand plus de 50 % des participants connectés votent « Passer ». Le DJ en cours ne compte pas, les visiteurs peuvent voter, les 30 premières secondes du morceau sont protégées. Calcul côté serveur.
 - **File des DJ (décidé) :** un DJ déconnecté ou sans morceau est sauté ; après 2 sauts de suite il sort de la file. Après son morceau, un DJ repasse en fin de file (rotation).
-- **Chat visiteurs (décidé) :** ouvert, avec limite de débit (1 message / 3 s), pas de liens, modération par l'hôte.
+- **Chat visiteurs (décidé) :** ouvert, avec limite de débit (1 message / 3 s), pas de liens, modération par l'hôte. Réglages retenus à l'étape 3 (modifiables) : 300 caractères maximum, texte brut sur une ligne, historique des 50 derniers messages envoyé aux nouveaux arrivants, gardé en mémoire seulement et effacé quand la room se vide (données personnelles : pas de conservation).
 - Ajout d'un morceau (compte requis) : playlist personnelle, recherche YouTube ou lien YouTube. Morceaux refusés avec un motif visible (trop long, déjà joué récemment).
 - **Création de room (décidé) : tout membre connecté peut créer une room et en devient l'hôte** (modère le chat et la file).
 - **Idée à étudier, non décidée : « crews » payants.** Une offre payante pour créer des groupes statiques (crews) en plus des rooms publiques. Modèle, prix et périmètre à définir ; ne rien coder pour l'instant.
@@ -80,7 +80,7 @@ Principes mobile :
 | Créer une room | non | oui |
 | Profil gardé sur tous les appareils | non | oui |
 
-Le chat ouvert aux visiteurs reste à confirmer (spam, modération) : les maquettes le montrent ouvert.
+Le chat est ouvert aux visiteurs (décidé), avec limite de débit et modération par l'hôte.
 
 ## Direction artistique (validée sur les maquettes)
 
@@ -126,6 +126,7 @@ Installés dans `.claude/skills/` (relus avant installation) :
 ## Stack
 
 - Front (racine) : React 19, Vite, TypeScript, `vite-plugin-pwa` (service worker auto-généré), `socket.io-client`, `react-router` (routage), `@fontsource-variable/unbounded` + `figtree` (polices auto-hébergées, pas de Google Fonts : RGPD et hors ligne).
+- Étape 3 faite (chat) : événement `chat:send` (réponse d'erreur typée : vide, trop long, lien, trop rapide avec délai d'attente, hors room) et diffusion `chat:message` à la room seule ; serveur : `chatText.ts` (nettoyage du texte, détection des liens au mieux : schéma, www, domaines courants, IP, caractères invisibles et pleine largeur) et `ChatLog` (historique + limite par participant ; un message refusé ne consomme pas le tour) ; `maxHttpBufferSize` à 10 Ko ; front : composant `Chat` (zone `role="log"`, saisie en lecture seule avec la raison affichée quand la connexion est perdue). Règle : le texte du chat n'est jamais rendu en HTML ni transformé en liens cliquables. Tests : `npm test -w server` (52 tests, dont un test d'intégration avec un vrai serveur Socket.IO et plusieurs clients).
 - Étape 2 faite (présence en temps réel) : contrat d'événements typé dans `shared/protocol.ts` (importé par le front et le serveur) ; serveur : `Room` en mémoire + `registerRoomHandlers` (validation de tout ce que envoie le client, pseudo unique par room sans tenir compte de la casse, morceaux factices tournant côté serveur) ; front : `src/realtime/` (`socket`, hook `useRoom` avec réinscription après reconnexion). Vérifié avec deux navigateurs et un redémarrage du serveur. Typage du serveur : `npx tsc -p server --noEmit`. Les compteurs « en ligne » de la liste des rooms restent factices (à brancher sur le serveur).
 - Étape 1 faite : tokens CSS (`src/styles/tokens.css`, ambiances via `[data-theme]`), composant `Avatar`, écrans Entrée / Liste des rooms / Room (placeholder) avec données factices dans `src/data/`. Les compteurs de rooms viennent de la même source (incohérence de la maquette supprimée).
 - Serveur temps réel (`server/`, workspace npm) : Node, Socket.IO, `tsx`.
@@ -138,6 +139,8 @@ Installés dans `.claude/skills/` (relus avant installation) :
 npm run dev          # front sur http://localhost:5173 (proxy Socket.IO vers :3001)
 npm run dev:server   # serveur temps réel sur :3001
 npm run build        # tsc + build de production (génère le service worker)
+npm test -w server   # tests du serveur (node:test via tsx), sans dépendance en plus
+npx tsc -p server --noEmit   # typage du serveur (npm run build ne le vérifie pas)
 ```
 
 **Disque C: interdit** : le cache npm est redirigé vers `.npm-cache/` via `.npmrc`. Ne rien télécharger ni cloner sur C:, utiliser `.tmp/` sur D: puis le supprimer.
@@ -172,9 +175,9 @@ Incohérences à supprimer dans l'implémentation :
 - [ ] Room vide (aucun participant ou aucun morceau).
 - [ ] Vidéo indisponible (supprimée, privée, bloquée selon le pays).
 - [ ] Connexion perdue et reconnexion en cours.
-- [ ] Chat muet : l'utilisateur voit pourquoi il ne peut pas écrire.
+- [~] Chat muet : la raison s'affiche déjà quand la connexion est perdue ; reste le mute décidé par l'hôte (avec le menu de modération).
 - [ ] File complète (limite de DJ atteinte).
-- [ ] Limite de débit dans le chat (anti-spam).
+- [x] Limite de débit dans le chat : 1 message / 3 s par participant, avec message « Doucement ! … dans N s ». Reste (voir Points ouverts) la protection contre ceux qui se reconnectent ou ouvrent plusieurs connexions.
 - [ ] Recherche sans résultat (liste des rooms, recherche YouTube).
 - [x] Pseudo déjà pris ou invalide à l'entrée (invalide : vérifié à l'entrée et par le serveur ; déjà pris : message sur l'écran de la room, avec retour à l'entrée).
 - [~] Connexion perdue et reconnexion en cours : bannière simple sur l'écran de la room, à dessiner dans les maquettes.
@@ -188,4 +191,4 @@ Points à décider :
 
 ## Points ouverts
 
-Crews payants (idée, modèle à définir) ; procédure de signalement détaillée (traitement par l'équipe, délais) ; nom définitif ; textes légaux réels ; scène 2D illustrée ou 3D ; écrans mobile secondaires et lecture en arrière-plan sur mobile (phase 2) ; droits de diffusion ; version « Créer une room » : entrée depuis la liste des rooms.
+Crews payants (idée, modèle à définir) ; procédure de signalement détaillée (traitement par l'équipe, délais) ; anti-spam des visiteurs au-delà du chat (limite par IP ou appareil, nombre de connexions, rythme des entrées dans une room), à concevoir quand le déploiement est connu : derrière un proxy, l'IP vue par Node est celle du proxy et l'en-tête `x-forwarded-for` est falsifiable, une limite par IP mal réglée bloquerait tout le monde ; nom définitif ; textes légaux réels ; scène 2D illustrée ou 3D ; écrans mobile secondaires et lecture en arrière-plan sur mobile (phase 2) ; droits de diffusion ; version « Créer une room » : entrée depuis la liste des rooms.

@@ -1,0 +1,116 @@
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: clamp(340px, 62dvh, 580px);
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--wall);
+}
+
+.chat h2 {
+  font-size: 1.1rem;
+}
+
+.chat__list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.chat__empty {
+  color: var(--text-muted);
+}
+
+.chat__message {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.chat__message svg {
+  flex: none;
+}
+
+.chat__message p {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.chat__author {
+  font-weight: 700;
+}
+
+.chat__message--self .chat__author {
+  color: var(--accent);
+}
+
+/* The ring is drawn on the whole field, so the inner input does not draw a second one. */
+.chat__form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 52px;
+  padding: 4px;
+  border: 2px solid var(--border-field);
+  border-radius: 999px;
+  background: var(--bg);
+}
+
+.chat__form:focus-within {
+  outline: 3px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+.chat__form input {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+}
+
+.chat__form input:focus-visible {
+  outline: none;
+}
+
+.chat__form input::placeholder {
+  color: var(--text-muted);
+}
+
+.chat__form button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--tap-main);
+  height: var(--tap);
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  cursor: pointer;
+}
+
+.chat__form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.chat__feedback {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.chat__feedback--error {
+  color: var(--accent);
+  font-weight: 600;
+}

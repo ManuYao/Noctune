@@ -70,9 +70,25 @@ export function registerRoomHandlers(io: IoServer) {
           selfId: participant.id,
           participants: room.list(),
           nowPlaying: room.nowPlaying,
+          chat: room.chat.recent(),
           serverTime: Date.now(),
         },
       })
+    })
+
+    socket.on('chat:send', (payload, ack) => {
+      if (typeof ack !== 'function') return
+
+      const { roomId, participantId } = socket.data
+      const room = roomId ? rooms.get(roomId) : undefined
+      const author = participantId ? room?.get(participantId) : undefined
+      if (!room || !author) return ack({ ok: false, error: 'not-in-room' })
+
+      const result = room.chat.post(author, payload?.text)
+      if (!result.ok) return ack(result)
+
+      io.to(room.id).emit('chat:message', result.message)
+      ack({ ok: true })
     })
 
     socket.on('room:leave', leave)

@@ -1,5 +1,6 @@
 import { Link, Navigate, useLocation, useParams } from 'react-router'
 import type { JoinError } from '../../shared/protocol'
+import Chat from '../components/Chat'
 import ParticipantList from '../components/ParticipantList'
 import SiteHeader from '../components/SiteHeader'
 import { AVATARS } from '../data/avatars'
@@ -29,7 +30,7 @@ export default function RoomPage() {
 }
 
 function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string }) {
-  const { status, error, snapshot, participants, nowPlaying } = useRoom({ roomId, pseudo, avatarId })
+  const { status, error, snapshot, participants, nowPlaying, messages, sendChat } = useRoom({ roomId, pseudo, avatarId })
 
   if (status === 'error' && error) {
     return (
@@ -58,7 +59,17 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
             En lecture : <strong>{nowPlaying.title}</strong> · {nowPlaying.artist}
           </p>
         )}
-        <ParticipantList participants={participants} selfId={snapshot?.selfId} />
+        <div className="room__columns">
+          <ParticipantList participants={participants} selfId={snapshot?.selfId} />
+          <div className="room__chat">
+            <Chat
+              messages={messages}
+              selfId={snapshot?.selfId}
+              disabledReason={status === 'joined' ? null : 'Connexion en cours… tu pourras écrire dans un instant.'}
+              onSend={sendChat}
+            />
+          </div>
+        </div>
       </main>
     </div>
   )

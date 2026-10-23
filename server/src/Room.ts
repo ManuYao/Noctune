@@ -1,5 +1,6 @@
 import type { Participant, Track } from '../../shared/protocol'
 import { FAKE_TRACKS } from './catalog'
+import { ChatLog } from './ChatLog'
 
 /** In-memory state of one room. The server is the only source of truth. */
 export class Room {
@@ -7,6 +8,7 @@ export class Room {
   private trackIndex = 0
   private timer: NodeJS.Timeout | undefined
   nowPlaying: Track | null = null
+  readonly chat = new ChatLog()
 
   constructor(
     readonly id: string,
@@ -22,6 +24,10 @@ export class Room {
     return [...this.participants.values()]
   }
 
+  get(participantId: string): Participant | undefined {
+    return this.participants.get(participantId)
+  }
+
   isPseudoTaken(pseudo: string): boolean {
     const wanted = pseudo.toLowerCase()
     return this.list().some((participant) => participant.pseudo.toLowerCase() === wanted)
@@ -35,7 +41,14 @@ export class Room {
   /** Returns true when the participant was actually in the room. */
   remove(participantId: string): boolean {
     const removed = this.participants.delete(participantId)
-    if (removed && this.participants.size === 0) this.stopPlayback()
+    if (removed) {
+      this.chat.forget(participantId)
+      if (this.participants.size === 0) {
+        this.stopPlayback()
+        // Nobody left to read it: the chat history is not kept for the next visitor.
+        this.chat.clear()
+      }
+    }
     return removed
   }
 
