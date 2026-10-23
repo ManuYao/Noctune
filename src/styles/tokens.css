@@ -1,0 +1,43 @@
+/* Default theme "Néon nuit". Other room ambiances override these tokens via [data-theme]. */
+:root {
+  color-scheme: dark;
+
+  --bg: #0e0b1f;
+  --wall: #17123a;
+  --wall-2: #221b52;
+  --floor: #120e2e;
+  --stage: #2a2260;
+  --text: #f4f1ff;
+  --text-muted: #b4aed6;
+  --border: #2e2756;
+  --border-field: #7a70b8;
+  --accent: #ff3d81;
+  --accent-2: #3de0ff;
+  --on-accent: #0e0b1f;
+  --outline: #16142b;
+
+  --font-title: 'Unbounded Variable', system-ui, sans-serif;
+  --font-text: 'Figtree Variable', system-ui, sans-serif;
+
+  --radius-s: 12px;
+  --radius-m: 20px;
+  --radius-l: 28px;
+  --tap: 44px;
+  --tap-main: 48px;
+}
+
+[data-theme='sunset'] {
+  --accent: #ff8a3d;
+  --accent-2: #ffd166;
+}
+
+[data-theme='vinyl'] {
+  color-scheme: light;
+  --accent: #3b4cff;
+  --accent-2: #ff5c8a;
+}
+
+[data-theme='jungle'] {
+  --accent: #b6ff3d;
+  --accent-2: #2dd4a7;
+}

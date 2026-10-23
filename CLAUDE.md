@@ -57,9 +57,16 @@ Principes mobile :
 - **Durée max d'un morceau : propre à chaque room.** Pas de valeur globale. Fixée par l'hôte (ex. lo-fi : 7 min ; un salon rock progressif peut accepter 15 min ou plus, jusqu'à « sans limite »). À indiquer dans la description de la room et vérifier côté serveur.
 - Autres règles par room : délai anti-doublon (1 h, 2 h, 4 h, jamais), nombre max de DJ dans la file (5 à 50).
 - Pas de compte obligatoire : le visiteur choisit pseudo + avatar, écoute, vote (J'aime, Passer) et chatte. Il ne peut pas passer DJ ni ajouter de morceau.
+- **Vote « Passer » (décidé) :** le morceau saute quand plus de 50 % des participants connectés votent « Passer ». Le DJ en cours ne compte pas, les visiteurs peuvent voter, les 30 premières secondes du morceau sont protégées. Calcul côté serveur.
+- **File des DJ (décidé) :** un DJ déconnecté ou sans morceau est sauté ; après 2 sauts de suite il sort de la file. Après son morceau, un DJ repasse en fin de file (rotation).
+- **Chat visiteurs (décidé) :** ouvert, avec limite de débit (1 message / 3 s), pas de liens, modération par l'hôte.
 - Ajout d'un morceau (compte requis) : playlist personnelle, recherche YouTube ou lien YouTube. Morceaux refusés avec un motif visible (trop long, déjà joué récemment).
-- **Création de room : hypothèse retenue, tout membre connecté peut créer une room et en devient l'hôte** (modère le chat et la file). À confirmer.
-- Sanctions : avertissement, mute 10 min, exclusion 24 h, bannissement (à confirmer).
+- **Création de room (décidé) : tout membre connecté peut créer une room et en devient l'hôte** (modère le chat et la file).
+- **Idée à étudier, non décidée : « crews » payants.** Une offre payante pour créer des groupes statiques (crews) en plus des rooms publiques. Modèle, prix et périmètre à définir ; ne rien coder pour l'instant.
+- **Sanctions (décidé), une seule échelle partout :** 1 avertissement, 2 mute chat 10 min, 3 exclusion de la room 24 h (ces trois par l'hôte), 4 bannissement de la plateforme (équipe Noctune uniquement). L'hôte peut aussi retirer un morceau de la file.
+- **Visiteurs sans compte (décidé) :** mute et exclusion s'appliquent à la session, avec un blocage léger par IP ou empreinte d'appareil (point RGPD à traiter).
+- **Signalement (décidé) :** bouton « Signaler » sur chaque message du chat et chaque morceau de la file (mobile : appui long ou menu « ⋯ »). Motifs : spam, harcèlement, contenu inapproprié, morceau hors-sujet, autre. Le signalement va d'abord à l'hôte, qui traite ou escalade à l'équipe. L'auteur est prévenu que c'est pris en compte, sans voir la sanction.
+- **À créer en dev (plus tard, pas avant validation des maquettes) :** événement serveur `report:create` (room, cible, motif) limité en débit ; composant `ReportButton` ; menu de modération de l'hôte (mute, exclusion, retirer un morceau), à dessiner dans les maquettes.
 - Entrées manquantes à ajouter : bouton « Créer une room » dans l'en-tête de la liste des rooms ; « Mentions légales » et « Règles » en pied de page.
 
 ## Permissions
@@ -70,7 +77,7 @@ Principes mobile :
 | Likes, votes | oui | oui |
 | Passer DJ, ajouter un morceau | non | oui |
 | Playlists, historique, rooms favorites | non | oui |
-| Créer une room | non | oui (hypothèse) |
+| Créer une room | non | oui |
 | Profil gardé sur tous les appareils | non | oui |
 
 Le chat ouvert aux visiteurs reste à confirmer (spam, modération) : les maquettes le montrent ouvert.
@@ -118,7 +125,8 @@ Installés dans `.claude/skills/` (relus avant installation) :
 
 ## Stack
 
-- Front (racine) : React 19, Vite, TypeScript, `vite-plugin-pwa` (service worker auto-généré), `socket.io-client`.
+- Front (racine) : React 19, Vite, TypeScript, `vite-plugin-pwa` (service worker auto-généré), `socket.io-client`, `react-router` (routage), `@fontsource-variable/unbounded` + `figtree` (polices auto-hébergées, pas de Google Fonts : RGPD et hors ligne).
+- Étape 1 faite : tokens CSS (`src/styles/tokens.css`, ambiances via `[data-theme]`), composant `Avatar`, écrans Entrée / Liste des rooms / Room (placeholder) avec données factices dans `src/data/`. Les compteurs de rooms viennent de la même source (incohérence de la maquette supprimée).
 - Serveur temps réel (`server/`, workspace npm) : Node, Socket.IO, `tsx`.
 - Données : PostgreSQL / Redis plus tard, pas encore en place.
 - Style : CSS simple pour l'instant, à décider (les maquettes utilisent des variables de thème : prévoir des tokens CSS).
@@ -146,9 +154,9 @@ npm run build        # tsc + build de production (génère le service worker)
 Référence visuelle : maquette PC (`Maquette/MusicWeb - Maquettes PC.html` et captures `Maquette/*.png`). Mobile : seul le parcours principal est dessiné (voir « Maquettes mobile »), le reste est hors périmètre pour l'instant. Ces points sont à réaliser dans le code et à valider avant de publier le site.
 
 Incohérences à supprimer dans l'implémentation :
-- [ ] Compteurs de rooms : entrée affiche « 8 rooms ouvertes · 139 en ligne », liste affiche « 6 rooms ouvertes ».
-- [ ] Sanctions : page Infos (avertissement, mute, exclusion) et page Règles (+ bannissement) à harmoniser.
-- [ ] Signalement : la page Règles dit « signale depuis le chat ou la file », aucun bouton visible dans la room.
+- [x] Compteurs de rooms : entrée et liste calculent depuis les mêmes données (`src/data/rooms.ts`).
+- [ ] Sanctions : décidé (voir « Décisions »). Reste à aligner les textes des pages Infos et Règles sur l'échelle à 4 niveaux.
+- [ ] Signalement : décidé (voir « Décisions »). Reste à dessiner le bouton « Signaler » dans la room (PC et mobile) et le menu de modération de l'hôte.
 
 Écrans manquants :
 - [ ] Connexion (e-mail, mot de passe, mot de passe oublié, Google).
@@ -167,10 +175,10 @@ Incohérences à supprimer dans l'implémentation :
 - [ ] File complète (limite de DJ atteinte).
 - [ ] Limite de débit dans le chat (anti-spam).
 - [ ] Recherche sans résultat (liste des rooms, recherche YouTube).
-- [ ] Pseudo déjà pris ou invalide à l'entrée.
+- [ ] Pseudo déjà pris ou invalide à l'entrée (« invalide » fait : 2 à 20 caractères ; « déjà pris » attend le serveur).
 
 Points à décider :
-- [ ] Vote pour passer : seuil, délai, qui peut voter (affiché « 3/8 », règle non expliquée).
+- [x] Vote pour passer : décidé (majorité des présents, voir « Décisions »). Reste à expliquer la règle dans l'interface (« 3/8 »).
 - [ ] Contrastes : texte gris sur fond sombre, mentions légales très pâles, à tester.
 - [ ] « Réduire les animations » : vérifier que la room le respecte.
 - [ ] Mobile : vote « Passer » en simple bouton ou avec un geste (non tranché).
@@ -178,4 +186,4 @@ Points à décider :
 
 ## Points ouverts
 
-Qui peut créer une room (hypothèse : tout membre connecté) ; fonctionnement précis des votes (seuil pour « Passer ») ; modèle exact de la file (ordre, saut de tour, absence) ; chat ouvert aux visiteurs ; sanctions et procédure de signalement ; nom définitif ; textes légaux réels ; scène 2D illustrée ou 3D ; écrans mobile secondaires et lecture en arrière-plan sur mobile (phase 2) ; droits de diffusion ; version « Créer une room » : entrée depuis la liste des rooms.
+Crews payants (idée, modèle à définir) ; procédure de signalement détaillée (traitement par l'équipe, délais) ; nom définitif ; textes légaux réels ; scène 2D illustrée ou 3D ; écrans mobile secondaires et lecture en arrière-plan sur mobile (phase 2) ; droits de diffusion ; version « Créer une room » : entrée depuis la liste des rooms.

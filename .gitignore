@@ -6,3 +6,4 @@ dist
 .claude
 Maquette
 presentation/
+*.tsbuildinfo

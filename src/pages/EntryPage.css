@@ -1,0 +1,124 @@
+.entry__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 460px);
+  gap: clamp(24px, 5vw, 64px);
+  align-items: center;
+  padding: 16px clamp(16px, 5vw, 56px) 48px;
+}
+
+.entry__hero h1 {
+  font-size: clamp(2.5rem, 6vw, 4.5rem);
+  line-height: 1.05;
+}
+
+.entry__tagline {
+  margin: 12px 0;
+  font-family: var(--font-title);
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.entry__stats {
+  display: inline-block;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+}
+
+.entry__card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-l);
+  background: var(--wall);
+}
+
+.entry__card label,
+.entry__card legend {
+  font-weight: 700;
+}
+
+.entry__hint {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.entry__card input {
+  min-height: var(--tap-main);
+  padding: 0 16px;
+  border: 2px solid var(--border-field);
+  border-radius: var(--radius-s);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.entry__card input[aria-invalid='true'] {
+  border-color: var(--accent);
+}
+
+.entry__error {
+  margin: 0;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.entry__avatars {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.entry__avatars legend {
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+.entry__avatars button {
+  display: grid;
+  place-items: center;
+  min-height: var(--tap);
+  padding: 6px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.entry__avatars button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--wall-2);
+}
+
+.entry__room {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--bg);
+}
+
+.entry__room div {
+  display: flex;
+  flex-direction: column;
+}
+
+.entry__room span {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 860px) {
+  .entry__main {
+    grid-template-columns: 1fr;
+  }
+}

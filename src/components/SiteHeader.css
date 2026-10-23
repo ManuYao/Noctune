@@ -1,0 +1,24 @@
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px clamp(16px, 5vw, 56px);
+}
+
+.site-header__logo {
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 1.5rem;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.site-header__nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 12px;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}

@@ -1,0 +1,77 @@
+.rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px clamp(16px, 5vw, 56px) 48px;
+}
+
+.rooms__count,
+.rooms__empty {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.rooms__label {
+  font-weight: 700;
+}
+
+.rooms input[type='search'] {
+  max-width: 420px;
+  min-height: var(--tap-main);
+  padding: 0 16px;
+  border: 2px solid var(--border-field);
+  border-radius: var(--radius-s);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.rooms__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rooms__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--wall);
+}
+
+.rooms__card h2 {
+  font-size: 1.1rem;
+}
+
+.rooms__card p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.rooms__badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent-2);
+  color: var(--on-accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.rooms__join {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  margin-top: auto;
+  padding: 0 20px;
+  border-radius: var(--radius-s);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+  text-decoration: none;
+}
