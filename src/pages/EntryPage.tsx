@@ -5,7 +5,7 @@ import Avatar from '../components/Avatar'
 import SiteHeader from '../components/SiteHeader'
 import { AVATARS } from '../data/avatars'
 import { readEntryDraft, saveEntryDraft } from '../data/entryDraft'
-import { ROOMS } from '../data/rooms'
+import { useRooms } from '../realtime/useRooms'
 import { PSEUDO_MAX, PSEUDO_MIN, type AvatarId } from '../../shared/protocol'
 import './EntryPage.css'
 
@@ -17,12 +17,15 @@ export default function EntryPage() {
   const [error, setError] = useState('')
   useEffect(() => saveEntryDraft({ pseudo, avatarId }), [pseudo, avatarId])
 
-  // The list of rooms sends people back here with the room they picked (?room=...); otherwise the first one.
-  const suggested = ROOMS.find((room) => room.id === searchParams.get('room')) ?? ROOMS[0]
-  const totalOnline = ROOMS.reduce((sum, room) => sum + room.online, 0)
+  // The rooms come from the server. The list sends people back here with the room they picked (?room=...);
+  // otherwise the first one. Until the list arrives there is no room to propose and the button waits.
+  const { rooms, status } = useRooms()
+  const suggested = rooms?.find((room) => room.id === searchParams.get('room')) ?? rooms?.[0] ?? null
+  const totalOnline = rooms?.reduce((sum, room) => sum + room.online, 0) ?? 0
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    if (!suggested) return
     const trimmed = pseudo.trim()
     if (trimmed.length < PSEUDO_MIN || trimmed.length > PSEUDO_MAX) {
       setError(`Choisis un pseudo de ${PSEUDO_MIN} à ${PSEUDO_MAX} caractères.`)
@@ -44,7 +47,11 @@ export default function EntryPage() {
             un avatar, et c'est parti.
           </p>
           <p className="entry__stats">
-            {ROOMS.length} rooms ouvertes · {totalOnline} en ligne
+            {rooms
+              ? `${rooms.length} rooms ouvertes · ${totalOnline} en ligne`
+              : status === 'offline'
+                ? 'Serveur injoignable pour l\'instant'
+                : 'Connexion…'}
           </p>
         </section>
 
@@ -89,13 +96,24 @@ export default function EntryPage() {
 
           <div className="entry__room">
             <div>
-              <strong>{suggested.name}</strong>
-              <span>{suggested.online} en ligne</span>
+              {suggested ? (
+                <>
+                  <strong>{suggested.name}</strong>
+                  <span>{suggested.online === 0 ? 'Vide pour l\'instant' : `${suggested.online} en ligne`}</span>
+                </>
+              ) : (
+                <>
+                  <strong>Recherche d'une room…</strong>
+                  <span role="status">
+                    {status === 'offline' ? 'Le serveur ne répond pas pour l\'instant.' : 'Connexion au serveur…'}
+                  </span>
+                </>
+              )}
             </div>
             <Link to="/rooms">Changer</Link>
           </div>
 
-          <button type="submit" className="btn-primary">
+          <button type="submit" className="btn-primary" disabled={!suggested}>
             ▶ Entrer dans la room
           </button>
           <p className="entry__hint">Le son de la room démarre dès que tu entres.</p>

@@ -2,15 +2,17 @@
 export interface RoomDef {
   id: string
   name: string
+  genre: string
 }
 
+// The order here is the order of the list of rooms.
 export const ROOM_DEFS: RoomDef[] = [
-  { id: 'lofi-du-soir', name: 'Lo-fi du soir' },
-  { id: 'rock-progressif', name: 'Rock progressif' },
-  { id: 'electro-nuit', name: 'Electro de nuit' },
-  { id: 'jazz-cafe', name: 'Jazz café' },
-  { id: 'hip-hop-classics', name: 'Hip-hop classics' },
-  { id: 'french-touch', name: 'French touch' },
+  { id: 'lofi-du-soir', name: 'Lo-fi du soir', genre: 'Lo-fi' },
+  { id: 'rock-progressif', name: 'Rock progressif', genre: 'Rock' },
+  { id: 'electro-nuit', name: 'Electro de nuit', genre: 'Électro' },
+  { id: 'jazz-cafe', name: 'Jazz café', genre: 'Jazz' },
+  { id: 'hip-hop-classics', name: 'Hip-hop classics', genre: 'Hip-hop' },
+  { id: 'french-touch', name: 'French touch', genre: 'House' },
 ]
 
 export interface TestTrack {

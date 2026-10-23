@@ -92,7 +92,21 @@ export interface JoinPayload {
   avatarId: string
 }
 
+/** What the list of rooms shows about one room. */
+export interface RoomSummary {
+  id: string
+  name: string
+  genre: string
+  /** People in the room right now. */
+  online: number
+  /** What plays right now. Null while the room is empty: nothing plays for nobody. */
+  nowPlaying: { title: string; artist: string } | null
+}
+
 export interface ClientToServerEvents {
+  /** Starts following the list of rooms. The answer is the list as it is now; changes then arrive as `lobby:rooms`. */
+  'lobby:join': (ack: (rooms: RoomSummary[]) => void) => void
+  'lobby:leave': () => void
   'room:join': (payload: JoinPayload, ack: (result: JoinResult) => void) => void
   'room:leave': () => void
   'chat:send': (payload: { text: string }, ack: (result: ChatResult) => void) => void
@@ -103,6 +117,8 @@ export interface ClientToServerEvents {
 }
 
 export interface ServerToClientEvents {
+  /** The whole list again, to whoever follows it. Sent in batches, twice a second at most. */
+  'lobby:rooms': (rooms: RoomSummary[]) => void
   'room:participant-joined': (participant: Participant) => void
   'room:participant-left': (participantId: string) => void
   /** A new track started: likes and skip votes are back to zero. */

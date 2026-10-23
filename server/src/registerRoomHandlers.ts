@@ -11,7 +11,13 @@ import {
   type ServerToClientEvents,
 } from '../../shared/protocol'
 import { ROOM_DEFS } from './catalog'
+import { Lobby, LOBBY_CHANNEL, summarize } from './Lobby'
 import { Room, type RoomOptions } from './Room'
+
+export interface HandlerOptions extends RoomOptions {
+  /** How long changes to the list of rooms are gathered before it is sent (tests make it short). */
+  lobbyDelayMs?: number
+}
 
 interface SocketData {
   roomId?: string
@@ -24,21 +30,36 @@ function isAvatarId(value: unknown): value is AvatarId {
   return (AVATAR_IDS as readonly unknown[]).includes(value)
 }
 
-export function registerRoomHandlers(io: IoServer, options: RoomOptions = {}) {
-  const rooms = new Map<string, Room>(
-    ROOM_DEFS.map((def) => [
+export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {}) {
+  const rooms = new Map<string, Room>()
+  // The list shows how many people are in each room and what plays: both are read from the rooms when sent.
+  const lobby = new Lobby(
+    () =>
+      ROOM_DEFS.flatMap((def) => {
+        const room = rooms.get(def.id)
+        return room ? [summarize(def, room)] : []
+      }),
+    (list) => io.to(LOBBY_CHANNEL).emit('lobby:rooms', list),
+    options.lobbyDelayMs,
+  )
+
+  for (const def of ROOM_DEFS) {
+    rooms.set(
       def.id,
       new Room(
         def.id,
         def.name,
         {
-          onTrackChange: (track, reactions) => io.to(def.id).emit('room:track', track, reactions),
+          onTrackChange: (track, reactions) => {
+            io.to(def.id).emit('room:track', track, reactions)
+            lobby.changed()
+          },
           onReactionsChange: (reactions) => io.to(def.id).emit('track:reactions', reactions),
         },
         options,
       ),
-    ]),
-  )
+    )
+  }
 
   io.on('connection', (socket) => {
     /** Like and skip vote share the same checks: in a room, a real boolean, then the room's own rules. */
@@ -64,8 +85,19 @@ export function registerRoomHandlers(io: IoServer, options: RoomOptions = {}) {
       socket.data.participantId = undefined
       if (rooms.get(roomId)?.remove(participantId)) {
         socket.to(roomId).emit('room:participant-left', participantId)
+        lobby.changed()
       }
     }
+
+    // Following the list of rooms needs no pseudo and no room: it is public.
+    socket.on('lobby:join', (ack) => {
+      if (typeof ack !== 'function') return
+      socket.join(LOBBY_CHANNEL)
+      ack(lobby.snapshot())
+    })
+    socket.on('lobby:leave', () => {
+      socket.leave(LOBBY_CHANNEL)
+    })
 
     socket.on('room:join', (payload, ack) => {
       if (typeof ack !== 'function') return
@@ -88,6 +120,7 @@ export function registerRoomHandlers(io: IoServer, options: RoomOptions = {}) {
       socket.data.participantId = participant.id
       socket.join(room.id)
       socket.to(room.id).emit('room:participant-joined', participant)
+      lobby.changed()
 
       reply({
         ok: true,

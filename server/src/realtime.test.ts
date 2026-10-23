@@ -15,9 +15,11 @@ import type {
   Participant,
   ReactResult,
   Reactions,
+  RoomSummary,
   ServerToClientEvents,
   Track,
 } from '../../shared/protocol'
+import { ROOM_DEFS } from './catalog'
 import { registerRoomHandlers, type IoServer } from './registerRoomHandlers'
 
 type TestSocket = Socket<ServerToClientEvents, ClientToServerEvents>
@@ -31,7 +33,8 @@ before(async () => {
   httpServer = createServer()
   io = new Server(httpServer)
   // No protected seconds here: a vote to skip can be tested without waiting 30 s (the rule itself is in Room.test.ts).
-  registerRoomHandlers(io, { skipProtectedSec: 0 })
+  // The list of rooms is sent after 20 ms instead of half a second (the batching itself is in Lobby.test.ts).
+  registerRoomHandlers(io, { skipProtectedSec: 0, lobbyDelayMs: 20 })
   await new Promise<void>((resolve) => httpServer.listen(0, resolve))
   url = `http://localhost:${(httpServer.address() as AddressInfo).port}`
 })
@@ -279,5 +282,128 @@ describe('chat', () => {
 
     const { snapshot } = await joinedClient('french-touch', 'Bob')
     assert.deepEqual(snapshot.chat, [])
+  })
+})
+
+describe('the list of rooms', () => {
+  const room = 'lofi-du-soir'
+  const follow = (socket: TestSocket) => new Promise<RoomSummary[]>((resolve) => socket.emit('lobby:join', resolve))
+  const summaryOf = (rooms: RoomSummary[], id = room) => rooms.find((candidate) => candidate.id === id)
+  // Lets the announcements already on their way go out (the delay is 20 ms), so that the next update
+  // can only come from the change a test is about.
+  const settle = () => sleep(80)
+
+  /** Resolves with the first update that satisfies `wanted`; fails when none does in time. Call it before the cause. */
+  function updateWhere(socket: TestSocket, wanted: (rooms: RoomSummary[]) => boolean, timeoutMs = 1000) {
+    return new Promise<RoomSummary[]>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        socket.off('lobby:rooms', onRooms)
+        reject(new Error('no matching update of the list'))
+      }, timeoutMs)
+      function onRooms(rooms: RoomSummary[]) {
+        if (!wanted(rooms)) return
+        clearTimeout(timer)
+        socket.off('lobby:rooms', onRooms)
+        resolve(rooms)
+      }
+      socket.on('lobby:rooms', onRooms)
+    })
+  }
+
+  it('lists every room in order, empty at first, without joining any room', async () => {
+    const rooms = await follow(await connectClient())
+    assert.deepEqual(
+      rooms.map((summary) => summary.id),
+      ROOM_DEFS.map((def) => def.id),
+    )
+    for (const summary of rooms) {
+      assert.equal(summary.online, 0)
+      assert.equal(summary.nowPlaying, null)
+    }
+    assert.deepEqual(summaryOf(rooms), { id: room, name: 'Lo-fi du soir', genre: 'Lo-fi', online: 0, nowPlaying: null })
+  })
+
+  it('tells the followers who comes and goes, and what plays', async () => {
+    const watcher = await connectClient()
+    await follow(watcher)
+
+    const arrival = updateWhere(watcher, (rooms) => summaryOf(rooms)?.online === 1)
+    const { socket: alice, snapshot } = await joinedClient(room, 'Alice')
+    const rooms = await arrival
+    assert.deepEqual(summaryOf(rooms)?.nowPlaying, {
+      title: snapshot.nowPlaying?.title,
+      artist: snapshot.nowPlaying?.artist,
+    })
+    assert.equal(rooms.filter((summary) => summary.online > 0).length, 1, 'the other rooms are untouched')
+
+    const departure = updateWhere(watcher, (list) => summaryOf(list)?.online === 0)
+    alice.emit('room:leave')
+    const emptied = await departure
+    assert.equal(summaryOf(emptied)?.nowPlaying, null)
+  })
+
+  it('counts the next person who comes to a room that already plays', async () => {
+    // Without a track to start, nothing else announces this arrival: only the arrival itself does.
+    await joinedClient(room, 'Alice')
+    const watcher = await connectClient()
+    assert.equal(summaryOf(await follow(watcher))?.online, 1)
+    await settle()
+
+    const arrival = updateWhere(watcher, (rooms) => summaryOf(rooms)?.online === 2)
+    await joinedClient(room, 'Bob')
+    await arrival
+  })
+
+  it('tells the followers when the track changes', async () => {
+    const { socket: alice, snapshot } = await joinedClient(room, 'Alice')
+    const watcher = await connectClient()
+    assert.equal(summaryOf(await follow(watcher))?.nowPlaying?.title, snapshot.nowPlaying?.title)
+    await settle()
+
+    const next = updateWhere(watcher, (rooms) => summaryOf(rooms)?.nowPlaying?.title !== snapshot.nowPlaying?.title)
+    // Alone in the room, her vote is the majority.
+    assert.deepEqual(await new Promise<ReactResult>((resolve) => alice.emit('track:skip', { value: true }, resolve)), {
+      ok: true,
+    })
+    assert.notEqual(summaryOf(await next)?.nowPlaying?.title, snapshot.nowPlaying?.title)
+  })
+
+  it('says nothing to someone who stopped following', async () => {
+    const quitter = await connectClient()
+    const follower = await connectClient()
+    await follow(quitter)
+    await follow(follower)
+    quitter.emit('lobby:leave')
+    // Events of one socket are handled in order: this answer proves the leave was processed.
+    await join(quitter, { roomId: 'nowhere', pseudo: 'Quitter', avatarId: 'pulse' })
+
+    let heard = 0
+    quitter.on('lobby:rooms', () => (heard += 1))
+    const arrival = updateWhere(follower, (rooms) => summaryOf(rooms)?.online === 1)
+    await joinedClient(room, 'Alice')
+    await arrival
+    await sleep(100)
+    assert.equal(heard, 0)
+  })
+
+  it('does not send the list to someone who never asked for it', async () => {
+    const bystander = await connectClient()
+    const follower = await connectClient()
+    await follow(follower)
+
+    let heard = 0
+    bystander.on('lobby:rooms', () => (heard += 1))
+    const arrival = updateWhere(follower, (rooms) => summaryOf(rooms)?.online === 1)
+    await joinedClient(room, 'Alice')
+    await arrival
+    await sleep(100)
+    assert.equal(heard, 0)
+  })
+
+  it('ignores a request that cannot be answered and keeps working', async () => {
+    const socket = await connectClient()
+    ;(socket as unknown as { emit: (event: string) => void }).emit('lobby:join')
+    const rooms = await follow(socket)
+    assert.equal(rooms.length, ROOM_DEFS.length)
   })
 })

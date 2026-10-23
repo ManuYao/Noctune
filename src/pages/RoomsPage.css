@@ -54,13 +54,18 @@
   color: var(--text-muted);
 }
 
-.rooms__badge {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--accent-2);
-  color: var(--on-accent);
-  font-size: 0.85rem;
-  font-weight: 700;
+/* What plays now, or why nothing does. Long titles wrap instead of widening the card. */
+.rooms__card .rooms__playing {
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+.rooms__notice {
+  margin: 0;
+  padding: 10px 16px;
+  border: 1px solid var(--accent-2);
+  border-radius: var(--radius-s);
+  color: var(--accent-2);
 }
 
 .rooms__join {

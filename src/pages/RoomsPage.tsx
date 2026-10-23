@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import SiteHeader from '../components/SiteHeader'
-import { ROOMS } from '../data/rooms'
+import { useRooms } from '../realtime/useRooms'
 import './RoomsPage.css'
 
 export default function RoomsPage() {
+  const { rooms, status } = useRooms()
   const [query, setQuery] = useState('')
   const needle = query.trim().toLowerCase()
-  const visible = ROOMS.filter(
+  const visible = (rooms ?? []).filter(
     (room) => room.name.toLowerCase().includes(needle) || room.genre.toLowerCase().includes(needle),
   )
 
@@ -16,7 +17,15 @@ export default function RoomsPage() {
       <SiteHeader />
       <main className="rooms">
         <h1>Les rooms</h1>
-        <p className="rooms__count">{ROOMS.length} rooms ouvertes</p>
+        <p className="rooms__count">{rooms ? `${rooms.length} rooms ouvertes` : ' '}</p>
+
+        {status === 'offline' && (
+          <p className="rooms__notice" role="status">
+            {rooms
+              ? 'Connexion perdue : les chiffres ne sont plus à jour. Nouvelle tentative en cours…'
+              : 'Le serveur ne répond pas pour l\'instant. Nouvelle tentative en cours…'}
+          </p>
+        )}
 
         <label htmlFor="room-search" className="rooms__label">
           Rechercher une room
@@ -28,7 +37,13 @@ export default function RoomsPage() {
           onChange={(event) => setQuery(event.target.value)}
         />
 
-        {visible.length === 0 ? (
+        {rooms === null ? (
+          status === 'loading' && (
+            <p className="rooms__empty" role="status">
+              Chargement des rooms…
+            </p>
+          )
+        ) : visible.length === 0 ? (
           <p className="rooms__empty">Aucune room ne correspond à « {query} ».</p>
         ) : (
           <ul className="rooms__grid">
@@ -36,9 +51,19 @@ export default function RoomsPage() {
               <li key={room.id} className="rooms__card">
                 <h2>{room.name}</h2>
                 <p>
-                  {room.genre} · {room.online} en ligne
+                  {room.genre} · {room.online === 0 ? 'Vide pour l\'instant' : `${room.online} en ligne`}
                 </p>
-                {room.djSlotFree && <span className="rooms__badge">Place DJ libre</span>}
+                <p className="rooms__playing">
+                  {room.nowPlaying ? (
+                    <>
+                      <span aria-hidden="true">♪ </span>
+                      <span className="visually-hidden">En ce moment : </span>
+                      {room.nowPlaying.title} — {room.nowPlaying.artist}
+                    </>
+                  ) : (
+                    'La musique démarre quand quelqu\'un entre.'
+                  )}
+                </p>
                 <Link to={`/?room=${room.id}`} className="rooms__join">
                   Rejoindre
                 </Link>
