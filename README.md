@@ -20,6 +20,7 @@ Plateforme musicale communautaire en PWA : des rooms publiques où l'on écoute 
 
 ```bash
 npm install
-npm run dev          # front sur http://localhost:5173
-npm run dev:server   # serveur temps réel sur :3001
+npm start            # site et serveur temps réel ensemble, puis ouvrir http://localhost:5173
 ```
+
+Ctrl+C arrête tout. Pour lancer les deux séparément : `npm run dev` (site) et `npm run dev:server` (serveur sur :3001).

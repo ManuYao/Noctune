@@ -7,6 +7,7 @@
     "server"
   ],
   "scripts": {
+    "start": "node scripts/start.mjs",
     "dev": "vite",
     "dev:server": "npm run dev -w server",
     "build": "tsc -b && vite build",
