@@ -1,0 +1,78 @@
+/* The video screen: a neon frame that breathes, and rings that burst at each "boom".
+   The pulse is decoration: YouTube does not expose its audio, so it cannot follow the beat. */
+.screen {
+  --pulse-period: 2.6s;
+  position: relative;
+  padding: 6px;
+  border-radius: var(--radius-m);
+  background: var(--bg);
+  box-shadow: 0 0 0 3px var(--accent), 0 0 24px color-mix(in srgb, var(--accent) 55%, transparent);
+  animation: screen-breathe var(--pulse-period) ease-in-out infinite;
+}
+
+@keyframes screen-breathe {
+  50% {
+    box-shadow: 0 0 0 3px var(--accent), 0 0 44px color-mix(in srgb, var(--accent) 80%, transparent);
+  }
+}
+
+/* Hidden by default so that, with animations off, no ring stays on screen. */
+.screen__boom {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  animation: screen-boom 900ms ease-out;
+}
+
+@keyframes screen-boom {
+  from {
+    opacity: 1;
+    box-shadow: 0 0 0 3px var(--accent-2), 0 0 0 0 var(--accent-2);
+  }
+
+  to {
+    opacity: 0;
+    box-shadow: 0 0 0 3px var(--accent-2), 0 0 0 28px transparent;
+  }
+}
+
+.screen__video {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  /* YouTube requires its player to stay at least 200 x 200 px. */
+  min-height: 200px;
+  overflow: hidden;
+  border-radius: calc(var(--radius-m) - 8px);
+  background: #000;
+}
+
+.screen__host,
+.screen__host iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* Everyone hears the same thing at the same time: nobody pauses or seeks inside the video. */
+.screen__host iframe {
+  pointer-events: none;
+}
+
+.screen--interactive .screen__host iframe {
+  pointer-events: auto;
+}
+
+.screen__message {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 16px;
+  background: var(--floor);
+  color: var(--text-muted);
+  text-align: center;
+}

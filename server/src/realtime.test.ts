@@ -99,6 +99,20 @@ describe('joining a room', () => {
   })
 })
 
+describe('playback', () => {
+  it('gives everyone the same current track, with its video and start time', async () => {
+    const { snapshot: first } = await joinedClient('lofi-du-soir', 'Ecoute1')
+    const { snapshot: second } = await joinedClient('lofi-du-soir', 'Ecoute2')
+
+    const track = first.nowPlaying
+    assert.ok(track)
+    assert.match(track.videoId, /^[\w-]{11}$/)
+    assert.ok(track.durationSec > 0)
+    assert.ok(track.startedAt <= first.serverTime)
+    assert.deepEqual(second.nowPlaying, track)
+  })
+})
+
 describe('chat', () => {
   it('refuses to send before joining a room', async () => {
     const socket = await connectClient()

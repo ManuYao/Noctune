@@ -1,0 +1,132 @@
+.bar {
+  display: grid;
+  gap: 8px;
+  padding: 14px 4px 0;
+}
+
+.bar__title {
+  margin: 0;
+  font-family: var(--font-title);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.bar__artist {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.bar__progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar__progress progress {
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 999px;
+  background: var(--border);
+  appearance: none;
+}
+
+.bar__progress progress::-webkit-progress-bar {
+  background: var(--border);
+}
+
+.bar__progress progress::-webkit-progress-value {
+  background: var(--accent);
+}
+
+.bar__progress progress::-moz-progress-bar {
+  background: var(--accent);
+}
+
+.bar__sound {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.bar__mute {
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--wall);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.bar__mute[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.bar__volume {
+  width: 140px;
+  min-height: var(--tap);
+  accent-color: var(--accent);
+}
+
+.bar__enable {
+  justify-self: start;
+}
+
+.bar__note {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* On a phone the bar stays in view under the video while the chat scrolls, so it is kept short:
+   title and progress on the left, the mute switch on the right. Phones have their own volume keys. */
+@media (max-width: 760px) {
+  .bar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 2px 12px;
+    padding-top: 8px;
+  }
+
+  .bar__info {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .bar__title,
+  .bar__artist {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bar__progress {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .bar__sound {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .bar__volume {
+    display: none;
+  }
+
+  .bar__enable,
+  .bar__note {
+    grid-column: 1 / -1;
+  }
+
+  .bar__enable {
+    justify-self: stretch;
+  }
+}

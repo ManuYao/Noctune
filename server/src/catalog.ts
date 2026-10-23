@@ -13,16 +13,20 @@ export const ROOM_DEFS: RoomDef[] = [
   { id: 'french-touch', name: 'French touch' },
 ]
 
-export interface FakeTrack {
+export interface TestTrack {
   id: string
+  videoId: string
   title: string
   artist: string
   durationSec: number
 }
 
-// Fake tracks cycled by the server so playback sync can be built before the YouTube player.
-export const FAKE_TRACKS: FakeTrack[] = [
-  { id: 'fake-1', title: 'Café froid', artist: 'Nuit Blanche', durationSec: 95 },
-  { id: 'fake-2', title: 'Néons sous la pluie', artist: 'Kora', durationSec: 140 },
-  { id: 'fake-3', title: 'Dernier métro', artist: 'Mazout', durationSec: 120 },
+// Real, embeddable, copyright-free videos (NoCopyrightSounds), so the player can be built before DJs add
+// their own. The server changes track when the duration is over: it must match the video exactly
+// (checked on YouTube: lengthSeconds and playableInEmbed).
+export const TEST_TRACKS: TestTrack[] = [
+  { id: 'ncs-my-heart', videoId: 'jK2aIUmmdP4', title: 'My Heart', artist: 'Different Heaven & EH!DE', durationSec: 267 },
+  { id: 'ncs-sky-high', videoId: 'TW9d8vYrVFQ', title: 'Sky High', artist: 'Elektronomia', durationSec: 238 },
+  { id: 'ncs-on-and-on', videoId: 'K4DyBUG242c', title: 'On & On', artist: 'Cartoon, Jéja (feat. Daniel Levi)', durationSec: 208 },
+  { id: 'ncs-heroes-tonight', videoId: '3nQNiWdeH2Q', title: 'Heroes Tonight', artist: 'Janji (feat. Johnning)', durationSec: 208 },
 ]

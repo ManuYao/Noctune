@@ -13,25 +13,31 @@
   color: var(--accent-2);
 }
 
-.room__track {
-  margin: 0;
-  color: var(--text-muted);
-}
-
-.room__columns {
+.room__layout {
   display: grid;
-  grid-template-columns: minmax(200px, 280px) minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
+  gap: 32px;
   align-items: start;
 }
 
-/* On a phone the chat comes first: it is what people come for once the music plays. */
+.room__side {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* On a phone the video comes first and stays in view while the chat scrolls: the player must stay visible. */
 @media (max-width: 760px) {
-  .room__columns {
+  .room__layout {
     grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
   }
 
-  .room__chat {
-    order: -1;
+  .room__stage {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding-block: 8px;
+    background: var(--bg);
   }
 }

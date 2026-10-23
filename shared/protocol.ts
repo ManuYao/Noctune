@@ -14,6 +14,8 @@ export interface Participant {
 
 export interface Track {
   id: string
+  /** YouTube video id, played in the official embedded player. */
+  videoId: string
   title: string
   artist: string
   durationSec: number

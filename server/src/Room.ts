@@ -1,5 +1,5 @@
 import type { Participant, Track } from '../../shared/protocol'
-import { FAKE_TRACKS } from './catalog'
+import { TEST_TRACKS } from './catalog'
 import { ChatLog } from './ChatLog'
 
 /** In-memory state of one room. The server is the only source of truth. */
@@ -53,11 +53,11 @@ export class Room {
   }
 
   private startTrack() {
-    const fake = FAKE_TRACKS[this.trackIndex % FAKE_TRACKS.length]
+    const next = TEST_TRACKS[this.trackIndex % TEST_TRACKS.length]
     this.trackIndex += 1
-    this.nowPlaying = { ...fake, startedAt: Date.now() }
+    this.nowPlaying = { ...next, startedAt: Date.now() }
     this.onTrackChange(this.nowPlaying)
-    this.timer = setTimeout(() => this.startTrack(), fake.durationSec * 1000)
+    this.timer = setTimeout(() => this.startTrack(), next.durationSec * 1000)
   }
 
   private stopPlayback() {

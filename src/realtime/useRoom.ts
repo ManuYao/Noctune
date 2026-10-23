@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { estimateClockOffset } from '../../shared/clock'
 import type {
   ChatMessage,
   ChatResult,
@@ -27,6 +28,8 @@ interface RoomState {
   participants: Participant[]
   nowPlaying: Track | null
   messages: ChatMessage[]
+  /** Milliseconds to add to the local clock to get the server clock. */
+  clockOffsetMs: number
 }
 
 const INITIAL_STATE: RoomState = {
@@ -36,6 +39,7 @@ const INITIAL_STATE: RoomState = {
   participants: [],
   nowPlaying: null,
   messages: [],
+  clockOffsetMs: 0,
 }
 
 const CHAT_ACK_TIMEOUT_MS = 5000
@@ -53,6 +57,7 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
     setState(INITIAL_STATE)
 
     function join() {
+      const sentAt = Date.now()
       socket.emit('room:join', { roomId, pseudo, avatarId }, (result) => {
         if (!active) return
         if (result.ok) {
@@ -64,6 +69,7 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
             participants: snapshot.participants,
             nowPlaying: snapshot.nowPlaying,
             messages: snapshot.chat,
+            clockOffsetMs: estimateClockOffset(sentAt, Date.now(), snapshot.serverTime),
           })
         } else {
           setState({ ...INITIAL_STATE, status: 'error', error: result.error })

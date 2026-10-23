@@ -2,6 +2,7 @@ import { Link, Navigate, useLocation, useParams } from 'react-router'
 import type { JoinError } from '../../shared/protocol'
 import Chat from '../components/Chat'
 import ParticipantList from '../components/ParticipantList'
+import RoomStage from '../components/RoomStage'
 import SiteHeader from '../components/SiteHeader'
 import { AVATARS } from '../data/avatars'
 import { useRoom } from '../realtime/useRoom'
@@ -19,7 +20,7 @@ const ERROR_MESSAGES: Record<JoinError, string> = {
   'unknown-room': 'Cette room n\'existe pas.',
 }
 
-// The room screen proper (stage, DJ queue, chat, player) comes in the next steps.
+// The illustrated stage, the DJ queue and the votes come in the next steps.
 export default function RoomPage() {
   const { roomId = '' } = useParams()
   const entry = useLocation().state as EntryState | null
@@ -30,7 +31,11 @@ export default function RoomPage() {
 }
 
 function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string }) {
-  const { status, error, snapshot, participants, nowPlaying, messages, sendChat } = useRoom({ roomId, pseudo, avatarId })
+  const { status, error, snapshot, participants, nowPlaying, messages, clockOffsetMs, sendChat } = useRoom({
+    roomId,
+    pseudo,
+    avatarId,
+  })
 
   if (status === 'error' && error) {
     return (
@@ -54,20 +59,18 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
             Connexion à la room en cours…
           </p>
         )}
-        {nowPlaying && (
-          <p className="room__track">
-            En lecture : <strong>{nowPlaying.title}</strong> · {nowPlaying.artist}
-          </p>
-        )}
-        <div className="room__columns">
-          <ParticipantList participants={participants} selfId={snapshot?.selfId} />
-          <div className="room__chat">
+        <div className="room__layout">
+          <div className="room__stage">
+            <RoomStage track={nowPlaying} clockOffsetMs={clockOffsetMs} />
+          </div>
+          <div className="room__side">
             <Chat
               messages={messages}
               selfId={snapshot?.selfId}
               disabledReason={status === 'joined' ? null : 'Connexion en cours… tu pourras écrire dans un instant.'}
               onSend={sendChat}
             />
+            <ParticipantList participants={participants} selfId={snapshot?.selfId} />
           </div>
         </div>
       </main>
