@@ -6,6 +6,7 @@ import {
   type Reactions,
   type Track,
 } from '../../shared/protocol'
+import { pseudoKey } from '../../shared/validation'
 import { TEST_TRACKS } from './catalog'
 import { ChatLog } from './ChatLog'
 import { MinInterval } from './MinInterval'
@@ -33,6 +34,8 @@ export interface RoomOptions {
 /** In-memory state of one room. The server is the only source of truth. */
 export class Room {
   private participants = new Map<string, Participant>()
+  /** Which account is behind each member (participant id -> account id). Kept here, never sent to the clients. */
+  private accountOf = new Map<string, string>()
   private trackIndex = 0
   private timer: NodeJS.Timeout | undefined
   private likes = new Set<string>()
@@ -65,12 +68,18 @@ export class Room {
   }
 
   isPseudoTaken(pseudo: string): boolean {
-    const wanted = pseudo.toLowerCase()
-    return this.list().some((participant) => participant.pseudo.toLowerCase() === wanted)
+    const wanted = pseudoKey(pseudo)
+    return this.list().some((participant) => pseudoKey(participant.pseudo) === wanted)
   }
 
-  add(participant: Participant) {
+  /** Is this account already here (another tab, another device)? A member is in a room once. */
+  hasAccount(accountId: string): boolean {
+    return [...this.accountOf.values()].includes(accountId)
+  }
+
+  add(participant: Participant, accountId?: string) {
     this.participants.set(participant.id, participant)
+    if (accountId) this.accountOf.set(participant.id, accountId)
     if (this.participants.size === 1) this.startTrack()
     else this.scheduleReactionsBroadcast() // one more voter: the number of votes needed may have changed
   }
@@ -79,6 +88,7 @@ export class Room {
   remove(participantId: string): boolean {
     const removed = this.participants.delete(participantId)
     if (removed) {
+      this.accountOf.delete(participantId)
       this.chat.forget(participantId)
       this.reactionLimit.forget(participantId)
       // A vote counts only while its author is here. Likes stay: they are about the track, not the audience.

@@ -8,6 +8,11 @@
   ],
   "scripts": {
     "start": "node scripts/start.mjs",
+    "db:setup": "node scripts/db.mjs setup",
+    "db:start": "node scripts/db.mjs start",
+    "db:stop": "node scripts/db.mjs stop",
+    "db:status": "node scripts/db.mjs status",
+    "db:migrate": "npm run migrate -w server",
     "dev": "vite",
     "dev:server": "npm run dev -w server",
     "build": "tsc -b && vite build",

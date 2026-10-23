@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import Avatar from '../components/Avatar'
+import AvatarPicker from '../components/AvatarPicker'
 import SiteHeader from '../components/SiteHeader'
 import { AVATARS } from '../data/avatars'
 import { readEntryDraft, saveEntryDraft } from '../data/entryDraft'
+import { useAccount } from '../auth/useAccount'
 import { useRooms } from '../realtime/useRooms'
 import { PSEUDO_MAX, PSEUDO_MIN, type AvatarId } from '../../shared/protocol'
+import { normalizePseudo } from '../../shared/validation'
 import './EntryPage.css'
 
 export default function EntryPage() {
@@ -17,6 +20,10 @@ export default function EntryPage() {
   const [error, setError] = useState('')
   useEffect(() => saveEntryDraft({ pseudo, avatarId }), [pseudo, avatarId])
 
+  // A member comes in as themself. Until the server has said whether somebody is signed in, nobody enters.
+  const { account, status: accountStatus } = useAccount()
+  const memberAvatar = account && AVATARS.find((candidate) => candidate.id === account.avatarId)
+
   // The rooms come from the server. The list sends people back here with the room they picked (?room=...);
   // otherwise the first one. Until the list arrives there is no room to propose and the button waits.
   const { rooms, status } = useRooms()
@@ -25,14 +32,18 @@ export default function EntryPage() {
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!suggested) return
-    const trimmed = pseudo.trim()
-    if (trimmed.length < PSEUDO_MIN || trimmed.length > PSEUDO_MAX) {
-      setError(`Choisis un pseudo de ${PSEUDO_MIN} à ${PSEUDO_MAX} caractères.`)
+    if (!suggested || accountStatus === 'loading') return
+    // This click is the user gesture that will start the room player (autoplay policy).
+    if (account) {
+      navigate(`/room/${suggested.id}`, { state: { pseudo: account.pseudo, avatarId: account.avatarId } })
       return
     }
-    // This click is the user gesture that will start the room player (autoplay policy).
-    navigate(`/room/${suggested.id}`, { state: { pseudo: trimmed, avatarId } })
+    const chosen = normalizePseudo(pseudo)
+    if (!chosen) {
+      setError(`Choisis un pseudo de ${PSEUDO_MIN} à ${PSEUDO_MAX} caractères, sans caractère invisible.`)
+      return
+    }
+    navigate(`/room/${suggested.id}`, { state: { pseudo: chosen, avatarId } })
   }
 
   return (
@@ -43,8 +54,8 @@ export default function EntryPage() {
           <h1>Écoute ensemble.</h1>
           <p className="entry__tagline">Partage ta musique.</p>
           <p>
-            Rejoins une room, écoute le même morceau que tout le monde, vote, discute. Pas de compte : un pseudo,
-            un avatar, et c'est parti.
+            Rejoins une room, écoute le même morceau que tout le monde, vote, discute. Pas de compte obligatoire : un
+            pseudo, un avatar, et c'est parti.
           </p>
           <p className="entry__stats">
             {rooms
@@ -56,43 +67,45 @@ export default function EntryPage() {
         </section>
 
         <form className="entry__card" onSubmit={handleSubmit} noValidate>
-          <h2>Prépare ton entrée</h2>
-          <p className="entry__hint">Un pseudo, un avatar, et tu entres.</p>
+          {account ? (
+            <>
+              <h2>Content de te revoir</h2>
+              <div className="entry__member">
+                {memberAvatar && <Avatar avatar={memberAvatar} size={56} />}
+                <div>
+                  <strong>{account.pseudo}</strong>
+                  <span>Membre : tu entres avec ton pseudo et ton avatar.</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <h2>Prépare ton entrée</h2>
+              <p className="entry__hint">Un pseudo, un avatar, et tu entres.</p>
 
-          <label htmlFor="pseudo">Pseudo</label>
-          <input
-            id="pseudo"
-            type="text"
-            value={pseudo}
-            maxLength={PSEUDO_MAX}
-            autoComplete="nickname"
-            aria-invalid={error !== ''}
-            aria-describedby={error ? 'pseudo-error' : undefined}
-            onChange={(event) => {
-              setPseudo(event.target.value)
-              setError('')
-            }}
-          />
-          {error && (
-            <p id="pseudo-error" className="entry__error" role="alert">
-              {error}
-            </p>
+              <label htmlFor="pseudo">Pseudo</label>
+              <input
+                id="pseudo"
+                type="text"
+                value={pseudo}
+                maxLength={PSEUDO_MAX}
+                autoComplete="nickname"
+                aria-invalid={error !== ''}
+                aria-describedby={error ? 'pseudo-error' : undefined}
+                onChange={(event) => {
+                  setPseudo(event.target.value)
+                  setError('')
+                }}
+              />
+              {error && (
+                <p id="pseudo-error" className="entry__error" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <AvatarPicker value={avatarId} onChange={setAvatarId} />
+            </>
           )}
-
-          <fieldset className="entry__avatars">
-            <legend>Avatar</legend>
-            {AVATARS.map((avatar) => (
-              <button
-                key={avatar.id}
-                type="button"
-                aria-pressed={avatar.id === avatarId}
-                aria-label={avatar.name}
-                onClick={() => setAvatarId(avatar.id)}
-              >
-                <Avatar avatar={avatar} size={56} />
-              </button>
-            ))}
-          </fieldset>
 
           <div className="entry__room">
             <div>
@@ -113,10 +126,17 @@ export default function EntryPage() {
             <Link to="/rooms">Changer</Link>
           </div>
 
-          <button type="submit" className="btn-primary" disabled={!suggested}>
+          <button type="submit" className="btn-primary" disabled={!suggested || accountStatus === 'loading'}>
             ▶ Entrer dans la room
           </button>
           <p className="entry__hint">Le son de la room démarre dès que tu entres.</p>
+
+          {!account && (
+            <p className="entry__hint entry__account-links">
+              Un compte garde ton pseudo et ton avatar partout. <Link to="/connexion">Se connecter</Link> ·{' '}
+              <Link to="/inscription">Créer un compte</Link>
+            </p>
+          )}
         </form>
       </main>
     </div>

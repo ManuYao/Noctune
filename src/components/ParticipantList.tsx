@@ -19,6 +19,7 @@ export default function ParticipantList({ participants, selfId }: ParticipantLis
             <li key={participant.id}>
               {avatar && <Avatar avatar={avatar} size={40} />}
               <span>{participant.pseudo}</span>
+              {participant.member && <em className="participants__member">membre</em>}
               {participant.id === selfId && <em>toi</em>}
             </li>
           )

@@ -1,0 +1,30 @@
+.avatar-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.avatar-picker legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-weight: 700;
+}
+
+.avatar-picker button {
+  display: grid;
+  place-items: center;
+  min-height: var(--tap);
+  padding: 6px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.avatar-picker button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--wall-2);
+}

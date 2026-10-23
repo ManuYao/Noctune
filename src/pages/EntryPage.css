@@ -66,36 +66,6 @@
   font-weight: 600;
 }
 
-.entry__avatars {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.entry__avatars legend {
-  margin-bottom: 8px;
-  padding: 0;
-}
-
-.entry__avatars button {
-  display: grid;
-  place-items: center;
-  min-height: var(--tap);
-  padding: 6px;
-  border: 2px solid var(--border);
-  border-radius: var(--radius-m);
-  background: var(--bg);
-  cursor: pointer;
-}
-
-.entry__avatars button[aria-pressed='true'] {
-  border-color: var(--accent);
-  background: var(--wall-2);
-}
-
 .entry__room {
   display: flex;
   align-items: center;
@@ -121,4 +91,28 @@
   .entry__main {
     grid-template-columns: 1fr;
   }
+}
+
+.entry__member {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--bg);
+}
+
+.entry__member div {
+  display: flex;
+  flex-direction: column;
+}
+
+.entry__member span {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.entry__account-links {
+  font-size: 0.95rem;
 }

@@ -1,4 +1,5 @@
 import { Link, Navigate, useLocation, useParams } from 'react-router'
+import { useAccount } from '../auth/useAccount'
 import type { JoinError } from '../../shared/protocol'
 import Chat from '../components/Chat'
 import ParticipantList from '../components/ParticipantList'
@@ -18,7 +19,15 @@ const ERROR_MESSAGES: Record<JoinError, string> = {
   'invalid-pseudo': 'Ce pseudo n\'est pas valide.',
   'invalid-avatar': 'Cet avatar n\'est pas valide.',
   'unknown-room': 'Cette room n\'existe pas.',
+  'pseudo-reserved': 'Ce pseudo appartient à un membre. Connecte-toi pour l\'utiliser, ou choisis-en un autre.',
+  'already-in-room': 'Tu es déjà dans cette room (dans un autre onglet ou sur un autre appareil ?).',
+  'server-error': 'Le serveur a eu un souci. Réessaie dans un instant.',
+  'rate-limited': "Trop de tentatives d'entrée d'un coup. Réessaie dans un instant.",
 }
+
+// A member cannot "choose another pseudo": the message says what is really going on.
+const PSEUDO_TAKEN_FOR_MEMBER =
+  "Un visiteur utilise ton pseudo dans cette room pour l'instant. Réessaie dans un moment, ou choisis une autre room."
 
 // The illustrated stage, the DJ queue and the votes come in the next steps.
 export default function RoomPage() {
@@ -46,14 +55,16 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
     like,
     voteSkip,
   } = useRoom({ roomId, pseudo, avatarId })
+  const { account } = useAccount()
 
   if (status === 'error' && error) {
     return (
       <div>
         <SiteHeader />
         <main className="room">
-          <p role="alert">{ERROR_MESSAGES[error]}</p>
+          <p role="alert">{error === 'pseudo-taken' && account ? PSEUDO_TAKEN_FOR_MEMBER : ERROR_MESSAGES[error]}</p>
           <Link to="/">Retour à l'entrée</Link>
+          {error === 'pseudo-reserved' && <Link to="/connexion">Me connecter</Link>}
         </main>
       </div>
     )

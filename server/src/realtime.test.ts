@@ -81,13 +81,24 @@ describe('joining a room', () => {
   const room = 'lofi-du-soir'
 
   it('refuses an unknown room, a bad pseudo and a bad avatar', async () => {
-    const socket = await connectClient()
-    const bad = (payload: unknown) => join(socket, payload as JoinPayload)
+    // One connection per try: a connection that asks to join again at once is refused (see the next test).
+    const bad = async (payload: unknown) => join(await connectClient(), payload as JoinPayload)
     assert.deepEqual(await bad({ roomId: 'nope', pseudo: 'Alice', avatarId: 'pulse' }), { ok: false, error: 'unknown-room' })
     assert.deepEqual(await bad(null), { ok: false, error: 'unknown-room' })
     assert.deepEqual(await bad({ roomId: room, pseudo: 'x', avatarId: 'pulse' }), { ok: false, error: 'invalid-pseudo' })
     assert.deepEqual(await bad({ roomId: room, pseudo: 42, avatarId: 'pulse' }), { ok: false, error: 'invalid-pseudo' })
     assert.deepEqual(await bad({ roomId: room, pseudo: 'Alice', avatarId: 'nope' }), { ok: false, error: 'invalid-avatar' })
+  })
+
+  it('refuses joins that come faster than anybody asks, and takes the next one after a pause', async () => {
+    const socket = await connectClient()
+    assert.deepEqual(await join(socket, { roomId: 'nope', pseudo: 'Alice', avatarId: 'pulse' }), { ok: false, error: 'unknown-room' })
+    assert.deepEqual(await join(socket, { roomId: room, pseudo: 'Alice', avatarId: 'pulse' }), { ok: false, error: 'rate-limited' })
+    await sleep(350)
+    assert.equal((await join(socket, { roomId: room, pseudo: 'Alice', avatarId: 'pulse' })).ok, true)
+    // Leaving is not held back: somebody who wants out gets out.
+    socket.emit('room:leave')
+    socket.emit('room:leave')
   })
 
   it('refuses a pseudo already taken in the room, whatever its case', async () => {
@@ -165,6 +176,7 @@ describe('reactions', () => {
     const { socket: bob } = await joinedClient(room, 'Bob')
     assert.deepEqual(await like(bob, true), { ok: true })
 
+    await sleep(350) // a connection may not join twice within 300 ms
     const again = await join(bob, { roomId: room, pseudo: 'Bob2', avatarId: 'mango' })
     assert.ok(again.ok)
     assert.deepEqual(again.snapshot.reactions, { likes: 1, skipVotes: 0, skipRequired: 2 })

@@ -29,6 +29,13 @@
   font-weight: 700;
 }
 
+/* A member: an outline, so that it is not mistaken for the "toi" pill. */
+.participants em.participants__member {
+  border: 1px solid var(--accent-2);
+  background: transparent;
+  color: var(--accent-2);
+}
+
 /* On a computer the list is a short scrolling box under the chat: the room never grows past the window. */
 @media (min-width: 761px) and (min-height: 700px) {
   .participants {

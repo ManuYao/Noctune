@@ -10,6 +10,8 @@ export interface Participant {
   id: string
   pseudo: string
   avatarId: AvatarId
+  /** Signed in with an account. Their pseudo is theirs alone: a visitor cannot take it. */
+  member: boolean
 }
 
 export interface Track {
@@ -82,7 +84,19 @@ export interface RoomSnapshot {
   serverTime: number
 }
 
-export type JoinError = 'invalid-pseudo' | 'invalid-avatar' | 'unknown-room' | 'pseudo-taken'
+export type JoinError =
+  | 'invalid-pseudo'
+  | 'invalid-avatar'
+  | 'unknown-room'
+  | 'pseudo-taken'
+  /** A visitor asked for the pseudo of a member. */
+  | 'pseudo-reserved'
+  /** The member is already in this room (another tab, another device). */
+  | 'already-in-room'
+  /** Something went wrong on the server: the visitor can try again. */
+  | 'server-error'
+  /** Joins asked for faster than anybody does. */
+  | 'rate-limited'
 
 export type JoinResult = { ok: true; snapshot: RoomSnapshot } | { ok: false; error: JoinError }
 
@@ -91,6 +105,47 @@ export interface JoinPayload {
   pseudo: string
   avatarId: string
 }
+
+// ---- Accounts (HTTP, under /api/auth). The browser keeps the session in a cookie it cannot read.
+
+export const EMAIL_MAX = 254
+export const PASSWORD_MIN = 10
+export const PASSWORD_MAX = 128
+
+/** What the owner of an account sees about it. */
+export interface Account {
+  email: string
+  pseudo: string
+  avatarId: AvatarId
+}
+
+export type AuthError =
+  | 'invalid-email'
+  | 'weak-password'
+  | 'invalid-pseudo'
+  | 'invalid-avatar'
+  | 'email-taken'
+  | 'pseudo-taken'
+  /** Wrong e-mail or wrong password: never said which, so that nobody can test which e-mails have an account. */
+  | 'bad-credentials'
+  | 'rate-limited'
+  /** Not a request the page would send: wrong shape, wrong type, too big, unknown route. */
+  | 'bad-request'
+  /** The request does not come from the site itself. */
+  | 'forbidden'
+  /** The server runs without a database: visitors still work, accounts do not. */
+  | 'unavailable'
+  /** Too many passwords being checked at once. */
+  | 'busy'
+  | 'server-error'
+
+export type AuthResult =
+  | { ok: true; account: Account }
+  | { ok: false; error: Exclude<AuthError, 'rate-limited'> }
+  | { ok: false; error: 'rate-limited'; retryAfterSec: number }
+
+/** The account behind the session cookie, or null for a visitor. */
+export type SessionResult = { ok: true; account: Account | null }
 
 /** What the list of rooms shows about one room. */
 export interface RoomSummary {

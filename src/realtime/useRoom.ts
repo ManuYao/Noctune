@@ -58,6 +58,11 @@ const INITIAL_STATE: RoomState = {
 }
 
 const ACK_TIMEOUT_MS = 5000
+// The server may wait for the database before it lets a visitor in (which is allowed 5 s per query).
+const JOIN_ACK_TIMEOUT_MS = 12_000
+// A place left behind by a dropped connection is freed within about 45 s: try again every 3 s for a minute.
+const JOIN_RETRY_MS = 3000
+const MAX_JOIN_RETRIES = 20
 // The server sends the last 50 messages on join; the screen keeps a few more while the room goes on.
 const MAX_MESSAGES_KEPT = 200
 
@@ -89,13 +94,24 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
 
   useEffect(() => {
     let active = true
+    let everJoined = false
+    let retries = 0
+    let retryTimer: number | undefined
     setState(INITIAL_STATE)
 
     function join() {
+      window.clearTimeout(retryTimer)
       const sentAt = Date.now()
-      socket.emit('room:join', { roomId, pseudo, avatarId }, (result) => {
+      // No answer in time is an error to show, not a screen that says "connecting" for ever.
+      socket.timeout(JOIN_ACK_TIMEOUT_MS).emit('room:join', { roomId, pseudo, avatarId }, (timedOut, result) => {
         if (!active) return
+        if (timedOut) {
+          setState({ ...INITIAL_STATE, status: 'error', error: 'server-error' })
+          return
+        }
         if (result.ok) {
+          everJoined = true
+          retries = 0
           const { snapshot } = result
           setState((prev) => ({
             ...prev,
@@ -109,9 +125,18 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
             reactions: snapshot.reactions,
             mine: snapshot.mine,
           }))
-        } else {
-          setState({ ...INITIAL_STATE, status: 'error', error: result.error })
+          return
         }
+        // After a dropped connection (Wi-Fi to 4G, a laptop that slept) the server keeps the old place of the
+        // person for up to 45 seconds: coming back at once is told "already here" or "pseudo taken", by themselves.
+        // Better to try again for a while than to leave them on an error page.
+        const stale = everJoined && (result.error === 'already-in-room' || result.error === 'pseudo-taken')
+        if ((stale || result.error === 'rate-limited') && retries < MAX_JOIN_RETRIES) {
+          retries += 1
+          retryTimer = window.setTimeout(join, JOIN_RETRY_MS)
+          return
+        }
+        setState({ ...INITIAL_STATE, status: 'error', error: result.error })
       })
     }
 
@@ -154,6 +179,7 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
 
     return () => {
       active = false
+      window.clearTimeout(retryTimer)
       socket.off('connect', onConnect)
       socket.off('disconnect', onDisconnect)
       socket.off('room:participant-joined', onParticipantJoined)

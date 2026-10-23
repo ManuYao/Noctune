@@ -23,3 +23,66 @@
   font-weight: 600;
   text-decoration: none;
 }
+
+.site-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.site-header__account {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.site-header__pseudo {
+  max-width: 14ch;
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site-header__account button,
+.site-header__nav .site-header__login {
+  min-height: var(--tap);
+  padding: 0 16px;
+  border: 2px solid var(--border-field);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.site-header__nav .site-header__login {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+/* A phone: logo and navigation on one row, whatever sits between them (the room title) on the next. */
+@media (max-width: 560px) {
+  .site-header {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .site-header__nav {
+    order: 2;
+    margin-left: auto;
+  }
+
+  .site-header__pseudo {
+    display: none;
+  }
+}
+
+.site-header__error {
+  flex-basis: 100%;
+  order: 4;
+  margin: 0;
+  color: var(--accent);
+  font-weight: 600;
+}

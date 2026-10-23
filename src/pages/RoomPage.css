@@ -51,6 +51,14 @@
   white-space: nowrap;
 }
 
+/* On a phone the header wraps (see SiteHeader.css): the title gets a row of its own, under the logo. */
+@media (max-width: 560px) {
+  .room__title {
+    order: 3;
+    flex: 1 1 100%;
+  }
+}
+
 /* On a computer the whole room fits in the window: nothing to scroll to reach the like button.
    The scene takes the height the bar leaves, the chat scrolls inside its own box.
    On a short window the page scrolls as before, so the video never gets smaller than YouTube allows. */

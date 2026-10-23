@@ -1,8 +1,10 @@
-// `npm start`: runs the web app and the realtime server together, one log with a prefix per line.
-// Ctrl+C stops both, and so does either one exiting on its own (a port already in use, for example).
+// `npm start`: runs the web app and the realtime server together, one log with a prefix per line, and starts the
+// local database first when the project was set up for it (npm run db:setup).
+// Ctrl+C stops everything, and so does either service exiting on its own (a port already in use, for example).
 import { spawn, spawnSync } from 'node:child_process'
 import { createServer } from 'node:net'
 import { createInterface } from 'node:readline'
+import { ensureRunning, stop as stopDatabase } from './db.mjs'
 
 const SERVER_PORT = 3001 // also the target of the Vite proxy (vite.config.ts)
 
@@ -24,6 +26,24 @@ if (await isPortInUse(SERVER_PORT)) {
   process.exit(1)
 }
 
+// The accounts need the database. Without a local one the server still runs, for visitors only: it says so itself.
+let database = { available: false, startedByUs: false }
+try {
+  database = ensureRunning()
+} catch (error) {
+  console.error(`[base] ${error.message}`)
+  process.exit(1)
+}
+if (database.available) {
+  console.log(`[base] ${database.startedByUs ? 'base locale démarrée' : 'base locale déjà démarrée'}.`)
+  // Brings the schema up to date, so that a new version of the project never meets an old database.
+  const migrated = spawnSync('npm run db:migrate', { shell: true, stdio: 'inherit' })
+  if (migrated.status !== 0) {
+    if (database.startedByUs) stopDatabase()
+    process.exit(1)
+  }
+}
+
 const SERVICES = [
   { name: 'serveur', command: 'npm run dev:server' },
   { name: 'site   ', command: 'npm run dev' },
@@ -40,6 +60,15 @@ function stop(code) {
     // The services run behind a shell and npm: the whole tree has to go, not only the first process.
     if (isWindows) spawnSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore' })
     else process.kill(-child.pid, 'SIGTERM')
+  }
+  // A database somebody else started is theirs to stop.
+  if (database.startedByUs) {
+    try {
+      stopDatabase()
+      console.log('[base] base locale arrêtée.')
+    } catch (error) {
+      console.error(`[base] arrêt impossible : ${error.message}`)
+    }
   }
   process.exit(code)
 }

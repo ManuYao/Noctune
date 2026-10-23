@@ -1,0 +1,49 @@
+/* Sign in and register: one card in the middle of the page, the same look as the entry card. */
+.auth__main {
+  display: grid;
+  justify-items: center;
+  padding: 16px clamp(16px, 5vw, 56px) 48px;
+}
+
+.auth__card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(100%, 460px);
+  padding: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-l);
+  background: var(--wall);
+}
+
+.auth__card h1 {
+  font-size: 1.75rem;
+}
+
+.auth__card label {
+  font-weight: 700;
+}
+
+.auth__card input {
+  min-height: var(--tap-main);
+  padding: 0 16px;
+  border: 2px solid var(--border-field);
+  border-radius: var(--radius-s);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.auth__card input[aria-invalid='true'] {
+  border-color: var(--accent);
+}
+
+.auth__hint {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.auth__error {
+  margin: 0;
+  color: var(--accent);
+  font-weight: 600;
+}

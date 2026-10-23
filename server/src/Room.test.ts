@@ -5,10 +5,10 @@ import { TEST_TRACKS } from './catalog'
 import { Room, skipVotesRequired } from './Room'
 
 const START = 1_000_000
-const alice: Participant = { id: 'a', pseudo: 'Alice', avatarId: 'pulse' }
-const bob: Participant = { id: 'b', pseudo: 'Bob', avatarId: 'mango' }
-const carol: Participant = { id: 'c', pseudo: 'Carol', avatarId: 'moss' }
-const dave: Participant = { id: 'd', pseudo: 'Dave', avatarId: 'cloud' }
+const alice: Participant = { id: 'a', pseudo: 'Alice', avatarId: 'pulse', member: false }
+const bob: Participant = { id: 'b', pseudo: 'Bob', avatarId: 'mango', member: false }
+const carol: Participant = { id: 'c', pseudo: 'Carol', avatarId: 'moss', member: false }
+const dave: Participant = { id: 'd', pseudo: 'Dave', avatarId: 'cloud', member: false }
 
 interface TrackChange {
   track: Track | null

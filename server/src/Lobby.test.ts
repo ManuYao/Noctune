@@ -31,8 +31,8 @@ describe('what the list shows about a room', () => {
   })
 
   it('counts the people and shows the track that plays, without its video or timing', () => {
-    room.add({ id: 'a', pseudo: 'Alice', avatarId: 'pulse' })
-    room.add({ id: 'b', pseudo: 'Bob', avatarId: 'mango' })
+    room.add({ id: 'a', pseudo: 'Alice', avatarId: 'pulse', member: false })
+    room.add({ id: 'b', pseudo: 'Bob', avatarId: 'mango', member: false })
     const first = TEST_TRACKS[0]
     assert.deepEqual(summarize(def, room), {
       id: def.id,
@@ -44,7 +44,7 @@ describe('what the list shows about a room', () => {
   })
 
   it('goes back to nothing playing when the room empties', () => {
-    room.add({ id: 'a', pseudo: 'Alice', avatarId: 'pulse' })
+    room.add({ id: 'a', pseudo: 'Alice', avatarId: 'pulse', member: false })
     room.remove('a')
     const summary = summarize(def, room)
     assert.equal(summary.online, 0)

@@ -3,8 +3,8 @@ import { describe, it } from 'node:test'
 import { CHAT_MIN_INTERVAL_MS, type Participant } from '../../shared/protocol'
 import { ChatLog } from './ChatLog'
 
-const alice: Participant = { id: 'a', pseudo: 'Alice', avatarId: 'pulse' }
-const bob: Participant = { id: 'b', pseudo: 'Bob', avatarId: 'mango' }
+const alice: Participant = { id: 'a', pseudo: 'Alice', avatarId: 'pulse', member: false }
+const bob: Participant = { id: 'b', pseudo: 'Bob', avatarId: 'mango', member: false }
 
 describe('ChatLog', () => {
   it('stores the message with the author taken from server state', () => {
