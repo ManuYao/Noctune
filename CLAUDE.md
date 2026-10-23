@@ -126,6 +126,7 @@ Installés dans `.claude/skills/` (relus avant installation) :
 ## Stack
 
 - Front (racine) : React 19, Vite, TypeScript, `vite-plugin-pwa` (service worker auto-généré), `socket.io-client`, `react-router` (routage), `@fontsource-variable/unbounded` + `figtree` (polices auto-hébergées, pas de Google Fonts : RGPD et hors ligne).
+- Étape 2 faite (présence en temps réel) : contrat d'événements typé dans `shared/protocol.ts` (importé par le front et le serveur) ; serveur : `Room` en mémoire + `registerRoomHandlers` (validation de tout ce que envoie le client, pseudo unique par room sans tenir compte de la casse, morceaux factices tournant côté serveur) ; front : `src/realtime/` (`socket`, hook `useRoom` avec réinscription après reconnexion). Vérifié avec deux navigateurs et un redémarrage du serveur. Typage du serveur : `npx tsc -p server --noEmit`. Les compteurs « en ligne » de la liste des rooms restent factices (à brancher sur le serveur).
 - Étape 1 faite : tokens CSS (`src/styles/tokens.css`, ambiances via `[data-theme]`), composant `Avatar`, écrans Entrée / Liste des rooms / Room (placeholder) avec données factices dans `src/data/`. Les compteurs de rooms viennent de la même source (incohérence de la maquette supprimée).
 - Serveur temps réel (`server/`, workspace npm) : Node, Socket.IO, `tsx`.
 - Données : PostgreSQL / Redis plus tard, pas encore en place.
@@ -175,7 +176,8 @@ Incohérences à supprimer dans l'implémentation :
 - [ ] File complète (limite de DJ atteinte).
 - [ ] Limite de débit dans le chat (anti-spam).
 - [ ] Recherche sans résultat (liste des rooms, recherche YouTube).
-- [ ] Pseudo déjà pris ou invalide à l'entrée (« invalide » fait : 2 à 20 caractères ; « déjà pris » attend le serveur).
+- [x] Pseudo déjà pris ou invalide à l'entrée (invalide : vérifié à l'entrée et par le serveur ; déjà pris : message sur l'écran de la room, avec retour à l'entrée).
+- [~] Connexion perdue et reconnexion en cours : bannière simple sur l'écran de la room, à dessiner dans les maquettes.
 
 Points à décider :
 - [x] Vote pour passer : décidé (majorité des présents, voir « Décisions »). Reste à expliquer la règle dans l'interface (« 3/8 »).

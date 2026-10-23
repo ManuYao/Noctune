@@ -5,10 +5,8 @@ import Avatar from '../components/Avatar'
 import SiteHeader from '../components/SiteHeader'
 import { AVATARS } from '../data/avatars'
 import { ROOMS } from '../data/rooms'
+import { PSEUDO_MAX, PSEUDO_MIN } from '../../shared/protocol'
 import './EntryPage.css'
-
-const PSEUDO_MIN = 2
-const PSEUDO_MAX = 20
 
 export default function EntryPage() {
   const navigate = useNavigate()

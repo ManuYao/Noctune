@@ -1,0 +1,19 @@
+.room {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px clamp(16px, 5vw, 56px) 48px;
+}
+
+.room__status {
+  margin: 0;
+  padding: 10px 16px;
+  border: 1px solid var(--accent-2);
+  border-radius: var(--radius-s);
+  color: var(--accent-2);
+}
+
+.room__track {
+  margin: 0;
+  color: var(--text-muted);
+}

@@ -1,7 +1,9 @@
+import type { AvatarId } from '../../shared/protocol'
+
 export type AvatarShape = 'antenna' | 'ears' | 'tuft' | 'classic'
 
 export interface AvatarDef {
-  id: string
+  id: AvatarId
   name: string
   shape: AvatarShape
   body: string
