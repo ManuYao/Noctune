@@ -39,7 +39,7 @@ export default function RoomsPage() {
                   {room.genre} · {room.online} en ligne
                 </p>
                 {room.djSlotFree && <span className="rooms__badge">Place DJ libre</span>}
-                <Link to="/" className="rooms__join">
+                <Link to={`/?room=${room.id}`} className="rooms__join">
                   Rejoindre
                 </Link>
               </li>

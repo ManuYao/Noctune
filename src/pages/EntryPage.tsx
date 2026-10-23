@@ -1,20 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import Avatar from '../components/Avatar'
 import SiteHeader from '../components/SiteHeader'
 import { AVATARS } from '../data/avatars'
+import { readEntryDraft, saveEntryDraft } from '../data/entryDraft'
 import { ROOMS } from '../data/rooms'
-import { PSEUDO_MAX, PSEUDO_MIN } from '../../shared/protocol'
+import { PSEUDO_MAX, PSEUDO_MIN, type AvatarId } from '../../shared/protocol'
 import './EntryPage.css'
 
 export default function EntryPage() {
   const navigate = useNavigate()
-  const [pseudo, setPseudo] = useState('')
-  const [avatarId, setAvatarId] = useState(AVATARS[0].id)
+  const [searchParams] = useSearchParams()
+  const [pseudo, setPseudo] = useState(() => readEntryDraft().pseudo)
+  const [avatarId, setAvatarId] = useState<AvatarId>(() => readEntryDraft().avatarId)
   const [error, setError] = useState('')
+  useEffect(() => saveEntryDraft({ pseudo, avatarId }), [pseudo, avatarId])
 
-  const suggested = ROOMS[0]
+  // The list of rooms sends people back here with the room they picked (?room=...); otherwise the first one.
+  const suggested = ROOMS.find((room) => room.id === searchParams.get('room')) ?? ROOMS[0]
   const totalOnline = ROOMS.reduce((sum, room) => sum + room.online, 0)
 
   function handleSubmit(event: FormEvent) {
