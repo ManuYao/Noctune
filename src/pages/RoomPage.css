@@ -41,3 +41,55 @@
     background: var(--bg);
   }
 }
+
+.room__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: clamp(1.1rem, 2.2vw, 1.7rem);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* On a computer the whole room fits in the window: nothing to scroll to reach the like button.
+   The scene takes the height the bar leaves, the chat scrolls inside its own box.
+   On a short window the page scrolls as before, so the video never gets smaller than YouTube allows. */
+@media (min-width: 761px) and (min-height: 700px) {
+  .room-page {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+  }
+
+  .room-page .site-header {
+    padding-block: 8px;
+  }
+
+  .room {
+    flex: 1;
+    min-height: 0;
+    padding-top: 4px;
+    padding-bottom: 16px;
+  }
+
+  .room__layout {
+    flex: 1;
+    min-height: 0;
+    grid-template-rows: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .room__stage,
+  .room__side {
+    min-height: 0;
+  }
+
+  .room__stage {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .room__side {
+    gap: 12px;
+  }
+}

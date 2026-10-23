@@ -1,0 +1,15 @@
+/* The stage column. Its own width, not the window's, decides how the bar and the buttons are laid out:
+   the container queries in NowPlayingBar.css and ReactionButtons.css listen to this "stage" container. */
+.room-stage {
+  container: stage / inline-size;
+}
+
+/* On a computer the column is as tall as the window allows: the scene gives way, the bar keeps its height. */
+@media (min-width: 761px) and (min-height: 700px) {
+  .room-stage {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+}

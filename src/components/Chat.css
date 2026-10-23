@@ -114,3 +114,12 @@
   color: var(--accent);
   font-weight: 600;
 }
+
+/* On a computer the chat takes the height the column has left and scrolls inside its box. */
+@media (min-width: 761px) and (min-height: 700px) {
+  .chat {
+    flex: 1 1 0;
+    height: auto;
+    min-height: 0;
+  }
+}

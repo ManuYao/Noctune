@@ -1,13 +1,14 @@
+/* Two rows: the track, its progress and the sound on top, what the audience can do under them.
+   Which layout applies depends on the width of the stage column, not of the window (see RoomStage.css). */
 .bar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) auto;
   grid-template-areas:
-    'info info'
-    'progress progress'
-    'actions sound';
-  gap: 8px 16px;
-  align-items: start;
-  padding: 14px 4px 0;
+    'info progress sound'
+    'actions actions actions';
+  gap: 8px 24px;
+  align-items: center;
+  padding: 12px 4px 0;
 }
 
 .bar__info {
@@ -112,15 +113,15 @@
   color: var(--text-muted);
 }
 
-/* On a phone the bar stays in view under the video while the chat scrolls, so it is kept short:
-   title and reactions on one row, progress and mute on the next. Phones have their own volume keys. */
-@media (max-width: 760px) {
+/* A narrow column (a phone): the bar stays in view under the video while the chat scrolls, so it is kept short.
+   Title, reactions and mute on one row, progress on the next. Phones have their own volume keys. */
+@container stage (max-width: 640px) {
   .bar {
+    grid-template-columns: minmax(0, 1fr) auto auto;
     grid-template-areas:
-      'info actions'
-      'progress sound';
+      'info actions sound'
+      'progress progress progress';
     gap: 2px 8px;
-    align-items: center;
     padding-top: 8px;
   }
 

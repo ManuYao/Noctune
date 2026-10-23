@@ -28,3 +28,19 @@
   font-style: normal;
   font-weight: 700;
 }
+
+/* On a computer the list is a short scrolling box under the chat: the room never grows past the window. */
+@media (min-width: 761px) and (min-height: 700px) {
+  .participants {
+    display: flex;
+    flex: 0 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    max-height: 30%;
+  }
+
+  .participants ul {
+    min-height: 0;
+    overflow-y: auto;
+  }
+}

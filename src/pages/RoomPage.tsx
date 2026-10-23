@@ -60,10 +60,11 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
   }
 
   return (
-    <div>
-      <SiteHeader />
+    <div className="room-page">
+      <SiteHeader>
+        <h1 className="room__title">{snapshot?.name ?? 'Connexion…'}</h1>
+      </SiteHeader>
       <main className="room">
-        <h1>{snapshot?.name ?? 'Connexion…'}</h1>
         {status === 'connecting' && (
           <p className="room__status" role="status">
             Connexion à la room en cours…
@@ -73,6 +74,8 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
           <div className="room__stage">
             <RoomStage
               track={nowPlaying}
+              participants={participants}
+              selfId={snapshot?.selfId}
               clockOffsetMs={clockOffsetMs}
               reactions={reactions}
               mine={mine}

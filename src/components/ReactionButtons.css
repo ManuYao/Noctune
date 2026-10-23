@@ -109,15 +109,23 @@
   }
 }
 
-@media (min-width: 761px) {
+/* Wide column: the rule is explained next to the buttons, on the same line. */
+@container stage (min-width: 641px) {
+  .reactions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 16px;
+  }
+
   .reactions__label + .reactions__count::before {
     content: '·';
     margin-right: 8px;
   }
 }
 
-/* On a phone the buttons keep the icon and the count: the words stay for screen readers. */
-@media (max-width: 760px) {
+/* Narrow column (a phone): the buttons keep the icon and the count, the words stay for screen readers. */
+@container stage (max-width: 640px) {
   .reactions__button {
     gap: 6px;
     padding: 0 12px;
