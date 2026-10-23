@@ -7,10 +7,11 @@ import {
   type AvatarId,
   type ClientToServerEvents,
   type JoinResult,
+  type ReactResult,
   type ServerToClientEvents,
 } from '../../shared/protocol'
 import { ROOM_DEFS } from './catalog'
-import { Room } from './Room'
+import { Room, type RoomOptions } from './Room'
 
 interface SocketData {
   roomId?: string
@@ -23,12 +24,38 @@ function isAvatarId(value: unknown): value is AvatarId {
   return (AVATAR_IDS as readonly unknown[]).includes(value)
 }
 
-export function registerRoomHandlers(io: IoServer) {
+export function registerRoomHandlers(io: IoServer, options: RoomOptions = {}) {
   const rooms = new Map<string, Room>(
-    ROOM_DEFS.map((def) => [def.id, new Room(def.id, def.name, (track) => io.to(def.id).emit('room:track', track))]),
+    ROOM_DEFS.map((def) => [
+      def.id,
+      new Room(
+        def.id,
+        def.name,
+        {
+          onTrackChange: (track, reactions) => io.to(def.id).emit('room:track', track, reactions),
+          onReactionsChange: (reactions) => io.to(def.id).emit('track:reactions', reactions),
+        },
+        options,
+      ),
+    ]),
   )
 
   io.on('connection', (socket) => {
+    /** Like and skip vote share the same checks: in a room, a real boolean, then the room's own rules. */
+    function react(
+      payload: unknown,
+      ack: unknown,
+      action: (room: Room, participantId: string, value: boolean) => ReactResult,
+    ) {
+      if (typeof ack !== 'function') return
+      const { roomId, participantId } = socket.data
+      const room = roomId ? rooms.get(roomId) : undefined
+      if (!room || !participantId) return ack({ ok: false, error: 'not-in-room' })
+      const value = (payload as { value?: unknown } | null | undefined)?.value
+      if (typeof value !== 'boolean') return ack({ ok: false, error: 'invalid' })
+      ack(action(room, participantId, value))
+    }
+
     function leave() {
       const { roomId, participantId } = socket.data
       if (!roomId || !participantId) return
@@ -70,11 +97,16 @@ export function registerRoomHandlers(io: IoServer) {
           selfId: participant.id,
           participants: room.list(),
           nowPlaying: room.nowPlaying,
+          reactions: room.reactions(),
+          mine: room.mine(participant.id),
           chat: room.chat.recent(),
           serverTime: Date.now(),
         },
       })
     })
+
+    socket.on('track:like', (payload, ack) => react(payload, ack, (room, id, value) => room.like(id, value)))
+    socket.on('track:skip', (payload, ack) => react(payload, ack, (room, id, value) => room.voteSkip(id, value)))
 
     socket.on('chat:send', (payload, ack) => {
       if (typeof ack !== 'function') return

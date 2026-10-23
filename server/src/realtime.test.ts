@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict'
 import { createServer, type Server as HttpServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
-import { after, before, describe, it } from 'node:test'
+import { after, afterEach, before, describe, it } from 'node:test'
 import { Server } from 'socket.io'
 import { io as connect, type Socket } from 'socket.io-client'
 import type {
@@ -13,7 +13,10 @@ import type {
   JoinPayload,
   JoinResult,
   Participant,
+  ReactResult,
+  Reactions,
   ServerToClientEvents,
+  Track,
 } from '../../shared/protocol'
 import { registerRoomHandlers, type IoServer } from './registerRoomHandlers'
 
@@ -27,13 +30,19 @@ const clients: TestSocket[] = []
 before(async () => {
   httpServer = createServer()
   io = new Server(httpServer)
-  registerRoomHandlers(io)
+  // No protected seconds here: a vote to skip can be tested without waiting 30 s (the rule itself is in Room.test.ts).
+  registerRoomHandlers(io, { skipProtectedSec: 0 })
   await new Promise<void>((resolve) => httpServer.listen(0, resolve))
   url = `http://localhost:${(httpServer.address() as AddressInfo).port}`
 })
 
+// Rooms must be empty at the start of every test: the votes needed depend on how many people are there.
+afterEach(async () => {
+  for (const client of clients.splice(0)) client.disconnect()
+  for (let attempt = 0; attempt < 100 && io.of('/').sockets.size > 0; attempt += 1) await sleep(10)
+})
+
 after(async () => {
-  for (const client of clients) client.disconnect()
   await io.close()
 })
 
@@ -110,6 +119,87 @@ describe('playback', () => {
     assert.ok(track.durationSec > 0)
     assert.ok(track.startedAt <= first.serverTime)
     assert.deepEqual(second.nowPlaying, track)
+  })
+})
+
+describe('reactions', () => {
+  const room = 'lofi-du-soir'
+
+  const like = (socket: TestSocket, value: unknown) =>
+    new Promise<ReactResult>((resolve) => socket.emit('track:like', { value } as never, resolve))
+  const skip = (socket: TestSocket, value: unknown) =>
+    new Promise<ReactResult>((resolve) => socket.emit('track:skip', { value } as never, resolve))
+
+  it('refuses to react before joining a room, or with something that is not a boolean', async () => {
+    const stranger = await connectClient()
+    assert.deepEqual(await like(stranger, true), { ok: false, error: 'not-in-room' })
+    assert.deepEqual(await skip(stranger, true), { ok: false, error: 'not-in-room' })
+
+    const { socket } = await joinedClient(room, 'Alice')
+    assert.deepEqual(await like(socket, 'yes'), { ok: false, error: 'invalid' })
+    assert.deepEqual(await skip(socket, undefined), { ok: false, error: 'invalid' })
+    const garbage = new Promise<ReactResult>((resolve) => socket.emit('track:like', null as never, resolve))
+    assert.deepEqual(await garbage, { ok: false, error: 'invalid' })
+  })
+
+  it('tells the whole room about a like, and gives late joiners the count', async () => {
+    const { socket: alice } = await joinedClient(room, 'Alice')
+    const { socket: bob } = await joinedClient(room, 'Bob')
+    const seenByBob = new Promise<Reactions>((resolve) =>
+      bob.on('track:reactions', (reactions) => reactions.likes === 1 && resolve(reactions)),
+    )
+
+    assert.deepEqual(await like(alice, true), { ok: true })
+    assert.deepEqual(await seenByBob, { likes: 1, skipVotes: 0, skipRequired: 2 })
+
+    const { snapshot } = await joinedClient(room, 'Carol')
+    assert.deepEqual(snapshot.reactions, { likes: 1, skipVotes: 0, skipRequired: 2 })
+    assert.deepEqual(snapshot.mine, { liked: false, votedSkip: false })
+  })
+
+  it('treats someone who joins again as a new participant: their like stays counted, their own state starts clean', async () => {
+    await joinedClient(room, 'Alice')
+    const { socket: bob } = await joinedClient(room, 'Bob')
+    assert.deepEqual(await like(bob, true), { ok: true })
+
+    const again = await join(bob, { roomId: room, pseudo: 'Bob2', avatarId: 'mango' })
+    assert.ok(again.ok)
+    assert.deepEqual(again.snapshot.reactions, { likes: 1, skipVotes: 0, skipRequired: 2 })
+    assert.deepEqual(again.snapshot.mine, { liked: false, votedSkip: false })
+  })
+
+  it('limits how fast one participant can react', async () => {
+    const { socket } = await joinedClient(room, 'Alice')
+    assert.deepEqual(await like(socket, true), { ok: true })
+
+    const tooFast = await like(socket, false)
+    assert.equal(tooFast.ok, false)
+    if (tooFast.ok || tooFast.error !== 'rate-limited') throw new Error(`unexpected result ${JSON.stringify(tooFast)}`)
+    assert.ok(tooFast.retryAfterMs > 0 && tooFast.retryAfterMs <= 300)
+  })
+
+  it('skips the track for everyone once most of the room voted', async () => {
+    const alice = await joinedClient(room, 'Alice')
+    const bob = await joinedClient(room, 'Bob')
+    const carol = await joinedClient(room, 'Carol')
+    const before = alice.snapshot.nowPlaying
+    assert.ok(before)
+
+    const changes = [alice, bob, carol].map(
+      ({ socket }) =>
+        new Promise<{ track: Track | null; reactions: Reactions }>((resolve) =>
+          socket.once('room:track', (track, reactions) => resolve({ track, reactions })),
+        ),
+    )
+
+    assert.deepEqual(await skip(alice.socket, true), { ok: true }) // 1 of the 2 needed: nothing yet
+    assert.deepEqual(await skip(bob.socket, true), { ok: true }) // 2 of 2: the track changes
+
+    for (const { track, reactions } of await Promise.all(changes)) {
+      assert.ok(track)
+      assert.notEqual(track.videoId, before.videoId)
+      assert.deepEqual(reactions, { likes: 0, skipVotes: 0, skipRequired: 2 })
+    }
   })
 })
 

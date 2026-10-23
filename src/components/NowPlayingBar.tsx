@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { trackPositionSec } from '../../shared/clock'
 import type { Track } from '../../shared/protocol'
+import { useServerNow } from '../player/useServerNow'
 import type { PlayerStatus } from '../player/useYouTubePlayer'
 import SpeakerIcon from './SpeakerIcon'
 import './NowPlayingBar.css'
@@ -15,9 +16,9 @@ interface NowPlayingBarProps {
   onVolumeChange: (volume: number) => void
   onToggleMute: () => void
   onEnableSound: () => void
+  /** Buttons for what the audience can do with the track (like, skip). */
+  actions: ReactNode
 }
-
-const PROGRESS_REFRESH_MS = 500
 
 const STATUS_NOTES: Partial<Record<PlayerStatus, string>> = {
   loading: 'Chargement de la vidéo…',
@@ -31,19 +32,6 @@ function formatTime(totalSeconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 }
 
-/** The server clock as it reads now, refreshed twice a second while there is a track to follow. */
-function useServerNow(clockOffsetMs: number, active: boolean): number {
-  const [now, setNow] = useState(() => Date.now() + clockOffsetMs)
-  useEffect(() => {
-    if (!active) return
-    const update = () => setNow(Date.now() + clockOffsetMs)
-    update()
-    const interval = window.setInterval(update, PROGRESS_REFRESH_MS)
-    return () => window.clearInterval(interval)
-  }, [clockOffsetMs, active])
-  return now
-}
-
 export default function NowPlayingBar({
   track,
   clockOffsetMs,
@@ -53,6 +41,7 @@ export default function NowPlayingBar({
   onVolumeChange,
   onToggleMute,
   onEnableSound,
+  actions,
 }: NowPlayingBarProps) {
   const serverNow = useServerNow(clockOffsetMs, track !== null)
   const position = track ? Math.min(track.durationSec, trackPositionSec(track, serverNow)) : 0
@@ -73,6 +62,8 @@ export default function NowPlayingBar({
           <span>{formatTime(track.durationSec)}</span>
         </div>
       )}
+
+      <div className="bar__actions">{actions}</div>
 
       <div className="bar__sound">
         <button type="button" className="bar__mute" aria-pressed={muted} aria-label="Muet" onClick={onToggleMute}>

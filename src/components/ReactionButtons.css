@@ -1,0 +1,139 @@
+.reactions {
+  display: grid;
+  gap: 4px;
+}
+
+.reactions__buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.reactions__button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 16px;
+  border: 2px solid var(--border-field);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reactions__like {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.reactions__button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* A vote cast is shown without filling the button: only a like is a celebration. */
+.reactions__button:not(.reactions__like)[aria-pressed='true'] {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+}
+
+.reactions__button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.reactions__count {
+  font-variant-numeric: tabular-nums;
+}
+
+.reactions__hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+/* Empty most of the time, so it takes no room; it is a live region for refusals. */
+.reactions__message {
+  margin: 0;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Hearts that rise from the button when the viewer likes. They stay around the button: nothing is
+   drawn over the video, which YouTube requires to stay unobstructed. */
+.reactions__burst {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 0;
+  pointer-events: none;
+}
+
+.reactions__burst svg {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  color: var(--accent);
+  opacity: 0;
+  animation: reactions-float 800ms ease-out backwards;
+}
+
+.reactions__burst svg:nth-child(1) {
+  --dx: -16px;
+}
+
+.reactions__burst svg:nth-child(2) {
+  --dx: 0px;
+  animation-delay: 90ms;
+}
+
+.reactions__burst svg:nth-child(3) {
+  --dx: 16px;
+  animation-delay: 180ms;
+}
+
+@keyframes reactions-float {
+  from {
+    opacity: 1;
+    transform: translate(0, 0) scale(0.8);
+  }
+
+  to {
+    opacity: 0;
+    transform: translate(var(--dx), -44px) scale(1.2);
+  }
+}
+
+@media (min-width: 761px) {
+  .reactions__label + .reactions__count::before {
+    content: '·';
+    margin-right: 8px;
+  }
+}
+
+/* On a phone the buttons keep the icon and the count: the words stay for screen readers. */
+@media (max-width: 760px) {
+  .reactions__button {
+    gap: 6px;
+    padding: 0 12px;
+  }
+
+  .reactions__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .reactions__hint {
+    display: none;
+  }
+}

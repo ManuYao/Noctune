@@ -31,11 +31,21 @@ export default function RoomPage() {
 }
 
 function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string }) {
-  const { status, error, snapshot, participants, nowPlaying, messages, clockOffsetMs, sendChat } = useRoom({
-    roomId,
-    pseudo,
-    avatarId,
-  })
+  const {
+    status,
+    error,
+    snapshot,
+    participants,
+    nowPlaying,
+    messages,
+    clockOffsetMs,
+    reactions,
+    mine,
+    likePulse,
+    sendChat,
+    like,
+    voteSkip,
+  } = useRoom({ roomId, pseudo, avatarId })
 
   if (status === 'error' && error) {
     return (
@@ -61,7 +71,15 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
         )}
         <div className="room__layout">
           <div className="room__stage">
-            <RoomStage track={nowPlaying} clockOffsetMs={clockOffsetMs} />
+            <RoomStage
+              track={nowPlaying}
+              clockOffsetMs={clockOffsetMs}
+              reactions={reactions}
+              mine={mine}
+              likePulse={likePulse}
+              onLike={like}
+              onSkip={voteSkip}
+            />
           </div>
           <div className="room__side">
             <Chat

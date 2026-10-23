@@ -38,6 +38,28 @@
   }
 }
 
+/* A like: a quicker, tighter ring in the accent colour. */
+.screen__pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  opacity: 0;
+  pointer-events: none;
+  animation: screen-pulse 600ms ease-out;
+}
+
+@keyframes screen-pulse {
+  from {
+    opacity: 1;
+    box-shadow: 0 0 0 3px var(--accent), 0 0 0 0 var(--accent);
+  }
+
+  to {
+    opacity: 0;
+    box-shadow: 0 0 0 3px var(--accent), 0 0 0 14px transparent;
+  }
+}
+
 .screen__video {
   position: relative;
   aspect-ratio: 16 / 9;

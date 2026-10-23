@@ -45,12 +45,37 @@ export type ChatResult =
   | { ok: false; error: Exclude<ChatError, 'rate-limited'> }
   | { ok: false; error: 'rate-limited'; retryAfterMs: number }
 
+/** The first seconds of a track are protected: nobody can vote to skip it yet. */
+export const SKIP_PROTECTED_SEC = 30
+
+export interface Reactions {
+  likes: number
+  skipVotes: number
+  /** Votes needed to skip the track: more than half of the people who can vote. */
+  skipRequired: number
+}
+
+/** What the viewer did on the current track. */
+export interface MyReactions {
+  liked: boolean
+  votedSkip: boolean
+}
+
+export type ReactError = 'not-in-room' | 'no-track' | 'invalid'
+
+export type ReactResult =
+  | { ok: true }
+  | { ok: false; error: ReactError }
+  | { ok: false; error: 'rate-limited' | 'too-early'; retryAfterMs: number }
+
 export interface RoomSnapshot {
   roomId: string
   name: string
   selfId: string
   participants: Participant[]
   nowPlaying: Track | null
+  reactions: Reactions
+  mine: MyReactions
   /** Most recent chat messages, oldest first. */
   chat: ChatMessage[]
   /** Server clock when the snapshot was built, to estimate the client clock offset. */
@@ -71,11 +96,18 @@ export interface ClientToServerEvents {
   'room:join': (payload: JoinPayload, ack: (result: JoinResult) => void) => void
   'room:leave': () => void
   'chat:send': (payload: { text: string }, ack: (result: ChatResult) => void) => void
+  /** Sets (true) or takes back (false) the viewer's like on the current track. */
+  'track:like': (payload: { value: boolean }, ack: (result: ReactResult) => void) => void
+  /** Sets or takes back the viewer's vote to skip the current track. */
+  'track:skip': (payload: { value: boolean }, ack: (result: ReactResult) => void) => void
 }
 
 export interface ServerToClientEvents {
   'room:participant-joined': (participant: Participant) => void
   'room:participant-left': (participantId: string) => void
-  'room:track': (track: Track | null) => void
+  /** A new track started: likes and skip votes are back to zero. */
+  'room:track': (track: Track | null, reactions: Reactions) => void
+  /** Sent in batches, a few times a second at most. */
+  'track:reactions': (reactions: Reactions) => void
   'chat:message': (message: ChatMessage) => void
 }

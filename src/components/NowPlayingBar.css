@@ -1,7 +1,29 @@
 .bar {
   display: grid;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'info info'
+    'progress progress'
+    'actions sound';
+  gap: 8px 16px;
+  align-items: start;
   padding: 14px 4px 0;
+}
+
+.bar__info {
+  grid-area: info;
+}
+
+.bar__progress {
+  grid-area: progress;
+}
+
+.bar__actions {
+  grid-area: actions;
+}
+
+.bar__sound {
+  grid-area: sound;
 }
 
 .bar__title {
@@ -48,7 +70,6 @@
 
 .bar__sound {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
 }
@@ -76,6 +97,12 @@
   accent-color: var(--accent);
 }
 
+/* Below the grid areas: they get their own row, and only when they are shown. */
+.bar__enable,
+.bar__note {
+  grid-column: 1 / -1;
+}
+
 .bar__enable {
   justify-self: start;
 }
@@ -86,17 +113,18 @@
 }
 
 /* On a phone the bar stays in view under the video while the chat scrolls, so it is kept short:
-   title and progress on the left, the mute switch on the right. Phones have their own volume keys. */
+   title and reactions on one row, progress and mute on the next. Phones have their own volume keys. */
 @media (max-width: 760px) {
   .bar {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 2px 12px;
+    grid-template-areas:
+      'info actions'
+      'progress sound';
+    gap: 2px 8px;
+    align-items: center;
     padding-top: 8px;
   }
 
   .bar__info {
-    grid-column: 1;
-    grid-row: 1;
     min-width: 0;
   }
 
@@ -107,23 +135,8 @@
     white-space: nowrap;
   }
 
-  .bar__progress {
-    grid-column: 1;
-    grid-row: 2;
-  }
-
-  .bar__sound {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-
   .bar__volume {
     display: none;
-  }
-
-  .bar__enable,
-  .bar__note {
-    grid-column: 1 / -1;
   }
 
   .bar__enable {
