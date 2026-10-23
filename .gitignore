@@ -1,0 +1,8 @@
+node_modules
+dist
+.npm-cache
+.tmp
+*.local
+.claude
+Maquette
+presentation/
