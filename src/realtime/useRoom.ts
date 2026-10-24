@@ -1,16 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { estimateClockOffset } from '../../shared/clock'
 import type {
+  AddTrackResult,
   ChatMessage,
   ChatResult,
+  DjNotice,
+  DjQueue,
+  DjResult,
   JoinError,
   MyReactions,
   Participant,
+  QueuedTrack,
   ReactResult,
   Reactions,
+  RoomRules,
   RoomSnapshot,
   Track,
 } from '../../shared/protocol'
+import { EMPTY_QUEUE } from './djQueue'
 import { socket } from './socket'
 
 interface RoomEntry {
@@ -24,6 +31,14 @@ export type RoomStatus = 'connecting' | 'joined' | 'error'
 /** The server answer, or a failure that never reached the server. */
 export type SendChatResult = ChatResult | { ok: false; error: 'network' }
 export type SendReactionResult = ReactResult | { ok: false; error: 'network' }
+export type SendAddTrackResult = AddTrackResult | { ok: false; error: 'network' }
+export type SendDjResult = DjResult | { ok: false; error: 'network' }
+
+/** Something the server told this DJ, and nobody else. The id lets the screen drop it once it was read. */
+export interface RoomNotice {
+  id: number
+  notice: DjNotice
+}
 
 interface RoomState {
   status: RoomStatus
@@ -39,6 +54,12 @@ interface RoomState {
   mine: MyReactions
   /** Goes up each time the like count rises (anyone's like): the screen pulses. */
   likePulse: number
+  /** What the room asks of its DJs. Null until the room is joined (or on a server without DJs). */
+  rules: RoomRules | null
+  queue: DjQueue
+  /** The tracks the viewer lined up, in the order they will play. */
+  lineup: QueuedTrack[]
+  notices: RoomNotice[]
 }
 
 const NO_REACTIONS: Reactions = { likes: 0, skipVotes: 0, skipRequired: 1 }
@@ -55,9 +76,15 @@ const INITIAL_STATE: RoomState = {
   reactions: NO_REACTIONS,
   mine: NOTHING_CAST,
   likePulse: 0,
+  rules: null,
+  queue: EMPTY_QUEUE,
+  lineup: [],
+  notices: [],
 }
 
 const ACK_TIMEOUT_MS = 5000
+// Adding a track makes the server ask YouTube (it gives up after 5 s): wait for that, not less.
+const DJ_ADD_ACK_TIMEOUT_MS = 12_000
 // The server may wait for the database before it lets a visitor in (which is allowed 5 s per query).
 const JOIN_ACK_TIMEOUT_MS = 12_000
 // A place left behind by a dropped connection is freed within about 45 s: try again every 3 s for a minute.
@@ -65,6 +92,9 @@ const JOIN_RETRY_MS = 3000
 const MAX_JOIN_RETRIES = 20
 // The server sends the last 50 messages on join; the screen keeps a few more while the room goes on.
 const MAX_MESSAGES_KEPT = 200
+// A DJ is told about their own turn a few times a night, not dozens: older notices make room for new ones, so that a
+// pile of them never covers the chat field under them.
+const MAX_NOTICES_KEPT = 2
 
 const trackKey = (track: Track | null) => (track ? `${track.id}|${track.startedAt}` : '')
 
@@ -80,14 +110,49 @@ async function emitReaction(event: 'track:like' | 'track:skip', value: boolean):
   }
 }
 
+async function emitAddTrack(input: string): Promise<SendAddTrackResult> {
+  if (!socket.connected) return { ok: false, error: 'network' }
+  try {
+    const result: AddTrackResult = await socket.timeout(DJ_ADD_ACK_TIMEOUT_MS).emitWithAck('dj:add', { input })
+    return result
+  } catch {
+    return { ok: false, error: 'network' }
+  }
+}
+
+async function emitRemoveTrack(trackId: string): Promise<SendDjResult> {
+  if (!socket.connected) return { ok: false, error: 'network' }
+  try {
+    const result: DjResult = await socket.timeout(ACK_TIMEOUT_MS).emitWithAck('dj:remove', { trackId })
+    return result
+  } catch {
+    return { ok: false, error: 'network' }
+  }
+}
+
+async function emitLeaveQueue(): Promise<SendDjResult> {
+  if (!socket.connected) return { ok: false, error: 'network' }
+  try {
+    const result: DjResult = await socket.timeout(ACK_TIMEOUT_MS).emitWithAck('dj:leave')
+    return result
+  } catch {
+    return { ok: false, error: 'network' }
+  }
+}
+
 /** Joins a room over the realtime connection and keeps its live state. Rejoins after a reconnection. */
 export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
   sendChat: (text: string) => Promise<SendChatResult>
   like: (value: boolean) => Promise<SendReactionResult>
   voteSkip: (value: boolean) => Promise<SendReactionResult>
+  addTrack: (input: string) => Promise<SendAddTrackResult>
+  removeTrack: (trackId: string) => Promise<SendDjResult>
+  leaveQueue: () => Promise<SendDjResult>
+  dismissNotice: (id: number) => void
 } {
   const [state, setState] = useState<RoomState>(INITIAL_STATE)
   const currentTrackKey = useRef('')
+  const nextNoticeId = useRef(1)
   useEffect(() => {
     currentTrackKey.current = trackKey(state.nowPlaying)
   }, [state.nowPlaying])
@@ -124,6 +189,10 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
             clockOffsetMs: estimateClockOffset(sentAt, Date.now(), snapshot.serverTime),
             reactions: snapshot.reactions,
             mine: snapshot.mine,
+            // A server older than this page does not send them: the DJ panel then stays out of sight.
+            rules: snapshot.rules ?? null,
+            queue: snapshot.queue ?? EMPTY_QUEUE,
+            lineup: snapshot.lineup ?? [],
           }))
           return
         }
@@ -150,9 +219,16 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
       )
     const onParticipantLeft = (participantId: string) =>
       setState((prev) => ({ ...prev, participants: prev.participants.filter((known) => known.id !== participantId) }))
-    // A new track starts with no likes and no votes, for everyone.
-    const onTrack = (track: Track | null, reactions: Reactions) =>
-      setState((prev) => ({ ...prev, nowPlaying: track, reactions, mine: NOTHING_CAST }))
+    // A new track starts with no likes and no votes, for everyone, and the queue has moved on with it.
+    const onTrack = (track: Track | null, reactions: Reactions, queue?: DjQueue) =>
+      setState((prev) => ({ ...prev, nowPlaying: track, reactions, mine: NOTHING_CAST, queue: queue ?? prev.queue }))
+    const onQueue = (queue: DjQueue) => setState((prev) => ({ ...prev, queue }))
+    const onLineup = (lineup: QueuedTrack[]) => setState((prev) => ({ ...prev, lineup }))
+    const onNotice = (notice: DjNotice) =>
+      setState((prev) => ({
+        ...prev,
+        notices: [...prev.notices, { id: nextNoticeId.current++, notice }].slice(-MAX_NOTICES_KEPT),
+      }))
     const onReactions = (reactions: Reactions) =>
       setState((prev) => ({
         ...prev,
@@ -171,6 +247,9 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
     socket.on('room:participant-joined', onParticipantJoined)
     socket.on('room:participant-left', onParticipantLeft)
     socket.on('room:track', onTrack)
+    socket.on('dj:queue', onQueue)
+    socket.on('dj:lineup', onLineup)
+    socket.on('dj:notice', onNotice)
     socket.on('track:reactions', onReactions)
     socket.on('chat:message', onChatMessage)
 
@@ -185,6 +264,9 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
       socket.off('room:participant-joined', onParticipantJoined)
       socket.off('room:participant-left', onParticipantLeft)
       socket.off('room:track', onTrack)
+      socket.off('dj:queue', onQueue)
+      socket.off('dj:lineup', onLineup)
+      socket.off('dj:notice', onNotice)
       socket.off('track:reactions', onReactions)
       socket.off('chat:message', onChatMessage)
       socket.emit('room:leave')
@@ -221,5 +303,15 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
   const like = useCallback((value: boolean) => react('liked', value), [react])
   const voteSkip = useCallback((value: boolean) => react('votedSkip', value), [react])
 
-  return { ...state, sendChat, like, voteSkip }
+  // The queue and the line-up change through what the server pushes (`dj:queue`, `dj:lineup`), not through these
+  // answers: the screen shows what the server holds, never a guess.
+  const addTrack = useCallback((input: string) => emitAddTrack(input), [])
+  const removeTrack = useCallback((trackId: string) => emitRemoveTrack(trackId), [])
+  const leaveQueue = useCallback(() => emitLeaveQueue(), [])
+  const dismissNotice = useCallback(
+    (id: number) => setState((prev) => ({ ...prev, notices: prev.notices.filter((notice) => notice.id !== id) })),
+    [],
+  )
+
+  return { ...state, sendChat, like, voteSkip, addTrack, removeTrack, leaveQueue, dismissNotice }
 }

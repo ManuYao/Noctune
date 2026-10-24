@@ -36,14 +36,15 @@
   color: var(--accent-2);
 }
 
-/* On a computer the list is a short scrolling box under the chat: the room never grows past the window. */
+/* On a computer the list is a short scrolling box under the chat: the room never grows past the window.
+   It shares the column with the queue of DJs above the chat, so it gives a little of its height back. */
 @media (min-width: 761px) and (min-height: 700px) {
   .participants {
     display: flex;
     flex: 0 1 auto;
     flex-direction: column;
     min-height: 0;
-    max-height: 30%;
+    max-height: 22%;
   }
 
   .participants ul {

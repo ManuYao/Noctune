@@ -46,6 +46,18 @@ export default function Chat({ messages, selfId, disabledReason, onSend }: ChatP
     if (list && followsEnd.current) list.scrollTop = list.scrollHeight
   }, [messages])
 
+  // On a phone the chat is a tab: while another tab is shown the list has no size, so messages that arrive cannot be
+  // scrolled to. When it shows again (or the window changes shape) it goes back to the end, if it was following it.
+  useEffect(() => {
+    const list = listRef.current
+    if (!list || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => {
+      if (followsEnd.current) list.scrollTop = list.scrollHeight
+    })
+    observer.observe(list)
+    return () => observer.disconnect()
+  }, [])
+
   function handleScroll() {
     const list = listRef.current
     if (list) followsEnd.current = list.scrollHeight - list.scrollTop - list.clientHeight < STICK_TO_BOTTOM_PX

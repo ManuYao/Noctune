@@ -1,18 +1,55 @@
-// Placeholder catalog until rooms and tracks come from a database.
+import type { RoomRules } from '../../shared/protocol'
+
+// Placeholder catalog until rooms come from a database.
 export interface RoomDef {
   id: string
   name: string
   genre: string
+  /** What the room asks of the tracks its DJs bring. Each room has its own; the host will choose them later. */
+  rules: RoomRules
 }
+
+const MINUTE = 60
+const HOUR = 60 * MINUTE
 
 // The order here is the order of the list of rooms.
 export const ROOM_DEFS: RoomDef[] = [
-  { id: 'lofi-du-soir', name: 'Lo-fi du soir', genre: 'Lo-fi' },
-  { id: 'rock-progressif', name: 'Rock progressif', genre: 'Rock' },
-  { id: 'electro-nuit', name: 'Electro de nuit', genre: 'Électro' },
-  { id: 'jazz-cafe', name: 'Jazz café', genre: 'Jazz' },
-  { id: 'hip-hop-classics', name: 'Hip-hop classics', genre: 'Hip-hop' },
-  { id: 'french-touch', name: 'French touch', genre: 'House' },
+  {
+    id: 'lofi-du-soir',
+    name: 'Lo-fi du soir',
+    genre: 'Lo-fi',
+    rules: { maxTrackSec: 7 * MINUTE, repeatDelaySec: 2 * HOUR, maxDjs: 10 },
+  },
+  {
+    id: 'rock-progressif',
+    name: 'Rock progressif',
+    genre: 'Rock',
+    rules: { maxTrackSec: 15 * MINUTE, repeatDelaySec: 4 * HOUR, maxDjs: 8 },
+  },
+  {
+    id: 'electro-nuit',
+    name: 'Electro de nuit',
+    genre: 'Électro',
+    rules: { maxTrackSec: 8 * MINUTE, repeatDelaySec: 2 * HOUR, maxDjs: 12 },
+  },
+  {
+    id: 'jazz-cafe',
+    name: 'Jazz café',
+    genre: 'Jazz',
+    rules: { maxTrackSec: 10 * MINUTE, repeatDelaySec: 4 * HOUR, maxDjs: 8 },
+  },
+  {
+    id: 'hip-hop-classics',
+    name: 'Hip-hop classics',
+    genre: 'Hip-hop',
+    rules: { maxTrackSec: 6 * MINUTE, repeatDelaySec: 2 * HOUR, maxDjs: 12 },
+  },
+  {
+    id: 'french-touch',
+    name: 'French touch',
+    genre: 'House',
+    rules: { maxTrackSec: 7 * MINUTE, repeatDelaySec: 2 * HOUR, maxDjs: 10 },
+  },
 ]
 
 export interface TestTrack {

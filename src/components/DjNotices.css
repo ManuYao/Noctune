@@ -1,0 +1,59 @@
+/* A corner of the window, over the chat column on a computer and over the tab content on a phone: the video is
+   at the left, or at the top, and is never covered. Only the notes themselves catch clicks. */
+.dj-notices {
+  position: fixed;
+  z-index: 50;
+  right: 16px;
+  bottom: 16px;
+  width: min(380px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.dj-notices ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dj-notices__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 8px 12px 16px;
+  border: 1px solid var(--accent-2);
+  border-radius: var(--radius-s);
+  background: var(--wall);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.45);
+  pointer-events: auto;
+}
+
+.dj-notices__item p {
+  flex: 1;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.dj-notices__item button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  margin-block: -8px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  .dj-notices {
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
+}

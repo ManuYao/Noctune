@@ -1,7 +1,9 @@
 import { useRef } from 'react'
-import type { MyReactions, Participant, Reactions, Track } from '../../shared/protocol'
+import type { DjQueue, MyReactions, Participant, Reactions, Track } from '../../shared/protocol'
 import { useVolume } from '../player/useVolume'
 import { useYouTubePlayer, type PlayerStatus } from '../player/useYouTubePlayer'
+import { ownSkipHint } from '../realtime/djMessages'
+import { findMyPlace } from '../realtime/djQueue'
 import type { SendReactionResult } from '../realtime/useRoom'
 import NowPlayingBar from './NowPlayingBar'
 import ReactionButtons from './ReactionButtons'
@@ -18,6 +20,8 @@ interface RoomStageProps {
   reactions: Reactions
   mine: MyReactions
   likePulse: number
+  /** Who is on the decks and who waits. */
+  queue: DjQueue
   onLike: (value: boolean) => Promise<SendReactionResult>
   onSkip: (value: boolean) => Promise<SendReactionResult>
 }
@@ -37,6 +41,7 @@ export default function RoomStage({
   reactions,
   mine,
   likePulse,
+  queue,
   onLike,
   onSkip,
 }: RoomStageProps) {
@@ -44,9 +49,16 @@ export default function RoomStage({
   const { volume, muted, setVolume, toggleMute } = useVolume()
   const { status, enableSound } = useYouTubePlayer(hostRef, { track, clockOffsetMs, volume, muted })
 
+  // The DJ on the decks does not like or vote on their own track; skipping it hands the decks over, and the button
+  // says to whom (the next DJ who can play, or their own next track).
+  const place = findMyPlace(queue, selfId)
+  const onDecks = place?.onDecks === true
+  const othersCanPlay = queue.waiting.some((entry) => entry.participantId !== null && entry.next !== null)
+  const skipHint = place?.onDecks ? ownSkipHint(othersCanPlay, place.entry.next !== null) : null
+
   return (
     <section aria-label="Lecteur" className="room-stage">
-      <Scene participants={participants} selfId={selfId} likePulse={likePulse}>
+      <Scene participants={participants} selfId={selfId} dj={queue.current} likePulse={likePulse}>
         <VideoScreen
           hostRef={hostRef}
           boomKey={track?.startedAt}
@@ -57,6 +69,8 @@ export default function RoomStage({
       </Scene>
       <NowPlayingBar
         track={track}
+        dj={queue.current}
+        ownTurn={onDecks}
         clockOffsetMs={clockOffsetMs}
         status={status}
         volume={volume}
@@ -70,6 +84,8 @@ export default function RoomStage({
             reactions={reactions}
             mine={mine}
             clockOffsetMs={clockOffsetMs}
+            onDecks={onDecks}
+            ownSkipHint={skipHint}
             onLike={onLike}
             onSkip={onSkip}
           />

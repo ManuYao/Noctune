@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode, RefObject } from 'react'
-import type { Participant } from '../../shared/protocol'
+import type { DjQueueEntry, Participant } from '../../shared/protocol'
 import { AVATARS } from '../data/avatars'
 import Avatar from './Avatar'
 import { assignSlots } from './stageSlots'
@@ -9,6 +9,8 @@ import './Scene.css'
 interface SceneProps {
   participants: Participant[]
   selfId: string | undefined
+  /** The DJ on the decks: they stand at the DJ stand instead of on the floor. Null while nobody is. */
+  dj: DjQueueEntry | null
   /** Goes up at each like anyone gives: a heart rises from the floor. */
   likePulse: number
   /** The video screen: it sits in the scene, nothing is ever drawn over it. */
@@ -36,18 +38,28 @@ function useIsNarrow(ref: RefObject<HTMLElement | null>): boolean {
 }
 
 // Decoration only: the video stays above, hearts rise on the floor below it.
-export default function Scene({ participants, selfId, likePulse, children }: SceneProps) {
+export default function Scene({ participants, selfId, dj, likePulse, children }: SceneProps) {
   const sceneRef = useRef<HTMLDivElement>(null)
   const narrow = useIsNarrow(sceneRef)
 
+  // The DJ on the decks stands at the DJ stand, and so is not on the floor as well. A narrow scene has no wall, so no
+  // stand: there they stay in the row with everybody. A DJ who is away (their track plays on) is not drawn at all.
+  const deckPerson = dj?.participantId ? participants.find((p) => p.id === dj.participantId) : undefined
+  const deckAvatar = deckPerson && AVATARS.find((candidate) => candidate.id === deckPerson.avatarId)
+  const atDecks = !narrow && deckPerson !== undefined && deckAvatar !== undefined
+  const crowd = useMemo(
+    () => (atDecks ? participants.filter((p) => p.id !== deckPerson?.id) : participants),
+    [atDecks, participants, deckPerson?.id],
+  )
+
   // The visitor is always on the stage, however crowded it gets.
   const ordered = useMemo(
-    () => [...participants.filter((p) => p.id === selfId), ...participants.filter((p) => p.id !== selfId)],
-    [participants, selfId],
+    () => [...crowd.filter((p) => p.id === selfId), ...crowd.filter((p) => p.id !== selfId)],
+    [crowd, selfId],
   )
   const slots = useMemo(() => assignSlots(ordered.map((participant) => participant.id)), [ordered])
   const shown = narrow ? ordered.slice(0, NARROW_MAX_PEOPLE) : ordered.filter((p) => slots.has(p.id))
-  const hidden = participants.length - shown.length
+  const hidden = crowd.length - shown.length
 
   const [hearts, setHearts] = useState<{ id: number; x: number }[]>([])
   const lastPulse = useRef(likePulse)
@@ -111,6 +123,17 @@ export default function Scene({ participants, selfId, likePulse, children }: Sce
           ))}
         </div>
       </div>
+
+      {/* The DJ on the decks, in front of the booth with their feet on the edge of the floor. A child of the scene, not
+          of the floor: the floor clips what rises above it. Same as the crowd: decoration, listed in the queue panel. */}
+      {atDecks && deckPerson && deckAvatar && (
+        <div className="scene__dj" aria-hidden="true">
+          <Avatar avatar={deckAvatar} size={100} />
+          <span className={deckPerson.id === selfId ? 'scene__dj-name scene__dj-name--self' : 'scene__dj-name'}>
+            {deckPerson.pseudo}
+          </span>
+        </div>
+      )}
     </div>
   )
 }

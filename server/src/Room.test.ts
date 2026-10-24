@@ -28,6 +28,10 @@ function newRoom(options = {}) {
     {
       onTrackChange: (track, reactions) => trackChanges.push({ track, reactions }),
       onReactionsChange: (reactions) => updates.push(reactions),
+      // Visitors only here: no DJ, nothing to say about the queue (see RoomDj.test.ts).
+      onQueueChange: () => {},
+      onLineupChange: () => {},
+      onNotice: () => {},
     },
     options,
   )

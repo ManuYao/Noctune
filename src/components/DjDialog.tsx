@@ -1,0 +1,65 @@
+import { useEffect, useRef } from 'react'
+import type { DjQueue, QueuedTrack, RoomRules, Track } from '../../shared/protocol'
+import type { SendAddTrackResult, SendDjResult } from '../realtime/useRoom'
+import DjDialogContent from './DjDialogContent'
+import './DjDialog.css'
+
+interface DjDialogProps {
+  open: boolean
+  onClose: () => void
+  rules: RoomRules
+  queue: DjQueue
+  selfId: string | undefined
+  lineup: QueuedTrack[]
+  nowPlaying: Track | null
+  /** Milliseconds to add to the local clock to get the server clock. */
+  clockOffsetMs: number
+  onAdd: (input: string) => Promise<SendAddTrackResult>
+  onRemove: (trackId: string) => Promise<SendDjResult>
+  onLeave: () => Promise<SendDjResult>
+}
+
+/**
+ * "Passer DJ": a native modal dialog (focus trapped inside, Escape closes it, the page behind is inert). It is always
+ * in the page and only its content comes and goes, so that closing it gives the focus back to the button that opened it
+ * and so that every opening starts with a clean form.
+ */
+export default function DjDialog({ open, onClose, ...content }: DjDialogProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  // Whether the press that ends in a click began on the backdrop too. Selecting the text of the link field and letting
+  // go over the backdrop is a click on the dialog as well, and must not close it and lose what was typed.
+  const pressStartedOnBackdrop = useRef(false)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+    if (open && !dialog.open) {
+      dialog.showModal()
+      // The content has mounted but the dialog was closed until now: the browser could not focus the field before.
+      // Not on a touch screen: the keyboard would rise at once and cover most of the sheet before anything is read.
+      if (!window.matchMedia('(pointer: coarse)').matches) dialog.querySelector<HTMLElement>('[data-autofocus]')?.focus()
+    } else if (!open && dialog.open) {
+      dialog.close()
+    }
+  }, [open])
+
+  return (
+    <dialog
+      ref={dialogRef}
+      className="dj-dialog"
+      aria-labelledby="dj-dialog-title"
+      // Escape, and the close() above: the page's own state follows.
+      onClose={onClose}
+      // The sheet fills the whole dialog, so a press that lands on the dialog itself is a press on the backdrop.
+      onPointerDown={(event) => {
+        pressStartedOnBackdrop.current = event.target === event.currentTarget
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget && pressStartedOnBackdrop.current) onClose()
+        pressStartedOnBackdrop.current = false
+      }}
+    >
+      {open && <DjDialogContent {...content} onClose={onClose} />}
+    </dialog>
+  )
+}

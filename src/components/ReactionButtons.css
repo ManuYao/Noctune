@@ -45,6 +45,12 @@
   cursor: not-allowed;
 }
 
+/* The DJ on the decks skipping their own track: in the cyan of everything DJ, since it is not a vote. */
+.reactions__button--own {
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+}
+
 .reactions__count {
   font-variant-numeric: tabular-nums;
 }
@@ -53,6 +59,14 @@
   margin: 0;
   color: var(--text-muted);
   font-size: 0.9rem;
+}
+
+/* The DJ on the decks: two short notes (no like on your own track, what skipping leads to) side by side with the
+   buttons in a wide bar, so that the bar keeps its two rows. */
+.reactions__notes {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
 }
 
 /* Empty most of the time, so it takes no room; it is a live region for refusals. */
@@ -118,6 +132,10 @@
     gap: 4px 16px;
   }
 
+  .reactions__notes {
+    flex: 1 1 14rem;
+  }
+
   .reactions__label + .reactions__count::before {
     content: '·';
     margin-right: 8px;
@@ -143,5 +161,20 @@
 
   .reactions__hint {
     display: none;
+  }
+
+  /* The DJ's own skip button must say what it does, and what follows: words and hint stay on a phone too
+     (the bar gives them a row of their own, see NowPlayingBar.css). */
+  .reactions__button--own .reactions__label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  .reactions--own .reactions__hint {
+    display: block;
   }
 }

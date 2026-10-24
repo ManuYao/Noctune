@@ -1,8 +1,8 @@
 import { Link, Navigate, useLocation, useParams } from 'react-router'
 import { useAccount } from '../auth/useAccount'
 import type { JoinError } from '../../shared/protocol'
-import Chat from '../components/Chat'
-import ParticipantList from '../components/ParticipantList'
+import DjNotices from '../components/DjNotices'
+import RoomSide from '../components/RoomSide'
 import RoomStage from '../components/RoomStage'
 import SiteHeader from '../components/SiteHeader'
 import { AVATARS } from '../data/avatars'
@@ -29,7 +29,6 @@ const ERROR_MESSAGES: Record<JoinError, string> = {
 const PSEUDO_TAKEN_FOR_MEMBER =
   "Un visiteur utilise ton pseudo dans cette room pour l'instant. Réessaie dans un moment, ou choisis une autre room."
 
-// The illustrated stage, the DJ queue and the votes come in the next steps.
 export default function RoomPage() {
   const { roomId = '' } = useParams()
   const entry = useLocation().state as EntryState | null
@@ -51,11 +50,22 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
     reactions,
     mine,
     likePulse,
+    rules,
+    queue,
+    lineup,
+    notices,
     sendChat,
     like,
     voteSkip,
+    addTrack,
+    removeTrack,
+    leaveQueue,
+    dismissNotice,
   } = useRoom({ roomId, pseudo, avatarId })
   const { account } = useAccount()
+  // Member or visitor as the room's server sees this connection, which can differ for a moment from the account of
+  // the page (signed in from another tab: the connection reopens a moment later).
+  const isMember = participants.find((participant) => participant.id === snapshot?.selfId)?.member === true
 
   if (status === 'error' && error) {
     return (
@@ -91,21 +101,30 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
               reactions={reactions}
               mine={mine}
               likePulse={likePulse}
+              queue={queue}
               onLike={like}
               onSkip={voteSkip}
             />
           </div>
-          <div className="room__side">
-            <Chat
-              messages={messages}
-              selfId={snapshot?.selfId}
-              disabledReason={status === 'joined' ? null : 'Connexion en cours… tu pourras écrire dans un instant.'}
-              onSend={sendChat}
-            />
-            <ParticipantList participants={participants} selfId={snapshot?.selfId} />
-          </div>
+          <RoomSide
+            selfId={snapshot?.selfId}
+            isMember={isMember}
+            participants={participants}
+            messages={messages}
+            chatDisabledReason={status === 'joined' ? null : 'Connexion en cours… tu pourras écrire dans un instant.'}
+            onSendChat={sendChat}
+            rules={rules}
+            queue={queue}
+            lineup={lineup}
+            nowPlaying={nowPlaying}
+            clockOffsetMs={clockOffsetMs}
+            onAddTrack={addTrack}
+            onRemoveTrack={removeTrack}
+            onLeaveQueue={leaveQueue}
+          />
         </div>
       </main>
+      <DjNotices notices={notices} onDismiss={dismissNotice} />
     </div>
   )
 }

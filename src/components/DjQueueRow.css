@@ -1,0 +1,124 @@
+.dj-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--tap);
+  padding: 4px 8px;
+  border-radius: var(--radius-s);
+}
+
+.dj-row__rank {
+  flex: none;
+  width: 1.4em;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: center;
+}
+
+.dj-row svg {
+  flex: none;
+}
+
+.dj-row__who {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dj-row__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 700;
+}
+
+.dj-row__pseudo {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Titles come from YouTube and can be long: one line, cut with an ellipsis (the full text is still read aloud). */
+.dj-row__detail {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dj-row em {
+  flex: none;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 0.75rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* On the decks: an outline in the cyan of everything DJ, so that it is not mistaken for the "toi" pill. */
+.dj-row em.dj-row__decks {
+  border: 1px solid var(--accent-2);
+  background: transparent;
+  color: var(--accent-2);
+}
+
+.dj-row--decks {
+  background: color-mix(in srgb, var(--accent-2) 12%, transparent);
+}
+
+.dj-row--decks .dj-row__rank {
+  color: var(--accent-2);
+}
+
+.dj-row--self {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* Away: still in line (their turn is skipped if they have not come back by then), but dimmed. Not dimmer than this:
+   the text must keep a contrast of 4.5:1 on the panel. */
+.dj-row--away .dj-row__who,
+.dj-row--away svg {
+  opacity: 0.75;
+}
+
+/* In the room that fits the window, height is what is short and width is not: one line per DJ, so that more of the
+   queue is in view (see RoomPage.css). A phone, and a short window, keep two lines. */
+@media (min-width: 761px) and (min-height: 700px) {
+  .dj-row {
+    min-height: 36px;
+    padding-block: 2px;
+  }
+
+  .dj-row__who {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .dj-row__name {
+    flex: none;
+    max-width: 55%;
+  }
+
+  .dj-row__detail {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* The DJ on the decks carries more labels ("toi", "À la console"): two lines, so that their name is not cut. */
+  .dj-row--decks .dj-row__who {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .dj-row--decks .dj-row__name {
+    max-width: none;
+  }
+}

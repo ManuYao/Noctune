@@ -1,0 +1,317 @@
+/* "Passer DJ": a centred dialog on a computer, a sheet that rises from the bottom on a phone (mock-up M4).
+   No display is set on the closed dialog: the browser hides it by itself. */
+.dj-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-width: none;
+  max-height: min(88dvh, 780px);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-l);
+  background: var(--wall);
+  color: var(--text);
+}
+
+.dj-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+/* A literal colour: the backdrop does not always see the custom properties of the page. */
+.dj-dialog::backdrop {
+  background: rgb(14 11 31 / 0.78);
+}
+
+/* Nothing behind the dialog scrolls while it is open. */
+html:has(.dj-dialog[open]) {
+  overflow: hidden;
+}
+
+/* The sheet fills the dialog (a click on the dialog itself is a click on the backdrop): the header stays, the body scrolls. */
+.dj-dialog__sheet {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dj-dialog__header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px 8px;
+}
+
+.dj-dialog__header h2 {
+  font-size: 1.35rem;
+}
+
+.dj-dialog__close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.dj-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 0;
+  padding: 8px 24px 24px;
+  overflow-y: auto;
+}
+
+.dj-dialog h3 {
+  font-size: 1rem;
+}
+
+.dj-dialog h3 span {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.dj-dialog__rules {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+}
+
+.dj-dialog__rules > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--bg);
+}
+
+.dj-dialog__rules dt {
+  color: var(--text-muted);
+}
+
+.dj-dialog__rules dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+}
+
+.dj-dialog__turn {
+  margin: 10px 0 0;
+  color: var(--accent-2);
+  font-weight: 600;
+}
+
+.dj-dialog__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dj-dialog__form label {
+  font-weight: 700;
+}
+
+.dj-dialog__field {
+  display: flex;
+  gap: 8px;
+}
+
+.dj-dialog__field input {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap-main);
+  padding: 0 16px;
+  border: 2px solid var(--border-field);
+  border-radius: var(--radius-s);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.dj-dialog__field input[aria-invalid='true'] {
+  border-color: var(--accent);
+}
+
+.dj-dialog__field input::placeholder {
+  color: var(--text-muted);
+}
+
+.dj-dialog__field .btn-primary {
+  flex: none;
+  padding: 0 18px;
+  font-size: 0.9rem;
+}
+
+.dj-dialog__hint {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* Live regions: always in the page (a screen reader only hears a region it already knew), empty most of the time. */
+.dj-dialog__feedback {
+  margin: 0;
+  font-weight: 600;
+}
+
+.dj-dialog__feedback--error {
+  color: var(--accent);
+}
+
+.dj-dialog__feedback--done {
+  color: var(--accent-2);
+}
+
+.dj-dialog__lineup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dj-dialog__lineup li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'order remove'
+    'track remove';
+  align-items: center;
+  gap: 0 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  background: var(--bg);
+}
+
+.dj-dialog__order {
+  grid-area: order;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.dj-dialog__track {
+  display: flex;
+  flex-direction: column;
+  grid-area: track;
+  min-width: 0;
+}
+
+.dj-dialog__title,
+.dj-dialog__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dj-dialog__title {
+  font-weight: 700;
+}
+
+.dj-dialog__meta {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.dj-dialog__remove {
+  grid-area: remove;
+}
+
+.dj-dialog__remove,
+.dj-dialog__leave button {
+  min-height: var(--tap);
+  padding: 0 16px;
+  border: 2px solid var(--border-field);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dj-dialog button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.dj-dialog__leave p {
+  margin: 0 0 10px;
+  color: var(--text-muted);
+}
+
+.dj-dialog__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dj-dialog__leave .dj-dialog__danger {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* A phone: a sheet that rises from the bottom and almost fills the screen; the field and its button are stacked. */
+@media (max-width: 760px) {
+  .dj-dialog {
+    width: 100%;
+    max-height: none;
+    margin: auto 0 0;
+    border-bottom: 0;
+    border-radius: var(--radius-l) var(--radius-l) 0 0;
+    animation: dj-sheet-rise 240ms ease-out;
+  }
+
+  .dj-dialog[open] {
+    height: calc(100dvh - 24px);
+  }
+
+  .dj-dialog__header,
+  .dj-dialog__body {
+    padding-inline: 16px;
+  }
+
+  .dj-dialog__body {
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .dj-dialog__field {
+    flex-direction: column;
+  }
+
+  .dj-dialog__field .btn-primary {
+    min-height: var(--tap-main);
+  }
+
+  .dj-dialog__leave button {
+    width: 100%;
+  }
+
+  .dj-dialog__confirm button {
+    flex: 1;
+  }
+}
+
+@keyframes dj-sheet-rise {
+  from {
+    opacity: 0.6;
+    transform: translateY(40%);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

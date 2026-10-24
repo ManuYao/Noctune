@@ -63,12 +63,111 @@ export interface MyReactions {
   votedSkip: boolean
 }
 
-export type ReactError = 'not-in-room' | 'no-track' | 'invalid'
+export type ReactError =
+  | 'not-in-room'
+  | 'no-track'
+  | 'invalid'
+  /** A DJ does not like their own track. (A DJ who skips their own track is allowed: it changes at once.) */
+  | 'own-track'
 
 export type ReactResult =
   | { ok: true }
   | { ok: false; error: ReactError }
   | { ok: false; error: 'rate-limited' | 'too-early'; retryAfterMs: number }
+
+// ---- DJs: the rules of a room, the queue, the tracks a DJ lines up. Only members can be DJs.
+
+/** What a room asks of the tracks its DJs bring. Each room has its own; its host will choose them later. */
+export interface RoomRules {
+  /** Longest track a DJ may bring, in seconds. Null: no limit. */
+  maxTrackSec: number | null
+  /** How long a track must wait before it can play again in this room, in seconds. Null: never again. */
+  repeatDelaySec: number | null
+  /** Most DJs the queue holds, the one on the decks included. */
+  maxDjs: number
+}
+
+/** The most tracks one DJ can have lined up in a room. */
+export const LINEUP_MAX = 10
+/**
+ * A DJ cannot skip their own track before it has played this long. (A play shorter than this does not count as played
+ * in the room's memory, so a track that can be skipped always counts: skipping cannot be used to replay it at once.)
+ */
+export const OWN_SKIP_MIN_SEC = 10
+/** The longest link (or video id) the server reads. */
+export const DJ_INPUT_MAX = 300
+
+/** A track a DJ lined up, waiting for their turn. */
+export type QueuedTrack = Omit<Track, 'startedAt'>
+
+/** What the server read about a YouTube video. */
+export type VideoInfo = Pick<Track, 'videoId' | 'title' | 'artist' | 'durationSec'>
+
+/** One DJ in the queue, as everybody sees it. */
+export interface DjQueueEntry {
+  /** Stays the same while the DJ keeps their place. Not the participant id: that changes when they come back. */
+  id: string
+  pseudo: string
+  avatarId: AvatarId
+  /** The DJ's id among the participants while they are in the room; null while they are away. */
+  participantId: string | null
+  /** The track they play on their next turn. Null while they have none lined up: their turn will be skipped. */
+  next: QueuedTrack | null
+}
+
+export interface DjQueue {
+  /** On the decks right now. Null while the room's own selection plays. */
+  current: DjQueueEntry | null
+  /** Waiting for their turn, the next one first. */
+  waiting: DjQueueEntry[]
+}
+
+export type DjError =
+  | 'not-in-room'
+  /** Passing DJ needs an account. */
+  | 'members-only'
+  /** Not what the page sends: wrong shape, wrong type, too long. */
+  | 'invalid'
+  /** Not a link to a YouTube video. */
+  | 'invalid-link'
+  /** The video does not exist, or is private. */
+  | 'not-found'
+  /** Its owner does not allow it to be played outside YouTube. */
+  | 'not-embeddable'
+  /** A live stream, an age-restricted video, or otherwise not playable here. */
+  | 'unavailable'
+  /** A DJ of this room already lined it up. */
+  | 'already-queued'
+  /** The queue holds as many DJs as the room allows, and this member is not one of them. */
+  | 'queue-full'
+  /** This DJ already has LINEUP_MAX tracks lined up. */
+  | 'lineup-full'
+  /** Not in the DJ's line-up (already played, or never there). */
+  | 'no-such-track'
+  | 'not-in-queue'
+  /** The server cannot read YouTube right now: no access configured, quota used up, YouTube down. */
+  | 'service-unavailable'
+  | 'server-error'
+
+export type DjFailure =
+  | { ok: false; error: DjError }
+  | { ok: false; error: 'too-long'; maxSec: number }
+  /** `retryAfterSec`: when it may play again, null if the room never lets a track play twice. */
+  | { ok: false; error: 'recently-played'; retryAfterSec: number | null }
+  | { ok: false; error: 'rate-limited'; retryAfterMs: number }
+
+export type DjResult = { ok: true } | DjFailure
+/** The track was added to the member's line-up; if they were not in the queue, they are now (at the end). */
+export type AddTrackResult = { ok: true; track: QueuedTrack } | DjFailure
+
+/** Said to one DJ, and to nobody else. */
+export type DjNotice =
+  /** A track of the line-up was taken out when its turn came: it no longer fits the rules of the room. */
+  | { kind: 'track-dropped'; title: string; reason: 'too-long' | 'recently-played' }
+  /** Their turn came and they had no track to play: they keep their place, for one more turn. */
+  | { kind: 'skipped' }
+  /** Their turn was skipped twice in a row: they are out of the queue. */
+  | { kind: 'removed' }
 
 export interface RoomSnapshot {
   roomId: string
@@ -78,6 +177,10 @@ export interface RoomSnapshot {
   nowPlaying: Track | null
   reactions: Reactions
   mine: MyReactions
+  rules: RoomRules
+  queue: DjQueue
+  /** The viewer's own line-up (the tracks they will play, in order). Empty for a visitor. */
+  lineup: QueuedTrack[]
   /** Most recent chat messages, oldest first. */
   chat: ChatMessage[]
   /** Server clock when the snapshot was built, to estimate the client clock offset. */
@@ -156,6 +259,9 @@ export interface RoomSummary {
   online: number
   /** What plays right now. Null while the room is empty: nothing plays for nobody. */
   nowPlaying: { title: string; artist: string } | null
+  /** DJs in the queue (the one on the decks included), and how many the room holds at most. */
+  djs: number
+  maxDjs: number
 }
 
 export interface ClientToServerEvents {
@@ -167,8 +273,14 @@ export interface ClientToServerEvents {
   'chat:send': (payload: { text: string }, ack: (result: ChatResult) => void) => void
   /** Sets (true) or takes back (false) the viewer's like on the current track. */
   'track:like': (payload: { value: boolean }, ack: (result: ReactResult) => void) => void
-  /** Sets or takes back the viewer's vote to skip the current track. */
+  /** Sets or takes back the viewer's vote to skip the current track. A DJ skipping their own track: it changes at once. */
   'track:skip': (payload: { value: boolean }, ack: (result: ReactResult) => void) => void
+  /** Lines a YouTube video up for the member's turns (`input`: a link or a video id). Puts them in the queue if they are not. */
+  'dj:add': (payload: { input: string }, ack: (result: AddTrackResult) => void) => void
+  /** Takes one track out of the member's own line-up. */
+  'dj:remove': (payload: { trackId: string }, ack: (result: DjResult) => void) => void
+  /** Leaves the queue, line-up included. On the decks, that cuts the track that plays. */
+  'dj:leave': (ack: (result: DjResult) => void) => void
 }
 
 export interface ServerToClientEvents {
@@ -176,8 +288,14 @@ export interface ServerToClientEvents {
   'lobby:rooms': (rooms: RoomSummary[]) => void
   'room:participant-joined': (participant: Participant) => void
   'room:participant-left': (participantId: string) => void
-  /** A new track started: likes and skip votes are back to zero. */
-  'room:track': (track: Track | null, reactions: Reactions) => void
+  /** A new track started (or the room emptied): likes and skip votes are back to zero, and the queue has moved on. */
+  'room:track': (track: Track | null, reactions: Reactions, queue: DjQueue) => void
+  /** The queue changed without a new track: someone joined, left, came back, lined up a track. */
+  'dj:queue': (queue: DjQueue) => void
+  /** To one DJ only: their line-up changed (a track added, removed, or taken for their turn). */
+  'dj:lineup': (lineup: QueuedTrack[]) => void
+  /** To one DJ only. */
+  'dj:notice': (notice: DjNotice) => void
   /** Sent in batches, a few times a second at most. */
   'track:reactions': (reactions: Reactions) => void
   'chat:message': (message: ChatMessage) => void

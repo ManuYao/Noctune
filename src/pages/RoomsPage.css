@@ -60,6 +60,22 @@
   color: var(--text);
 }
 
+/* A free place in the queue of DJs. A full queue says so too, in an outline: it is information, not an invitation. */
+.rooms__badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent-2);
+  color: var(--on-accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.rooms__badge--full {
+  border: 1px solid var(--border-field);
+  background: transparent;
+  color: var(--text-muted);
+}
+
 .rooms__notice {
   margin: 0;
   padding: 10px 16px;

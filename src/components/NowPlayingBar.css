@@ -2,7 +2,8 @@
    Which layout applies depends on the width of the stage column, not of the window (see RoomStage.css). */
 .bar {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr) auto;
+  /* The artist and the DJ are the longest texts: the info gets more width than the progress bar needs. */
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) auto;
   grid-template-areas:
     'info progress sound'
     'actions actions actions';
@@ -27,16 +28,35 @@
   grid-area: sound;
 }
 
+/* Two lines at most: the title of a track a DJ brought is the one YouTube gives it, often long. */
 .bar__title {
+  display: -webkit-box;
   margin: 0;
+  overflow: hidden;
   font-family: var(--font-title);
   font-size: 1.1rem;
   font-weight: 700;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .bar__artist {
   margin: 0;
   color: var(--text-muted);
+}
+
+.bar__artist-name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Who brought the track: on a line of its own in a wide bar, after the artist in a narrow one (see below). */
+.bar__dj {
+  display: block;
+  font-size: 0.9rem;
 }
 
 .bar__progress {
@@ -125,6 +145,16 @@
     padding-top: 8px;
   }
 
+  /* The DJ on the decks: their skip button says what it does ("Passer mon morceau") and what follows, which needs
+     the width. It gets a row of its own, only while it is their turn. */
+  .bar--own {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'info sound'
+      'actions actions'
+      'progress progress';
+  }
+
   .bar__info {
     min-width: 0;
   }
@@ -134,6 +164,21 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .bar__title {
+    display: block;
+  }
+
+  /* No third line: the pinned block stays short. The queue panel says who is on the decks in full. */
+  .bar__artist-name,
+  .bar__dj {
+    display: inline;
+    font-size: inherit;
+  }
+
+  .bar__dj::before {
+    content: ' · ';
   }
 
   .bar__volume {

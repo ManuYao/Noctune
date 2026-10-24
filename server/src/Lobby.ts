@@ -16,6 +16,8 @@ export function summarize(def: RoomDef, room: Room): RoomSummary {
     genre: def.genre,
     online: room.size,
     nowPlaying: track ? { title: track.title, artist: track.artist } : null,
+    djs: room.djCount,
+    maxDjs: room.rules.maxDjs,
   }
 }
 

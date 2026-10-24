@@ -332,7 +332,15 @@ describe('the list of rooms', () => {
       assert.equal(summary.online, 0)
       assert.equal(summary.nowPlaying, null)
     }
-    assert.deepEqual(summaryOf(rooms), { id: room, name: 'Lo-fi du soir', genre: 'Lo-fi', online: 0, nowPlaying: null })
+    assert.deepEqual(summaryOf(rooms), {
+      id: room,
+      name: 'Lo-fi du soir',
+      genre: 'Lo-fi',
+      online: 0,
+      nowPlaying: null,
+      djs: 0,
+      maxDjs: 10,
+    })
   })
 
   it('tells the followers who comes and goes, and what plays', async () => {

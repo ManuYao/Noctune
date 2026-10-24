@@ -1,6 +1,10 @@
 /* The illustrated club: wall with beams and speakers, the video screen in its neon frame, a floor with the crowd.
    Everything here is decoration. The video is never covered: hearts and avatars live on the floor, below it. */
 .scene {
+  /* As wide as the area above the booth allows and never taller than it, with 18px of air above and below for the
+     neon glow: the 16:9 video keeps its shape either way. The DJ at the stand reads it too, to stay clear of the video.
+     (The units are measured on the scene, the nearest container, wherever this is used.) */
+  --video-w: min(54cqw, calc((54cqh - 48px) * 16 / 9 + 12px));
   position: relative;
   /* As tall as its width suggests, or squeezed by the height the room has left (see RoomStage.css). */
   container-type: size;
@@ -71,6 +75,59 @@
   box-shadow: inset 0 -6px 0 var(--accent-2);
 }
 
+/* The DJ on the decks: in front of the booth, feet on the edge of the floor (the floor starts at 62% of the scene), on
+   top of the crowd. Its size is whatever fits between the bottom of the screen and those feet, so that the DJ never
+   covers the video however the scene is squeezed (the screen is centred in the top 54% of the scene); no room, no DJ.
+   Hearts and the names of the crowd stay above it. */
+.scene__dj {
+  --feet: 65cqh;
+  --clear: calc(var(--feet) - 27cqh - (var(--video-w) * 9 / 16 + 12px) / 2 - 4px);
+  --size: clamp(0px, var(--clear), 9cqw);
+  position: absolute;
+  z-index: 150;
+  top: calc(var(--feet) - var(--size));
+  left: 50%;
+  width: var(--size);
+  height: var(--size);
+  transform: translateX(-50%);
+}
+
+.scene__dj svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  animation: scene-dj-bob 0.7s ease-in-out infinite;
+}
+
+@keyframes scene-dj-bob {
+  50% { transform: translateY(-5%); }
+}
+
+/* Under the feet, on the floor: over the video it would be a name on the picture. */
+.scene__dj-name {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  max-width: 14ch;
+  margin-top: 2px;
+  padding: 1px 8px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scene__dj-name--self {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
 /* The area above the DJ booth: the screen sits in the middle of it. */
 .scene__screen {
   position: absolute;
@@ -80,11 +137,9 @@
   justify-content: center;
 }
 
-/* As wide as the area allows and never taller than it, with 18px of air above and below for the neon glow:
-   the 16:9 video keeps its shape either way. */
 .scene__screen > .screen {
   flex: none;
-  width: min(54cqw, calc((54cqh - 48px) * 16 / 9 + 12px));
+  width: var(--video-w);
 }
 
 .scene__floor {
@@ -260,6 +315,7 @@
 @media (prefers-reduced-motion: reduce) {
   .scene__beam,
   .scene__person svg,
+  .scene__dj svg,
   .scene__heart {
     animation: none;
   }

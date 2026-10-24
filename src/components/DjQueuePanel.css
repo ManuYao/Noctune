@@ -1,0 +1,168 @@
+.dj-queue {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--wall);
+}
+
+.dj-queue__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 12px;
+}
+
+.dj-queue h2 {
+  font-size: 1.1rem;
+}
+
+.dj-queue__slots {
+  margin: 0;
+  color: var(--accent-2);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.dj-queue__slots span {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.dj-queue__slots--full {
+  color: var(--text-muted);
+}
+
+.dj-queue__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dj-queue__empty,
+.dj-queue__status,
+.dj-queue__locked {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.dj-queue__status {
+  font-size: 0.9rem;
+}
+
+.dj-queue__status--warn {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* What the viewer has to know about their turn on the left, the one button on the right: a single short row. */
+.dj-queue__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dj-queue__footer .dj-queue__status {
+  flex: 1;
+  min-width: 0;
+}
+
+/* A visitor: the locked button, and under it the way to get what it asks for. */
+.dj-queue__footer--locked {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.dj-queue__cta {
+  flex: none;
+  min-height: var(--tap);
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Locked (a visitor, or a full queue): an outline, so that it does not look like something that can be pressed. */
+.dj-queue__cta:disabled {
+  border: 2px solid var(--border-field);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+/* On a computer the whole room fits in the window (see RoomPage.css): the list of DJs scrolls inside its box. */
+@media (min-width: 761px) and (min-height: 700px) {
+  .dj-queue {
+    flex: 0 1 auto;
+    min-height: 0;
+    max-height: 32%;
+    padding-block: 12px;
+  }
+
+  .dj-queue__list {
+    --fade-top: 0px;
+    --fade-bottom: 0px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  /* More rows above or below: the edge fades out instead of cutting a row in two. */
+  .dj-queue__list[data-above='true'] {
+    --fade-top: 28px;
+  }
+
+  .dj-queue__list[data-below='true'] {
+    --fade-bottom: 28px;
+  }
+
+  .dj-queue__list[data-above='true'],
+  .dj-queue__list[data-below='true'] {
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent);
+    mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent);
+  }
+
+  .dj-queue__header,
+  .dj-queue__footer {
+    flex: none;
+  }
+}
+
+/* A phone: the panel is a tab of its own, and its button is a full-width, 48 px target under the notes. */
+@media (max-width: 760px) {
+  .dj-queue {
+    padding: 16px;
+  }
+
+  .dj-queue__footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dj-queue__cta {
+    min-height: var(--tap-main);
+  }
+
+  /* The two links of a visitor are touch targets too: 44 px tall. */
+  .dj-queue__locked {
+    text-align: center;
+  }
+
+  .dj-queue__locked a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding: 0 8px;
+  }
+}

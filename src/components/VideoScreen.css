@@ -70,6 +70,18 @@
   background: #000;
 }
 
+/* A narrow column (a phone under about 392 px): 200 px of height at 16:9 is 356 px of width, more than the column
+   has, and the box used to push its way out of the neon frame and widen the page. Here it keeps the width the column
+   gives it, and its 200 px of height: the player still measures at least 200 x 200, and YouTube letterboxes the
+   picture inside it. (The 12 px are the padding of the frame.) */
+@container stage (max-width: 368px) {
+  .screen__video {
+    aspect-ratio: auto;
+    height: 200px;
+    min-height: 0;
+  }
+}
+
 .screen__host,
 .screen__host iframe {
   display: block;

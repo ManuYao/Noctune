@@ -4,6 +4,7 @@ import { createNoctuneServer } from './createServer'
 import { createPool } from './db/pool'
 import { loadLocalEnv } from './env'
 import { parseAllowedOrigins } from './http/origin'
+import { YouTubeResolver } from './youtube/YouTubeResolver'
 
 loadLocalEnv()
 
@@ -66,5 +67,18 @@ if (accounts) {
   }, HOUR_MS).unref()
 }
 
-const { httpServer } = createNoctuneServer({ accounts, allowedOrigins, secureCookies, trustedProxies })
+/** DJs line tracks up by pasting YouTube links: reading them needs a YouTube Data API key. Without one, they cannot. */
+function openResolver(): YouTubeResolver | null {
+  const apiKey = process.env.YOUTUBE_API_KEY
+  if (!apiKey) {
+    console.log('[youtube] YOUTUBE_API_KEY absente : les DJ ne peuvent pas ajouter de morceaux.')
+    return null
+  }
+  console.log('[youtube] lecture des vidéos activée : les membres peuvent passer DJ.')
+  return new YouTubeResolver({ apiKey })
+}
+
+const resolver = openResolver()
+
+const { httpServer } = createNoctuneServer({ accounts, resolver, allowedOrigins, secureCookies, trustedProxies })
 httpServer.listen(PORT, () => console.log(`Serveur temps réel sur :${PORT}`))

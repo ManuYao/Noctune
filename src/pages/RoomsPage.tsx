@@ -64,6 +64,13 @@ export default function RoomsPage() {
                     'La musique démarre quand quelqu\'un entre.'
                   )}
                 </p>
+                {/* An older server does not count its DJs: nothing is said rather than something wrong. */}
+                {room.maxDjs > 0 &&
+                  (room.djs < room.maxDjs ? (
+                    <span className="rooms__badge">Place DJ libre</span>
+                  ) : (
+                    <span className="rooms__badge rooms__badge--full">File DJ complète</span>
+                  ))}
                 <Link to={`/?room=${room.id}`} className="rooms__join">
                   Rejoindre
                 </Link>

@@ -11,7 +11,13 @@ describe('what the list shows about a room', () => {
 
   beforeEach(() => {
     mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000_000 })
-    room = new Room(def.id, def.name, { onTrackChange: () => {}, onReactionsChange: () => {} })
+    room = new Room(def.id, def.name, {
+      onTrackChange: () => {},
+      onReactionsChange: () => {},
+      onQueueChange: () => {},
+      onLineupChange: () => {},
+      onNotice: () => {},
+    })
   })
 
   afterEach(() => {
@@ -20,13 +26,15 @@ describe('what the list shows about a room', () => {
     mock.timers.reset()
   })
 
-  it('shows an empty room with nothing playing', () => {
+  it('shows an empty room with nothing playing and no DJ', () => {
     assert.deepEqual(summarize(def, room), {
       id: def.id,
       name: def.name,
       genre: def.genre,
       online: 0,
       nowPlaying: null,
+      djs: 0,
+      maxDjs: def.rules.maxDjs,
     })
   })
 
@@ -40,6 +48,8 @@ describe('what the list shows about a room', () => {
       genre: def.genre,
       online: 2,
       nowPlaying: { title: first.title, artist: first.artist },
+      djs: 0,
+      maxDjs: def.rules.maxDjs,
     })
   })
 
@@ -57,7 +67,7 @@ describe('announcing changes to the list', () => {
   let sent: RoomSummary[][]
   let lobby: Lobby
 
-  const list = (): RoomSummary[] => [{ id: 'r', name: 'R', genre: 'G', online, nowPlaying: null }]
+  const list = (): RoomSummary[] => [{ id: 'r', name: 'R', genre: 'G', online, nowPlaying: null, djs: 0, maxDjs: 10 }]
 
   beforeEach(() => {
     mock.timers.enable({ apis: ['setTimeout'] })

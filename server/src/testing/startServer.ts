@@ -40,6 +40,13 @@ export async function startServer(options: StartOptions = {}): Promise<Started> 
   const { httpServer, io } = createNoctuneServer({
     skipProtectedSec: 0,
     lobbyDelayMs: 20,
+    queueBroadcastMs: 20,
+    // Tests line several tracks up in a row: the allowances between two requests are tested on their own.
+    lookupIntervalMs: 0,
+    editIntervalMs: 0,
+    // Wide open: the allowance of an account has its own tests.
+    accountLookupBudget: { burst: 1000, refillMs: 1 },
+    ownSkipMinSec: 0,
     allowedOrigins: [ORIGIN],
     ...options,
     accounts: service,
