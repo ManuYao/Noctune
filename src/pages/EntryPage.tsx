@@ -142,6 +142,16 @@ export default function EntryPage() {
             ▶ Entrer dans la room
           </button>
           <p className="entry__hint">Le son de la room démarre dès que tu entres.</p>
+          <p className="entry__hint entry__legal">
+            La vidéo est lue par le lecteur de YouTube.{' '}
+            <Link to="/regles" target="_blank" rel="noopener noreferrer">
+              Règles de la communauté<span className="visually-hidden"> (nouvel onglet)</span>
+            </Link>{' '}
+            ·{' '}
+            <Link to="/confidentialite" target="_blank" rel="noopener noreferrer">
+              Confidentialité<span className="visually-hidden"> (nouvel onglet)</span>
+            </Link>
+          </p>
 
           {!account && (
             <p className="entry__hint entry__account-links">

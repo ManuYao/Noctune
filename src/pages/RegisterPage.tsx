@@ -111,6 +111,18 @@ export default function RegisterPage() {
           <button type="submit" className="btn-primary" disabled={pending}>
             {pending ? 'Création…' : 'Créer mon compte'}
           </button>
+          {/* New tabs: what was typed in the form is not lost. */}
+          <p className="auth__hint">
+            En créant un compte, tu acceptes les{' '}
+            <Link to="/regles" target="_blank" rel="noopener noreferrer">
+              règles de la communauté<span className="visually-hidden"> (nouvel onglet)</span>
+            </Link>{' '}
+            et tu as lu la{' '}
+            <Link to="/confidentialite" target="_blank" rel="noopener noreferrer">
+              politique de confidentialité<span className="visually-hidden"> (nouvel onglet)</span>
+            </Link>
+            .
+          </p>
           <p className="auth__hint">
             Déjà un compte ? <Link to="/connexion">Se connecter</Link>
           </p>

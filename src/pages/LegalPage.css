@@ -1,0 +1,256 @@
+/* The legal pages: a readable column of text (about 75 characters a line), cards where the content is a list of items. */
+.legal {
+  padding: 16px clamp(16px, 5vw, 56px) 48px;
+}
+
+.legal__article {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-width: 78ch;
+  margin-inline: auto;
+  min-width: 0;
+}
+
+.legal__article--wide {
+  max-width: 1100px;
+}
+
+.legal__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.legal__hero h1 {
+  font-size: clamp(1.5rem, 4vw, 2.4rem);
+  overflow-wrap: anywhere;
+}
+
+.legal__updated {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.legal__intro {
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.legal__intro p {
+  margin: 0 0 0.8em;
+}
+
+.legal__toc {
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--wall);
+}
+
+.legal__toc h2 {
+  margin-bottom: 8px;
+  font-size: 1rem;
+}
+
+.legal__toc ol {
+  display: grid;
+  gap: 0 24px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  margin: 0;
+  padding-left: 1.4em;
+}
+
+.legal__toc a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+}
+
+.legal__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* The header does not hide the title when an anchor is followed. */
+  scroll-margin-top: 16px;
+  line-height: 1.65;
+}
+
+.legal__section h2 {
+  font-size: clamp(1.1rem, 2.4vw, 1.4rem);
+}
+
+.legal__section h3 {
+  font-family: var(--font-title);
+  font-size: 1rem;
+}
+
+.legal__section p,
+.legal__section ul,
+.legal__section ol {
+  margin: 0;
+}
+
+.legal__section ul,
+.legal__section ol {
+  padding-left: 1.4em;
+}
+
+/* Only in running text: the cards and the steps are laid out by their grid. */
+.legal__section ul:not([class]) li + li,
+.legal__section ol:not([class]) li + li {
+  margin-top: 0.4em;
+}
+
+.legal__section a {
+  overflow-wrap: anywhere;
+}
+
+/* A list of items, each in its own card (what is kept and why, the six rules). */
+.legal__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legal__section .legal__cards {
+  padding-left: 0;
+}
+
+.legal__card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--wall);
+}
+
+.legal__card + .legal__card {
+  margin-top: 0;
+}
+
+.legal__card dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.legal__card dt {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.legal__card dd {
+  margin: 0;
+}
+
+/* The ladder of sanctions: four steps, from the lightest to the heaviest. */
+.legal__ladder {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.legal__section .legal__ladder {
+  padding-left: 0;
+}
+
+.legal__step {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--wall);
+  counter-increment: step;
+}
+
+.legal__step::before {
+  content: counter(step);
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--step-color, var(--accent));
+  color: #0e0b1f;
+  font-family: var(--font-title);
+  font-weight: 700;
+}
+
+.legal__step:nth-child(1) {
+  --step-color: #3de0ff;
+}
+
+.legal__step:nth-child(2) {
+  --step-color: #ff3d81;
+}
+
+.legal__step:nth-child(3) {
+  --step-color: #ffb13d;
+}
+
+.legal__step:nth-child(4) {
+  --step-color: #ff7a7a;
+}
+
+.legal__step strong {
+  font-family: var(--font-title);
+  font-size: 0.95rem;
+}
+
+.legal__note {
+  padding: 14px 18px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-m);
+  background: var(--wall);
+}
+
+/* A gap the operator must fill: loud on purpose. */
+.to-complete {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--warn);
+  color: #0e0b1f;
+  font-weight: 700;
+  /* The brackets and the words stay together as long as they fit, and break rather than overflow a phone. */
+  overflow-wrap: anywhere;
+}
+
+@media print {
+  .legal {
+    padding: 0;
+  }
+
+  .legal__toc {
+    display: none;
+  }
+
+  .legal__card,
+  .legal__step,
+  .legal__note {
+    break-inside: avoid;
+    background: none;
+    border-color: #999;
+  }
+
+  .to-complete {
+    background: none;
+    border: 1px solid #000;
+  }
+}

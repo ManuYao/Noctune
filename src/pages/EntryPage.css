@@ -126,3 +126,14 @@
   color: var(--accent-2);
   font-weight: 600;
 }
+
+/* One discreet line under the button: the legal pages, and who plays the video. */
+.entry__legal {
+  font-size: 0.85rem;
+}
+
+.entry__legal a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+}

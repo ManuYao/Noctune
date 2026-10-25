@@ -1,0 +1,37 @@
+/* The page is at least as tall as the window and the footer sits at its bottom: a short page gets no scroll for it. */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.site-footer {
+  margin-top: auto;
+  /* Slim on purpose: the entry screen fits a 900 px window with it. */
+  padding: 4px clamp(16px, 5vw, 56px) 6px;
+  border-top: 1px solid var(--border);
+}
+
+.site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 24px;
+}
+
+.site-footer a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.site-footer a:hover {
+  color: var(--text);
+}
+
+@media print {
+  .site-footer {
+    display: none;
+  }
+}
