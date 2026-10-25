@@ -1,6 +1,6 @@
 import type { RoomSummary } from '../../shared/protocol'
-import type { RoomDef } from './catalog'
 import type { Room } from './Room'
+import type { StoredRoom } from './rooms/RoomStore'
 
 /** Socket.IO channel of the people looking at the list of rooms. Not a valid room id, so it cannot clash with one. */
 export const LOBBY_CHANNEL = '#lobby'
@@ -8,12 +8,16 @@ export const LOBBY_CHANNEL = '#lobby'
 // However many people come and go, the list is sent at most twice a second.
 export const LOBBY_BROADCAST_MS = 500
 
-export function summarize(def: RoomDef, room: Room): RoomSummary {
+export function summarize(def: StoredRoom, room: Room): RoomSummary {
   const track = room.nowPlaying
   return {
     id: def.id,
     name: def.name,
-    genre: def.genre,
+    description: def.description,
+    styles: [...def.styles],
+    theme: def.theme,
+    host: def.hostPseudo,
+    rules: { ...room.rules },
     online: room.size,
     nowPlaying: track ? { title: track.title, artist: track.artist } : null,
     djs: room.djCount,

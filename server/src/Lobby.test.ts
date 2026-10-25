@@ -2,11 +2,13 @@ import assert from 'node:assert/strict'
 import { afterEach, beforeEach, describe, it, mock } from 'node:test'
 import type { RoomSummary } from '../../shared/protocol'
 import { ROOM_DEFS, TEST_TRACKS } from './catalog'
+import { seedRooms } from './rooms/RoomStore'
 import { Lobby, LOBBY_BROADCAST_MS, summarize } from './Lobby'
 import { Room } from './Room'
 
 describe('what the list shows about a room', () => {
-  const def = ROOM_DEFS[0]
+  // The room of the team as the store holds it (no host).
+  const def = seedRooms()[0]
   let room: Room
 
   beforeEach(() => {
@@ -17,7 +19,7 @@ describe('what the list shows about a room', () => {
       onQueueChange: () => {},
       onLineupChange: () => {},
       onNotice: () => {},
-    })
+    }, { rules: def.rules })
   })
 
   afterEach(() => {
@@ -30,7 +32,11 @@ describe('what the list shows about a room', () => {
     assert.deepEqual(summarize(def, room), {
       id: def.id,
       name: def.name,
-      genre: def.genre,
+      description: def.description,
+      styles: def.styles,
+      theme: def.theme,
+      host: null,
+      rules: def.rules,
       online: 0,
       nowPlaying: null,
       djs: 0,
@@ -45,7 +51,11 @@ describe('what the list shows about a room', () => {
     assert.deepEqual(summarize(def, room), {
       id: def.id,
       name: def.name,
-      genre: def.genre,
+      description: def.description,
+      styles: def.styles,
+      theme: def.theme,
+      host: null,
+      rules: def.rules,
       online: 2,
       nowPlaying: { title: first.title, artist: first.artist },
       djs: 0,
@@ -67,7 +77,7 @@ describe('announcing changes to the list', () => {
   let sent: RoomSummary[][]
   let lobby: Lobby
 
-  const list = (): RoomSummary[] => [{ id: 'r', name: 'R', genre: 'G', online, nowPlaying: null, djs: 0, maxDjs: 10 }]
+  const list = (): RoomSummary[] => [{ id: 'r', name: 'R', description: '', styles: ['lofi'], theme: 'neon', host: null, rules: { maxTrackSec: null, repeatDelaySec: null, maxDjs: 10 }, online, nowPlaying: null, djs: 0, maxDjs: 10 }]
 
   beforeEach(() => {
     mock.timers.enable({ apis: ['setTimeout'] })

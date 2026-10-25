@@ -1,0 +1,98 @@
+.room-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  height: 100%;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--wall);
+  color: var(--text);
+}
+
+.room-card__name {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-title);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.room-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.room-card__chip {
+  padding: 3px 10px;
+  border: 1px solid var(--border-field);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* The styles take the accent of the room; the rule chip stays quiet. */
+.room-card__chip--style {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.room-card p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* Two lines of description at most: the card must stay a card, whatever was written. */
+.room-card .room-card__description {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--text);
+}
+
+/* What plays now, or why nothing does. Long titles wrap instead of widening the card. */
+.room-card .room-card__playing {
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+/* A free place in the queue of DJs. A full queue says so too, in an outline: it is information, not an invitation. */
+.room-card__badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent-2);
+  color: var(--on-accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.room-card__badge--full {
+  border: 1px solid var(--border-field);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.room-card__join {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  margin-top: auto;
+  padding: 0 20px;
+  border-radius: var(--radius-s);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.room-card__join--preview {
+  opacity: 0.7;
+}

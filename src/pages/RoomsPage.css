@@ -5,6 +5,14 @@
   padding: 16px clamp(16px, 5vw, 56px) 48px;
 }
 
+.rooms__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .rooms__count,
 .rooms__empty {
   margin: 0;
@@ -25,6 +33,30 @@
   color: var(--text);
 }
 
+/* Filters by style: chips, one at a time. */
+.rooms__styles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rooms__styles button {
+  min-height: var(--tap);
+  padding: 0 16px;
+  border: 1px solid var(--border-field);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.rooms__styles button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+}
+
 .rooms__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -32,48 +64,6 @@
   margin: 12px 0 0;
   padding: 0;
   list-style: none;
-}
-
-.rooms__card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-  background: var(--wall);
-}
-
-.rooms__card h2 {
-  font-size: 1.1rem;
-}
-
-.rooms__card p {
-  margin: 0;
-  color: var(--text-muted);
-}
-
-/* What plays now, or why nothing does. Long titles wrap instead of widening the card. */
-.rooms__card .rooms__playing {
-  overflow-wrap: anywhere;
-  color: var(--text);
-}
-
-/* A free place in the queue of DJs. A full queue says so too, in an outline: it is information, not an invitation. */
-.rooms__badge {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--accent-2);
-  color: var(--on-accent);
-  font-size: 0.85rem;
-  font-weight: 700;
-}
-
-.rooms__badge--full {
-  border: 1px solid var(--border-field);
-  background: transparent;
-  color: var(--text-muted);
 }
 
 .rooms__notice {
@@ -84,15 +74,23 @@
   color: var(--accent-2);
 }
 
-.rooms__join {
+.rooms__create {
   display: inline-flex;
   align-items: center;
-  min-height: var(--tap);
-  margin-top: auto;
-  padding: 0 20px;
-  border-radius: var(--radius-s);
+  min-height: var(--tap-main);
+  padding: 0 24px;
+  border-radius: var(--radius-m);
   background: var(--accent);
   color: var(--on-accent);
+  font-family: var(--font-title);
   font-weight: 700;
   text-decoration: none;
+}
+
+/* For a visitor the way to the sign-in page is an outline: it is an invitation, not the main action. */
+.rooms__create--locked {
+  border: 2px solid var(--border-field);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-text);
 }

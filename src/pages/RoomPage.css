@@ -1,3 +1,23 @@
+/* The page paints its own background: with an ambiance of its own (a light one, for instance) the body behind would show. */
+.room-page {
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.room__settings {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 16px;
+  border: 1px solid var(--border-field);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
 .room {
   display: flex;
   flex-direction: column;

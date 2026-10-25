@@ -192,6 +192,12 @@ export interface RoomSnapshot {
   reactions: Reactions
   mine: MyReactions
   rules: RoomRules
+  description: string
+  styles: RoomStyle[]
+  theme: RoomTheme
+  host: string | null
+  /** The viewer is the host of this room (decided by the server from the account, never from the page). */
+  isHost: boolean
   queue: DjQueue
   /** The viewer's own line-up (the tracks they will play, in order). Empty for a visitor. */
   lineup: QueuedTrack[]
@@ -326,11 +332,87 @@ export type AuthResult =
 /** The account behind the session cookie, or null for a visitor. */
 export type SessionResult = { ok: true; account: Account | null }
 
+// ---- Rooms made by members (HTTP, under /api/rooms; the list and the room itself stay on the realtime connection)
+//
+//   GET    /api/rooms/mine                        -> RoomReply<{ rooms: RoomDetail[] }>   the rooms the member hosts (signed in)
+//   POST   /api/rooms         { RoomSettings }    -> RoomReply<{ room: RoomDetail }>      any member; they become the host
+//   GET    /api/rooms/:id                         -> RoomReply<{ room: RoomDetail }>      anybody
+//   PATCH  /api/rooms/:id     { RoomSettings }    -> RoomReply<{ room: RoomDetail }>      the host only
+//   DELETE /api/rooms/:id                         -> RoomReply                            the host only
+//
+// The six rooms of the team (no host) live in the same table; nobody can change or delete them through the API.
+
+export const ROOM_STYLES = ['lofi', 'rap', 'electro', 'rock', 'jazz', 'afro', 'pop', 'classique'] as const
+export type RoomStyle = (typeof ROOM_STYLES)[number]
+/** The stage ambiances. `neon` is the default look (no `data-theme`); the others are `data-theme` values. */
+export const ROOM_THEMES = ['neon', 'sunset', 'vinyl', 'jungle'] as const
+export type RoomTheme = (typeof ROOM_THEMES)[number]
+
+export const ROOM_NAME_MIN = 3
+export const ROOM_NAME_MAX = 40
+export const ROOM_DESCRIPTION_MAX = 200
+export const ROOM_STYLES_MAX = 3
+/** Rooms one member can host at the same time. */
+export const ROOMS_PER_MEMBER_MAX = 3
+
+/** What a host can pick for the rules (mock-up 2b). Null: no limit, or never again. */
+export const ROOM_MAX_TRACK_CHOICES = [300, 420, 600, 900, null] as const
+export const ROOM_REPEAT_CHOICES = [3600, 7200, 14400, null] as const
+export const ROOM_MAX_DJS_CHOICES = [5, 10, 20, 50] as const
+
+/** Everything a host decides about a room. */
+export interface RoomSettings {
+  name: string
+  description: string
+  styles: RoomStyle[]
+  theme: RoomTheme
+  rules: RoomRules
+}
+
+/** A room as the API tells it. */
+export interface RoomDetail extends RoomSettings {
+  id: string
+  /** Pseudo of the host; null for the rooms of the team. */
+  host: string | null
+  /** The viewer hosts it (always false for a visitor). */
+  mine: boolean
+}
+
+export type RoomError =
+  | 'not-signed-in'
+  /** The request does not come from the site itself. */
+  | 'forbidden'
+  | 'bad-request'
+  /** The server runs without a database: visitors and the rooms of the team still work, rooms of members do not. */
+  | 'no-database'
+  | 'room-not-found'
+  /** The room exists and is not the viewer's. */
+  | 'not-host'
+  | 'invalid-name'
+  | 'name-taken'
+  | 'invalid-description'
+  | 'invalid-styles'
+  | 'invalid-theme'
+  | 'invalid-rules'
+  /** The member already hosts `ROOMS_PER_MEMBER_MAX` rooms. */
+  | 'too-many-rooms'
+  /** The site holds as many rooms made by members as it accepts for now. */
+  | 'rooms-full'
+  | 'server-error'
+
+export type RoomFailure = { ok: false; error: RoomError } | { ok: false; error: 'rate-limited'; retryAfterSec: number }
+export type RoomReply<T = object> = ({ ok: true } & T) | RoomFailure
+
 /** What the list of rooms shows about one room. */
 export interface RoomSummary {
   id: string
   name: string
-  genre: string
+  description: string
+  styles: RoomStyle[]
+  theme: RoomTheme
+  /** Pseudo of the host; null for the rooms of the team. */
+  host: string | null
+  rules: RoomRules
   /** People in the room right now. */
   online: number
   /** What plays right now. Null while the room is empty: nothing plays for nobody. */
@@ -367,6 +449,10 @@ export interface ClientToServerEvents {
 export interface ServerToClientEvents {
   /** The whole list again, to whoever follows it. Sent in batches, twice a second at most. */
   'lobby:rooms': (rooms: RoomSummary[]) => void
+  /** The host changed the room: the new name, description, styles, ambiance and rules. */
+  'room:settings': (settings: RoomSettings) => void
+  /** The host deleted the room: everybody in it is out, the page goes back to the list. */
+  'room:closed': () => void
   'room:participant-joined': (participant: Participant) => void
   'room:participant-left': (participantId: string) => void
   /** A new track started (or the room emptied): likes and skip votes are back to zero, and the queue has moved on. */

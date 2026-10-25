@@ -1,0 +1,112 @@
+.room-form-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px clamp(16px, 5vw, 56px) 48px;
+}
+
+.room-form-page h1 {
+  font-size: clamp(1.6rem, 4vw, 2.6rem);
+}
+
+.room-form-page__intro,
+.room-form-page__note {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.room-form-page__saved {
+  margin: 0;
+  padding: 10px 16px;
+  border: 1px solid var(--accent-2);
+  border-radius: var(--radius-s);
+  color: var(--accent-2);
+  font-weight: 700;
+}
+
+.room-form-page__error {
+  margin: 0;
+  color: var(--warn);
+  font-weight: 700;
+}
+
+/* Three rooms already: what to do instead of the form. */
+.room-form-page__limit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 560px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-l);
+  background: var(--wall);
+}
+
+.room-form-page__limit p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.room-form-page__limit ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.room-form-page__limit li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--tap);
+}
+
+/* The deletion sits apart from the buttons that save: it cannot be reached by a slip. */
+.room-form-page__danger {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+}
+
+.room-form-page__danger h2 {
+  font-size: 1rem;
+}
+
+.room-form-page__danger p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.room-form-page__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.room-form-page__danger button {
+  min-height: var(--tap);
+  padding: 0 18px;
+  border: 2px solid var(--border-field);
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.room-form-page__danger .room-form-page__delete {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.room-form-page__danger button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

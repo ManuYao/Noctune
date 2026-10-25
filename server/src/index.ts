@@ -6,6 +6,8 @@ import { loadLocalEnv } from './env'
 import { parseAllowedOrigins } from './http/origin'
 import { PgPlaylistStore } from './playlists/PgPlaylistStore'
 import type { PlaylistStore } from './playlists/PlaylistStore'
+import { PgRoomStore } from './rooms/PgRoomStore'
+import type { RoomStore } from './rooms/RoomStore'
 import { YouTubeResolver } from './youtube/YouTubeResolver'
 
 loadLocalEnv()
@@ -40,8 +42,8 @@ const trustedProxies = setting(() => {
 // The session cookie only travels over HTTPS when the site is served over HTTPS.
 const secureCookies = process.env.NODE_ENV === 'production' || allowedOrigins.every((origin) => origin.startsWith('https://'))
 
-/** Accounts and playlists need a database. Without DATABASE_URL the server still runs, for visitors only. */
-async function openDatabase(): Promise<{ accounts: AccountService; playlistStore: PlaylistStore } | null> {
+/** Accounts, playlists and rooms of members need a database. Without DATABASE_URL the server still runs, for visitors only. */
+async function openDatabase(): Promise<{ accounts: AccountService; playlistStore: PlaylistStore; roomStore: RoomStore } | null> {
   const url = process.env.DATABASE_URL
   if (!url) {
     console.log('[base] DATABASE_URL absent : le serveur tourne sans comptes ni playlists (visiteurs seulement). Voir npm run db:setup.')
@@ -52,13 +54,14 @@ async function openDatabase(): Promise<{ accounts: AccountService; playlistStore
     // Fails now, and loudly, rather than at the first sign-in.
     await pool.query('SELECT 1 FROM users LIMIT 1')
     await pool.query('SELECT 1 FROM playlists LIMIT 1')
+    await pool.query('SELECT 1 FROM rooms LIMIT 1')
   } catch (error) {
     console.error(`[base] base inaccessible ou pas à jour : ${(error as Error).message}. Essaie npm run db:migrate.`)
     await pool.end()
     process.exit(1)
   }
-  console.log('[base] comptes et playlists activés.')
-  return { accounts: new AccountService(new PgAccountStore(pool)), playlistStore: new PgPlaylistStore(pool) }
+  console.log('[base] comptes, playlists et rooms de membres activés.')
+  return { accounts: new AccountService(new PgAccountStore(pool)), playlistStore: new PgPlaylistStore(pool), roomStore: new PgRoomStore(pool) }
 }
 
 const database = await openDatabase()
@@ -84,9 +87,15 @@ function openResolver(): YouTubeResolver | null {
 
 const resolver = openResolver()
 
-const { httpServer, playlists } = createNoctuneServer({
+// The rooms that exist at the start: the rooms of the team, and those the members made. Without a database, the rooms of
+// the team alone (served from memory, by the server itself).
+const initialRooms = database ? await database.roomStore.list() : undefined
+
+const { httpServer, playlists, rooms } = createNoctuneServer({
   accounts,
   playlistStore: database?.playlistStore ?? null,
+  roomStore: database?.roomStore ?? null,
+  initialRooms,
   resolver,
   allowedOrigins,
   secureCookies,
@@ -94,4 +103,5 @@ const { httpServer, playlists } = createNoctuneServer({
 })
 // The counters of requests to the playlists are cleaned every minute, like those of the accounts.
 if (playlists) setInterval(() => playlists.sweep(), MINUTE_MS).unref()
+setInterval(() => rooms.sweep(), MINUTE_MS).unref()
 httpServer.listen(PORT, () => console.log(`Serveur temps réel sur :${PORT}`))

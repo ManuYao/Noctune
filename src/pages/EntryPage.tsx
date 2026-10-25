@@ -8,6 +8,7 @@ import { AVATARS } from '../data/avatars'
 import { readEntryDraft, saveEntryDraft } from '../data/entryDraft'
 import { useAccount } from '../auth/useAccount'
 import { useRooms } from '../realtime/useRooms'
+import { STYLE_LABELS } from '../rooms/roomLabels'
 import { PSEUDO_MAX, PSEUDO_MIN, type AvatarId } from '../../shared/protocol'
 import { normalizePseudo } from '../../shared/validation'
 import './EntryPage.css'
@@ -112,7 +113,11 @@ export default function EntryPage() {
               {suggested ? (
                 <>
                   <strong>{suggested.name}</strong>
-                  <span>{suggested.online === 0 ? 'Vide pour l\'instant' : `${suggested.online} en ligne`}</span>
+                  <span>
+                    {suggested.styles.map((style) => STYLE_LABELS[style]).join(' · ')}
+                    {suggested.styles.length > 0 && ' · '}
+                    {suggested.online === 0 ? "Vide pour l'instant" : `${suggested.online} en ligne`}
+                  </span>
                 </>
               ) : (
                 <>

@@ -12,6 +12,9 @@ import { MemoryPlaylistStore } from '../playlists/MemoryPlaylistStore'
 import type { PlaylistService } from '../playlists/PlaylistService'
 import type { PlaylistStore } from '../playlists/PlaylistStore'
 import type { IoServer } from '../registerRoomHandlers'
+import { MemoryRoomStore } from '../rooms/MemoryRoomStore'
+import type { RoomService } from '../rooms/RoomService'
+import type { RoomStore } from '../rooms/RoomStore'
 
 export const ORIGIN = 'http://localhost:5173'
 const CHEAP_COST = { N: 1024, r: 8, p: 1 }
@@ -33,6 +36,9 @@ export interface Started {
   /** Where the playlists are kept: memory by default (null when started without accounts or with `playlistStore: null`). */
   playlistStore: PlaylistStore | null
   playlists: PlaylistService | null
+  /** Where the rooms of members are kept: memory by default (null when started without accounts or with `roomStore: null`). */
+  roomStore: RoomStore | null
+  rooms: RoomService
   io: IoServer
   httpServer: HttpServer
   /** A connection to the realtime server. `cookie` is what the browser would send along. */
@@ -44,7 +50,8 @@ export async function startServer(options: StartOptions = {}): Promise<Started> 
   const store = options.store ?? new MemoryAccountStore()
   const service = options.withoutAccounts ? null : new AccountService(store, { cost: CHEAP_COST, ...options.service })
   const playlistStore = options.withoutAccounts ? null : 'playlistStore' in options ? (options.playlistStore ?? null) : new MemoryPlaylistStore()
-  const { httpServer, io, playlists } = createNoctuneServer({
+  const roomStore = options.withoutAccounts ? null : 'roomStore' in options ? (options.roomStore ?? null) : new MemoryRoomStore()
+  const { httpServer, io, playlists, rooms } = createNoctuneServer({
     skipProtectedSec: 0,
     lobbyDelayMs: 20,
     queueBroadcastMs: 20,
@@ -58,6 +65,7 @@ export async function startServer(options: StartOptions = {}): Promise<Started> 
     ...options,
     accounts: service,
     playlistStore,
+    roomStore,
   })
   await new Promise<void>((resolve) => httpServer.listen(0, '127.0.0.1', resolve))
   const url = `http://127.0.0.1:${(httpServer.address() as AddressInfo).port}`
@@ -90,6 +98,8 @@ export async function startServer(options: StartOptions = {}): Promise<Started> 
     service,
     playlistStore,
     playlists,
+    roomStore,
+    rooms,
     io,
     httpServer,
     connect: open,

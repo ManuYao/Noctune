@@ -15,7 +15,10 @@ import type {
   ReactResult,
   Reactions,
   RoomRules,
+  RoomSettings,
   RoomSnapshot,
+  RoomStyle,
+  RoomTheme,
   Track,
 } from '../../shared/protocol'
 import { EMPTY_QUEUE } from './djQueue'
@@ -42,6 +45,17 @@ export interface RoomNotice {
   notice: DjNotice
 }
 
+/** What the host decided about the room, and whether the viewer is that host. */
+export interface RoomInfo {
+  name: string
+  description: string
+  styles: RoomStyle[]
+  theme: RoomTheme
+  /** Pseudo of the host; null for the rooms of the team. */
+  host: string | null
+  isHost: boolean
+}
+
 interface RoomState {
   status: RoomStatus
   error: JoinError | null
@@ -58,6 +72,10 @@ interface RoomState {
   likePulse: number
   /** What the room asks of its DJs. Null until the room is joined (or on a server without DJs). */
   rules: RoomRules | null
+  /** The room's name, texts and ambiance, kept up to date when the host changes them. Null until it is joined. */
+  info: RoomInfo | null
+  /** The host deleted the room: everybody is out. */
+  closed: boolean
   queue: DjQueue
   /** The tracks the viewer lined up, in the order they will play. */
   lineup: QueuedTrack[]
@@ -79,6 +97,8 @@ const INITIAL_STATE: RoomState = {
   mine: NOTHING_CAST,
   likePulse: 0,
   rules: null,
+  info: null,
+  closed: false,
   queue: EMPTY_QUEUE,
   lineup: [],
   notices: [],
@@ -218,6 +238,15 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
             mine: snapshot.mine,
             // A server older than this page does not send them: the DJ panel then stays out of sight.
             rules: snapshot.rules ?? null,
+            // The same for the texts and the ambiance: an older server has none, the room then looks as it always did.
+            info: {
+              name: snapshot.name,
+              description: snapshot.description ?? '',
+              styles: snapshot.styles ?? [],
+              theme: snapshot.theme ?? 'neon',
+              host: snapshot.host ?? null,
+              isHost: snapshot.isHost ?? false,
+            },
             queue: snapshot.queue ?? EMPTY_QUEUE,
             lineup: snapshot.lineup ?? [],
           }))
@@ -250,6 +279,20 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
     const onTrack = (track: Track | null, reactions: Reactions, queue?: DjQueue) =>
       setState((prev) => ({ ...prev, nowPlaying: track, reactions, mine: NOTHING_CAST, queue: queue ?? prev.queue }))
     const onQueue = (queue: DjQueue) => setState((prev) => ({ ...prev, queue }))
+    // The host changed the room: the new texts, ambiance and rules apply to everybody in it, at once.
+    const onSettings = (settings: RoomSettings) =>
+      setState((prev) => ({
+        ...prev,
+        rules: settings.rules,
+        info: prev.info && {
+          ...prev.info,
+          name: settings.name,
+          description: settings.description,
+          styles: settings.styles,
+          theme: settings.theme,
+        },
+      }))
+    const onClosed = () => setState((prev) => ({ ...prev, closed: true }))
     const onLineup = (lineup: QueuedTrack[]) => setState((prev) => ({ ...prev, lineup }))
     const onNotice = (notice: DjNotice) =>
       setState((prev) => ({
@@ -275,6 +318,8 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
     socket.on('room:participant-left', onParticipantLeft)
     socket.on('room:track', onTrack)
     socket.on('dj:queue', onQueue)
+    socket.on('room:settings', onSettings)
+    socket.on('room:closed', onClosed)
     socket.on('dj:lineup', onLineup)
     socket.on('dj:notice', onNotice)
     socket.on('track:reactions', onReactions)
@@ -292,6 +337,8 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
       socket.off('room:participant-left', onParticipantLeft)
       socket.off('room:track', onTrack)
       socket.off('dj:queue', onQueue)
+      socket.off('room:settings', onSettings)
+      socket.off('room:closed', onClosed)
       socket.off('dj:lineup', onLineup)
       socket.off('dj:notice', onNotice)
       socket.off('track:reactions', onReactions)

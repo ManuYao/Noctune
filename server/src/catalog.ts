@@ -1,11 +1,16 @@
-import type { RoomRules } from '../../shared/protocol'
+import type { RoomRules, RoomStyle, RoomTheme } from '../../shared/protocol'
 
-// Placeholder catalog until rooms come from a database.
+/**
+ * A room of the team: the source of the six rows that migration 003 puts in the database (a test proves they are the
+ * same) and of the memory store the tests and the e2e server use. Rooms of members are only in the database.
+ */
 export interface RoomDef {
   id: string
   name: string
-  genre: string
-  /** What the room asks of the tracks its DJs bring. Each room has its own; the host will choose them later. */
+  description: string
+  styles: RoomStyle[]
+  theme: RoomTheme
+  /** What the room asks of the tracks its DJs bring. Provisional: the rules of each room are to be thought through. */
   rules: RoomRules
 }
 
@@ -17,37 +22,49 @@ export const ROOM_DEFS: RoomDef[] = [
   {
     id: 'lofi-du-soir',
     name: 'Lo-fi du soir',
-    genre: 'Lo-fi',
+    description: 'Beats calmes pour bosser ou se poser, sans pression.',
+    styles: ['lofi'],
+    theme: 'neon',
     rules: { maxTrackSec: 7 * MINUTE, repeatDelaySec: 2 * HOUR, maxDjs: 10 },
   },
   {
     id: 'rock-progressif',
     name: 'Rock progressif',
-    genre: 'Rock',
+    description: 'Guitares planantes, longs morceaux et albums cultes.',
+    styles: ['rock'],
+    theme: 'sunset',
     rules: { maxTrackSec: 15 * MINUTE, repeatDelaySec: 4 * HOUR, maxDjs: 8 },
   },
   {
     id: 'electro-nuit',
     name: 'Electro de nuit',
-    genre: 'Électro',
+    description: 'Des sets qui montent doucement, du premier battement au petit matin.',
+    styles: ['electro'],
+    theme: 'neon',
     rules: { maxTrackSec: 8 * MINUTE, repeatDelaySec: 2 * HOUR, maxDjs: 12 },
   },
   {
     id: 'jazz-cafe',
     name: 'Jazz café',
-    genre: 'Jazz',
+    description: 'Un piano, un café, du jazz à toute heure.',
+    styles: ['jazz'],
+    theme: 'vinyl',
     rules: { maxTrackSec: 10 * MINUTE, repeatDelaySec: 4 * HOUR, maxDjs: 8 },
   },
   {
     id: 'hip-hop-classics',
     name: 'Hip-hop classics',
-    genre: 'Hip-hop',
+    description: 'Les classiques du rap : boom bap, samples et vieilles écoles.',
+    styles: ['rap'],
+    theme: 'jungle',
     rules: { maxTrackSec: 6 * MINUTE, repeatDelaySec: 2 * HOUR, maxDjs: 12 },
   },
   {
     id: 'french-touch',
     name: 'French touch',
-    genre: 'House',
+    description: 'House filtrée et basses rondes, à la française.',
+    styles: ['electro'],
+    theme: 'sunset',
     rules: { maxTrackSec: 7 * MINUTE, repeatDelaySec: 2 * HOUR, maxDjs: 10 },
   },
 ]

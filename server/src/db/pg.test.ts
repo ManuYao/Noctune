@@ -10,16 +10,26 @@ import { describeAccountStoreContract } from '../accounts/accountStoreContract'
 import { PgAccountStore } from '../accounts/PgAccountStore'
 import { describePlaylistStoreContract } from '../playlists/playlistStoreContract'
 import { PgPlaylistStore } from '../playlists/PgPlaylistStore'
+import { ROOM_DEFS } from '../catalog'
+import { PgRoomStore } from '../rooms/PgRoomStore'
+import { describeRoomStoreContract } from '../rooms/roomStoreContract'
+import { seedNameKey } from '../rooms/RoomStore'
 import { migrate } from './migrate'
 import { createPool } from './pool'
 import { closeTestPool, openTestPool, testDatabaseUrl } from './testDatabase'
 
 after(closeTestPool)
 
+/**
+ * Every member is removed, and with them their sessions, playlists and rooms (ON DELETE CASCADE). The rooms of the team,
+ * which the migration put in the table, stay: they are not the tests' to empty.
+ */
+const clearMembers = (pool: pg.Pool) => pool.query('DELETE FROM users')
+
 describeAccountStoreContract('postgres account store', async () => {
   const pool = await openTestPool()
   if (!pool) return null
-  return { store: new PgAccountStore(pool), reset: async () => void (await pool.query('TRUNCATE playlist_tracks, playlists, sessions, users')) }
+  return { store: new PgAccountStore(pool), reset: async () => void (await clearMembers(pool)) }
 })
 
 let memberCount = 0
@@ -28,7 +38,7 @@ describePlaylistStoreContract('postgres playlist store', async () => {
   if (!pool) return null
   return {
     store: new PgPlaylistStore(pool),
-    reset: async () => void (await pool.query('TRUNCATE playlist_tracks, playlists, sessions, users')),
+    reset: async () => void (await clearMembers(pool)),
     newAccount: async () => {
       memberCount += 1
       const { rows } = await pool.query<{ id: string }>(
@@ -36,6 +46,24 @@ describePlaylistStoreContract('postgres playlist store', async () => {
         [`member${memberCount}@example.com`, `m${memberCount}`],
       )
       return rows[0].id
+    },
+  }
+})
+
+describeRoomStoreContract('postgres room store', async () => {
+  const pool = await openTestPool()
+  if (!pool) return null
+  return {
+    store: new PgRoomStore(pool),
+    reset: async () => void (await clearMembers(pool)),
+    newAccount: async () => {
+      memberCount += 1
+      const pseudo = `h${memberCount}`
+      const { rows } = await pool.query<{ id: string }>(
+        "INSERT INTO users (email, password_hash, pseudo, pseudo_key, avatar_id) VALUES ($1, 'h', $2, $2, 'pulse') RETURNING id",
+        [`host${memberCount}@example.com`, pseudo],
+      )
+      return { id: rows[0].id, pseudo }
     },
   }
 })
@@ -51,7 +79,7 @@ function withPool(title: string, body: (pool: pg.Pool) => Promise<void>) {
 
 describe('the schema', () => {
   withPool('refuses a second e-mail or a second pseudo itself, whatever the code does', async (pool) => {
-    await pool.query('TRUNCATE playlist_tracks, playlists, sessions, users')
+    await clearMembers(pool)
     const insert = (email: string, key: string) =>
       pool.query("INSERT INTO users (email, password_hash, pseudo, pseudo_key, avatar_id) VALUES ($1, 'h', 'P', $2, 'pulse')", [email, key])
     await insert('a@example.com', 'a')
@@ -61,7 +89,7 @@ describe('the schema', () => {
   })
 
   withPool('removes the sessions of an account with the account', async (pool) => {
-    await pool.query('TRUNCATE playlist_tracks, playlists, sessions, users')
+    await clearMembers(pool)
     const store = new PgAccountStore(pool)
     const created = await store.create({ email: 'a@example.com', passwordHash: 'h', pseudo: 'A1', avatarId: 'pulse' })
     assert.ok(created.ok)
@@ -73,7 +101,7 @@ describe('the schema', () => {
   })
 
   withPool('keeps the hash of the token, as bytes, and never the token', async (pool) => {
-    await pool.query('TRUNCATE playlist_tracks, playlists, sessions, users')
+    await clearMembers(pool)
     const store = new PgAccountStore(pool)
     const created = await store.create({ email: 'a@example.com', passwordHash: 'h', pseudo: 'A1', avatarId: 'pulse' })
     assert.ok(created.ok)
@@ -94,7 +122,7 @@ describe('the schema of the playlists', () => {
 
   /** A member with a playlist, ready for tracks. */
   async function member(pool: pg.Pool) {
-    await pool.query('TRUNCATE playlist_tracks, playlists, sessions, users')
+    await clearMembers(pool)
     const user = await pool.query<{ id: string }>("INSERT INTO users (email, password_hash, pseudo, pseudo_key, avatar_id) VALUES ('a@example.com', 'h', 'A1', 'a1', 'pulse') RETURNING id")
     const playlist = await pool.query<{ id: string }>("INSERT INTO playlists (user_id, name, name_key) VALUES ($1, 'Chill', 'chill') RETURNING id", [user.rows[0].id])
     return { userId: user.rows[0].id, playlistId: playlist.rows[0].id }
@@ -170,6 +198,71 @@ describe('the schema of the playlists', () => {
   })
 })
 
+describe('the schema of the rooms', () => {
+  const NEW_ROOM = `INSERT INTO rooms (id, name, name_key, description, styles, theme, max_djs, host_account_id, seed_position)
+                    VALUES ($1, $2, $3, '', $4, $5, $6, $7, $8)`
+
+  /** A member, and a way to try to insert one room with a few values changed. */
+  async function member(pool: pg.Pool) {
+    await clearMembers(pool)
+    const { rows } = await pool.query<{ id: string }>("INSERT INTO users (email, password_hash, pseudo, pseudo_key, avatar_id) VALUES ('a@example.com', 'h', 'A1', 'a1', 'pulse') RETURNING id")
+    const host = rows[0].id
+    const insert = (overrides: Partial<{ id: string; name: string; key: string; styles: string[]; theme: string; djs: number; host: string | null; seed: number | null }> = {}) => {
+      const values = { id: 'test-room-1', name: 'Test room', key: 'test room', styles: ['rock'], theme: 'neon', djs: 10, host: host as string | null, seed: null as number | null, ...overrides }
+      return pool.query(NEW_ROOM, [values.id, values.name, values.key, values.styles, values.theme, values.djs, values.host, values.seed])
+    }
+    return { host, insert }
+  }
+  const rejected = (code: string) => (error: { code?: string }) => error.code === code
+
+  withPool('holds the six rooms of the team exactly as the code has them, with the key the server would compute', async (pool) => {
+    const { rows } = await pool.query(
+      'SELECT id, name, name_key, description, styles, theme, max_track_sec, repeat_delay_sec, max_djs, host_account_id FROM rooms WHERE seed_position IS NOT NULL ORDER BY seed_position',
+    )
+    assert.deepEqual(
+      rows.map((row) => ({ id: row.id, name: row.name, key: row.name_key, description: row.description, styles: row.styles, theme: row.theme, rules: { maxTrackSec: row.max_track_sec, repeatDelaySec: row.repeat_delay_sec, maxDjs: row.max_djs }, host: row.host_account_id })),
+      ROOM_DEFS.map((def) => ({ id: def.id, name: def.name, key: seedNameKey(def.name), description: def.description, styles: def.styles, theme: def.theme, rules: def.rules, host: null })),
+    )
+  })
+
+  withPool('removes the rooms of a member with their account, and keeps the rooms of the team', async (pool) => {
+    const { host, insert } = await member(pool)
+    await insert()
+    assert.equal((await pool.query('SELECT 1 FROM rooms WHERE host_account_id = $1', [host])).rowCount, 1)
+    await pool.query('DELETE FROM users WHERE id = $1', [host])
+    assert.equal((await pool.query('SELECT 1 FROM rooms WHERE host_account_id IS NOT NULL')).rowCount, 0)
+    assert.equal((await pool.query('SELECT 1 FROM rooms WHERE seed_position IS NOT NULL')).rowCount, ROOM_DEFS.length)
+  })
+
+  withPool('refuses a host that does not exist, a second room with the same name key or id, whatever the code does', async (pool) => {
+    const { insert } = await member(pool)
+    await assert.rejects(insert({ host: '00000000-0000-4000-8000-000000000000' }), rejected('23503'))
+    await insert()
+    await assert.rejects(insert({ id: 'test-room-2', key: 'test room' }), rejected('23505'), 'a name once')
+    await assert.rejects(insert({ key: 'another key' }), rejected('23505'), 'an id once')
+    await assert.rejects(insert({ id: 'test-room-3', key: 'rock progressif' }), rejected('23505'), 'not the name of a room of the team')
+  })
+
+  withPool('refuses what no room may be, whatever the code does', async (pool) => {
+    const { insert } = await member(pool)
+    const check = rejected('23514')
+    await assert.rejects(insert({ id: 'Bad Id!' }), check, 'an id that is not a slug')
+    await assert.rejects(insert({ id: '#lobby' }), check, 'the name of the lobby channel')
+    await assert.rejects(insert({ name: 'ab', key: 'ab' }), check, 'a name of two characters')
+    await assert.rejects(insert({ name: 'x'.repeat(41), key: 'x'.repeat(41) }), check, 'a name of 41 characters')
+    await assert.rejects(insert({ styles: [] }), check, 'no style')
+    await assert.rejects(insert({ styles: ['rock', 'jazz', 'pop', 'afro'] }), check, 'four styles')
+    await assert.rejects(insert({ styles: ['polka'] }), check, 'a style nobody knows')
+    await assert.rejects(insert({ theme: 'pink' }), check, 'an ambiance nobody knows')
+    await assert.rejects(insert({ djs: 4 }), check, 'fewer than five DJs')
+    await assert.rejects(insert({ djs: 51 }), check, 'more than fifty DJs')
+    await assert.rejects(insert({ seed: 9 }), check, 'a member room with a place of the team')
+    await assert.rejects(insert({ host: null }), check, 'a room of the team that has a host... or no place')
+    await assert.rejects(pool.query('UPDATE rooms SET max_track_sec = 0 WHERE seed_position = 1'), check, 'a track length of nothing')
+    await assert.rejects(pool.query("UPDATE rooms SET description = repeat('x', 201) WHERE seed_position = 1"), check, 'a description of 201 characters')
+  })
+})
+
 describe('a database that stops answering', () => {
   it('makes an error after the time allowed, not a hang, and the pool works afterwards', async (t: TestContext) => {
     const url = testDatabaseUrl()
@@ -190,7 +283,7 @@ describe('migrations', () => {
   withPool('are all applied, and applying them again does nothing', async (pool) => {
     assert.deepEqual(await migrate(pool), [])
     const { rows } = await pool.query<{ name: string }>('SELECT name FROM schema_migrations ORDER BY name')
-    assert.deepEqual(rows.map((row) => row.name), ['001_accounts.sql', '002_playlists.sql'])
+    assert.deepEqual(rows.map((row) => row.name), ['001_accounts.sql', '002_playlists.sql', '003_rooms.sql', '004_room_name_keys.sql'])
   })
 
   it('apply in order, once each, and a failing one leaves no trace and stops the rest', async (t: TestContext) => {

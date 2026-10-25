@@ -18,11 +18,11 @@ import {
 import { isStaffLookalike, normalizePseudo } from '../../shared/validation'
 import type { AccountService } from './accounts/AccountService'
 import { hashToken, readSessionToken } from './accounts/sessionToken'
-import { ROOM_DEFS } from './catalog'
 import { Lobby, LOBBY_CHANNEL, summarize } from './Lobby'
 import { MinInterval } from './MinInterval'
 import { Room, type RoomOptions } from './Room'
 import type { PlaylistService } from './playlists/PlaylistService'
+import { seedRooms, type StoredRoom } from './rooms/RoomStore'
 import { withTimeout } from './withTimeout'
 import { LookupBudget } from './youtube/LookupBudget'
 import type { TrackResolver } from './youtube/TrackResolver'
@@ -48,6 +48,8 @@ export interface HandlerOptions extends RoomOptions {
   lookupBudget?: LookupBudget
   /** Where a member's own playlists are read from, to line one of their tracks up. Null without a database. */
   playlists?: PlaylistService | null
+  /** The rooms that exist when the server starts: the rooms of the team and, with a database, those of the members. */
+  initialRooms?: StoredRoom[]
 }
 
 interface SocketData {
@@ -65,6 +67,16 @@ export type IoServer = Server<ClientToServerEvents, ServerToClientEvents, Record
 export interface Realtime {
   /** Closes the connections opened with this session. The page opens new ones, as a visitor. */
   endSession: (token: string) => void
+  /** A host made a room: it can be joined, and the list shows it. */
+  roomCreated: (room: StoredRoom) => void
+  /** A host changed a room: the people in it are told, the list is updated, the new rules count from now on. */
+  roomUpdated: (room: StoredRoom) => void
+  /**
+   * A host deleted a room: everybody in it is told and put out, nothing of it is left running.
+   * The deletion of an ACCOUNT that hosts rooms (a later step) takes their rooms out of the database with it (ON DELETE
+   * CASCADE): it must call this for each of them, or the live rooms would outlive their host.
+   */
+  roomDeleted: (id: string) => void
 }
 
 // A connection that asks to join more often than this is a script: each join may cost a database round trip.
@@ -90,11 +102,13 @@ function isAvatarId(value: unknown): value is AvatarId {
 }
 
 export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {}): Realtime {
+  // The live rooms, and what the store says about each (its texts, its host). The order of arrival is the order of the list.
   const rooms = new Map<string, Room>()
+  const stored = new Map<string, StoredRoom>()
   // The list shows how many people are in each room and what plays: both are read from the rooms when sent.
   const lobby = new Lobby(
     () =>
-      ROOM_DEFS.flatMap((def) => {
+      [...stored.values()].flatMap((def) => {
         const room = rooms.get(def.id)
         return room ? [summarize(def, room)] : []
       }),
@@ -102,7 +116,8 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
     options.lobbyDelayMs,
   )
 
-  for (const def of ROOM_DEFS) {
+  function openRoom(def: StoredRoom) {
+    stored.set(def.id, def)
     rooms.set(
       def.id,
       new Room(
@@ -126,6 +141,8 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
       ),
     )
   }
+
+  for (const def of options.initialRooms ?? seedRooms()) openRoom(def)
 
   const accounts = options.accounts ?? null
   const resolver = options.resolver ?? null
@@ -285,6 +302,9 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
             if (socket.disconnected) return
           }
 
+          // Deleted by its host while the database was being asked (or replaced: never a room that is no longer the live one).
+          if (rooms.get(room.id) !== room || room.isClosed) return reply({ ok: false, error: 'unknown-room' })
+
           leave()
           if (account && room.hasAccount(account.id)) return reply({ ok: false, error: 'already-in-room' })
           if (room.isPseudoTaken(pseudo)) return reply({ ok: false, error: 'pseudo-taken' })
@@ -308,6 +328,7 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
           socket.to(room.id).emit('room:participant-joined', participant)
           lobby.changed()
 
+          const def = stored.get(room.id)
           reply({
             ok: true,
             snapshot: {
@@ -319,6 +340,12 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
               reactions: room.reactions(),
               mine: room.mine(participant.id),
               rules: room.rules,
+              description: def?.description ?? '',
+              styles: def ? [...def.styles] : [],
+              theme: def?.theme ?? 'neon',
+              host: def?.hostPseudo ?? null,
+              // From the account of the connection and the host of the room, never from what the page says.
+              isHost: account !== undefined && def?.hostAccountId != null && def.hostAccountId === account.id,
               queue: room.queueView(),
               lineup: room.lineupOf(participant.id),
               chat: room.chat.recent(),
@@ -558,6 +585,50 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
       for (const socket of io.sockets.sockets.values()) {
         if (socket.data.sessionKey === key) socket.disconnect(true)
       }
+    },
+
+    roomCreated(def) {
+      if (rooms.has(def.id)) return
+      openRoom(def)
+      lobby.changed()
+    },
+
+    roomUpdated(def) {
+      const room = rooms.get(def.id)
+      if (!room) return
+      // Set on a key that exists: the room keeps its place in the list.
+      stored.set(def.id, def)
+      room.name = def.name
+      room.setRules(options.rules ?? def.rules)
+      io.to(def.id).emit('room:settings', {
+        name: def.name,
+        description: def.description,
+        styles: [...def.styles],
+        theme: def.theme,
+        rules: room.rules,
+      })
+      lobby.changed()
+    },
+
+    roomDeleted(id) {
+      const room = rooms.get(id)
+      if (!room) return
+      // Gone from the registry first: nothing can join it from this moment, whatever is still waiting on the database.
+      rooms.delete(id)
+      stored.delete(id)
+      io.to(id).emit('room:closed')
+      // Everybody in it is put out: out of its channel and of their own, and their connection forgets the room, so that
+      // nothing they send afterwards is taken for a word said in it.
+      for (const socketId of [...(io.sockets.adapter.rooms.get(id) ?? [])]) {
+        const socket = io.sockets.sockets.get(socketId)
+        if (!socket) continue
+        socket.leave(id)
+        if (socket.data.participantId) socket.leave(socket.data.participantId)
+        socket.data.roomId = undefined
+        socket.data.participantId = undefined
+      }
+      room.close()
+      lobby.changed()
     },
   }
 }

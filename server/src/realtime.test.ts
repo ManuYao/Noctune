@@ -335,7 +335,11 @@ describe('the list of rooms', () => {
     assert.deepEqual(summaryOf(rooms), {
       id: room,
       name: 'Lo-fi du soir',
-      genre: 'Lo-fi',
+      description: ROOM_DEFS[0].description,
+      styles: ['lofi'],
+      theme: 'neon',
+      host: null,
+      rules: ROOM_DEFS[0].rules,
       online: 0,
       nowPlaying: null,
       djs: 0,

@@ -97,13 +97,17 @@ export class Room {
   private readonly skipProtectedSec: number
   private readonly ownSkipMinSec: number
   private readonly queueBroadcastMs: number
-  readonly rules: RoomRules
+  /** What the room asks of its DJs. The host may change it while the room lives: see setRules. */
+  rules: RoomRules
+  /** Set once the room is deleted: nobody can come in any more, and nothing is left running. */
+  private closed = false
   nowPlaying: Track | null = null
   readonly chat = new ChatLog()
 
   constructor(
     readonly id: string,
-    readonly name: string,
+    /** The host may rename the room while it lives. */
+    public name: string,
     private events: RoomEvents,
     options: RoomOptions = {},
   ) {
@@ -140,7 +144,40 @@ export class Room {
     return this.participantOf.has(accountId)
   }
 
+  /** Is the room gone (deleted by its host)? Nobody can come in, and no timer is left. */
+  get isClosed() {
+    return this.closed
+  }
+
+  /**
+   * The host changed the rules. They count from now on: what is lined up is judged by them when it is about to play, and a
+   * queue that is longer than the new limit loses nobody, it only takes nobody new.
+   */
+  setRules(rules: RoomRules) {
+    this.rules = rules
+  }
+
+  /**
+   * The room is deleted: everybody is out (the connections are taken out by the caller), playback stops, every timer is
+   * cleared, and it cannot be joined again.
+   */
+  close() {
+    if (this.closed) return
+    this.closed = true
+    this.participants.clear()
+    this.accountOf.clear()
+    this.participantOf.clear()
+    this.chat.clear()
+    this.stopPlayback()
+    clearTimeout(this.reactionsTimer)
+    this.reactionsTimer = undefined
+    clearTimeout(this.queueTimer)
+    this.queueTimer = undefined
+  }
+
   add(participant: Participant, accountId?: string) {
+    // A join that was waiting for the database while the host deleted the room must not bring it back to life.
+    if (this.closed) throw new Error('room closed')
     this.participants.set(participant.id, participant)
     let place: DjEntry | undefined
     if (accountId) {

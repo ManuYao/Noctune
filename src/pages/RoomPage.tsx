@@ -7,6 +7,7 @@ import RoomStage from '../components/RoomStage'
 import SiteHeader from '../components/SiteHeader'
 import { AVATARS } from '../data/avatars'
 import { useRoom } from '../realtime/useRoom'
+import { themeAttribute } from '../rooms/roomLabels'
 import './RoomPage.css'
 
 interface EntryState {
@@ -51,6 +52,8 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
     mine,
     likePulse,
     rules,
+    info,
+    closed,
     queue,
     lineup,
     notices,
@@ -69,6 +72,20 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
   // the page (signed in from another tab: the connection reopens a moment later).
   const isMember = participants.find((participant) => participant.id === snapshot?.selfId)?.member === true
 
+  // The host deleted the room: the server has already sent everybody out, and the player goes with this screen.
+  if (closed) {
+    return (
+      <div>
+        <SiteHeader />
+        <main className="room">
+          <h1>Cette room a été fermée</h1>
+          <p role="status">Son hôte l'a supprimée : tout le monde en est sorti.</p>
+          <Link to="/rooms">Voir les autres rooms</Link>
+        </main>
+      </div>
+    )
+  }
+
   if (status === 'error' && error) {
     return (
       <div>
@@ -83,9 +100,16 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
   }
 
   return (
-    <div className="room-page">
+    // The ambiance is the room's alone: the attribute stays on this page, the others keep the default look.
+    <div className="room-page" data-theme={themeAttribute(info?.theme ?? 'neon')}>
       <SiteHeader>
-        <h1 className="room__title">{snapshot?.name ?? 'Connexion…'}</h1>
+        <h1 className="room__title">{info?.name ?? snapshot?.name ?? 'Connexion…'}</h1>
+        {/* Opens in a new tab: the room, and its player, keep going while the host changes the settings. */}
+        {info?.isHost && (
+          <Link to={`/rooms/${encodeURIComponent(roomId)}/edit`} target="_blank" rel="noopener noreferrer" className="room__settings">
+            Réglages<span className="visually-hidden"> de la room (nouvel onglet)</span>
+          </Link>
+        )}
       </SiteHeader>
       <main className="room">
         {status === 'connecting' && (

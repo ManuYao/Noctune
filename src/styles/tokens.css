@@ -33,11 +33,23 @@
   --accent-2: #ffd166;
 }
 
+/* "Vinyle clair": the one light ambiance, so it has a whole palette of its own (text 7:1 on the page, accents 5:1). */
 [data-theme='vinyl'] {
   color-scheme: light;
+  --bg: #f4f1ff;
+  --wall: #ffffff;
+  --wall-2: #ece8ff;
+  --floor: #e3ddfa;
+  --stage: #d8d0f4;
+  --text: #17123a;
+  --text-muted: #4f4a78;
+  --border: #cfc7ee;
+  --border-field: #6a60a8;
   --warn: #8a5a00;
   --accent: #3b4cff;
-  --accent-2: #ff5c8a;
+  /* Darker than the #ff5c8a of the mock-up: that pink is 3:1 on white, too pale for the text it colours. */
+  --accent-2: #c8245a;
+  --on-accent: #ffffff;
 }
 
 [data-theme='jungle'] {
