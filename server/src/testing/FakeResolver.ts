@@ -13,6 +13,16 @@ export class FakeResolver implements TrackResolver {
   /** Keyed by video id. A string value is the error to answer for that video. */
   constructor(private readonly videos: Record<string, VideoInfo | ResolveError>) {}
 
+  /** Ids asked about through `resolveMany`, one array per call. */
+  readonly manyCalls: string[][] = []
+
+  async resolveMany(videoIds: readonly string[]): Promise<Map<string, ResolveResult>> {
+    this.manyCalls.push([...videoIds])
+    const answers = new Map<string, ResolveResult>()
+    for (const id of videoIds) answers.set(id, await this.resolve(id))
+    return answers
+  }
+
   async resolve(input: string): Promise<ResolveResult> {
     this.calls.push(input)
     if (this.gate) await this.gate

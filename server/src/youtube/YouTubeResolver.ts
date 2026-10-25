@@ -29,6 +29,11 @@ const QUOTA_BACKOFF_MS = 5 * MINUTE
 const KEY_BACKOFF_MS = MINUTE
 // The same kind of trouble is written to the log at most once a minute: a broken key must not flood it.
 const LOG_EVERY_MS = MINUTE
+// The API answers for this many videos in one call, at the same cost as for one.
+const BATCH_SIZE = 50
+// A video id: 11 characters. Checked here too, whoever the caller is: it goes into the address of the call.
+const VIDEO_ID = /^[\w-]{11}$/
+// A batch of 50 answers is about 25 kB: more than the answer for one video.
 const MAX_BODY_CHARS = 200_000
 const LONGEST_VIDEO_SEC = 24 * 60 * 60
 const TITLE_MAX = 100
@@ -141,6 +146,35 @@ export function classifyVideo(videoId: string, body: unknown): Verdict {
   }
 }
 
+/**
+ * What the API's answer to a question about several videos means, for each of them. An answer is one list: a video that
+ * is not in it does not exist (or is private). Fails closed, as `classifyVideo` does: a list that is not what the API
+ * documents, or that holds nothing that was asked about, says nothing about any of them.
+ */
+export function classifyVideos(videoIds: readonly string[], body: unknown): Map<string, Verdict> {
+  const verdicts = new Map<string, Verdict>()
+  const malformed = (why: string) => {
+    for (const id of videoIds) verdicts.set(id, { kind: 'malformed', why })
+    return verdicts
+  }
+  if (!isRecord(body) || body.kind !== 'youtube#videoListResponse' || !Array.isArray(body.items)) return malformed('liste')
+
+  const asked = new Set(videoIds)
+  const items = new Map<string, unknown>()
+  for (const item of body.items) {
+    if (!isRecord(item) || typeof item.id !== 'string') return malformed('vidéo')
+    // An item for a video that was not asked about is ignored: only the ones that were are read.
+    if (asked.has(item.id) && !items.has(item.id)) items.set(item.id, item)
+  }
+  // A list that is not empty and holds nothing that was asked about is not an answer to the question.
+  if (items.size === 0 && body.items.length > 0) return malformed('vidéo')
+  for (const id of videoIds) {
+    const item = items.get(id)
+    verdicts.set(id, item === undefined ? { kind: 'refused', error: 'not-found' } : classifyVideo(id, { kind: body.kind, items: [item] }))
+  }
+  return verdicts
+}
+
 /** The identifiers Google gives for a failed call, for the log. Never the messages: they are free text. */
 function errorReasons(text: string): string[] {
   let body: unknown
@@ -170,6 +204,54 @@ function errorReasons(text: string): string[] {
  * Calls cost quota, so they are cached, shared when several people ask for the same video, and rationed.
  */
 export class YouTubeResolver implements TrackResolver {
+  /**
+   * Several known video ids at once. Cached ones are answered from the cache, ones that are being asked about already
+   * share that answer, and the others go to YouTube 50 at a time: one call, and one unit of quota, per 50 videos.
+   * Every id asked about is in the answer, and it never throws.
+   */
+  async resolveMany(asked: readonly string[]): Promise<Map<string, ResolveResult>> {
+    // Whatever it is given, it is read as a list: nothing else is looked into.
+    const videoIds: readonly unknown[] = Array.isArray(asked) ? asked : []
+    const answers = new Map<string, ResolveResult>()
+    const seen = new Set<string>()
+    try {
+      const toAsk: string[] = []
+      const waiting: Promise<void>[] = []
+      for (const raw of videoIds) {
+        const id = typeof raw === 'string' ? raw : String(raw)
+        if (seen.has(id)) continue
+        seen.add(id)
+        if (!VIDEO_ID.test(id)) {
+          answers.set(id, failure('invalid-link'))
+          continue
+        }
+        const cached = this.#fromCache(id)
+        if (cached) {
+          answers.set(id, copy(cached))
+          continue
+        }
+        const pending = this.#inflight.get(id)
+        if (pending) {
+          waiting.push(pending.then((result) => void answers.set(id, copy(result))))
+          continue
+        }
+        toAsk.push(id)
+      }
+      for (let start = 0; start < toAsk.length; start += BATCH_SIZE) {
+        for (const [id, result] of await this.#lookupBatch(toAsk.slice(start, start + BATCH_SIZE))) answers.set(id, copy(result))
+      }
+      await Promise.all(waiting)
+    } catch (error) {
+      this.#report('unexpected', `erreur inattendue (${this.#describe(error)}).`)
+    }
+    // Whatever went wrong, every id asked about has an answer.
+    for (const raw of videoIds) {
+      const id = typeof raw === 'string' ? raw : String(raw)
+      if (!answers.has(id)) answers.set(id, failure('service-unavailable'))
+    }
+    return answers
+  }
+
   readonly #apiKey: string
   readonly #usable: boolean
   readonly #fetch: typeof fetch
@@ -236,6 +318,29 @@ export class YouTubeResolver implements TrackResolver {
     return copy(await work)
   }
 
+  /** A batch of videos that are in no cache and that nobody is asking about: the guards, then one call. */
+  async #lookupBatch(ids: readonly string[]): Promise<Map<string, ResolveResult>> {
+    const all = (result: ResolveResult) => new Map(ids.map((id): [string, ResolveResult] => [id, result]))
+    if (!this.#usable) {
+      this.#report('key', 'clé API absente ou malformée (YOUTUBE_API_KEY) : les morceaux ne peuvent pas être ajoutés.')
+      return all(failure('service-unavailable'))
+    }
+    const now = this.#now()
+    if (now < this.#blockedUntil) return all(failure('service-unavailable'))
+    if (!this.#budget.tryTake(now)) {
+      this.#report('budget', "trop d'appels à YouTube en peu de temps : les ajouts attendent quelques secondes.")
+      return all(failure('service-unavailable'))
+    }
+
+    const work = this.#fetchVideos(ids)
+    // Anybody who asks about one of these videos meanwhile shares the answer.
+    for (const id of ids) {
+      const one = work.then((answers) => answers.get(id) ?? failure('service-unavailable')).finally(() => this.#inflight.delete(id))
+      this.#inflight.set(id, one)
+    }
+    return work
+  }
+
   #fromCache(videoId: string): ResolveResult | null {
     const entry = this.#cache.get(videoId)
     if (!entry) return null
@@ -261,46 +366,57 @@ export class YouTubeResolver implements TrackResolver {
 
   /** Never rejects: whatever happens is an answer for the caller and, when it matters, a line in the log. */
   async #fetchVideo(videoId: string): Promise<ResolveResult> {
+    return (await this.#fetchVideos([videoId])).get(videoId) ?? failure('service-unavailable')
+  }
+
+  /** One call for up to 50 videos. Never rejects; every id asked about is in the answer. */
+  async #fetchVideos(ids: readonly string[]): Promise<Map<string, ResolveResult>> {
+    const all = (result: ResolveResult) => new Map(ids.map((id): [string, ResolveResult] => [id, result]))
     let reply: { status: number; text: string }
     try {
-      reply = await this.#ask(videoId)
+      reply = await this.#ask(ids)
     } catch (error) {
       if (error instanceof AskTimedOut) {
         this.#report('timeout', `YouTube ne répond pas (délai de ${Math.round(this.#timeoutMs / SECOND)} s dépassé).`)
       } else {
         this.#report('network', `YouTube injoignable (${this.#describe(error)}).`)
       }
-      return failure('service-unavailable')
+      return all(failure('service-unavailable'))
     }
-    if (reply.status !== 200) return this.#refuseReply(reply.status, reply.text)
+    if (reply.status !== 200) return all(this.#refuseReply(reply.status, reply.text))
 
     let body: unknown
     try {
       body = JSON.parse(reply.text)
     } catch {
       this.#report('format', 'réponse de YouTube illisible.')
-      return failure('service-unavailable')
+      return all(failure('service-unavailable'))
     }
-    const verdict = classifyVideo(videoId, body)
-    if (verdict.kind === 'malformed') {
-      this.#report('format', `réponse de YouTube inattendue (${verdict.why}).`)
-      return failure('service-unavailable')
+    const answers = new Map<string, ResolveResult>()
+    let malformed: string | null = null
+    for (const [id, verdict] of classifyVideos(ids, body)) {
+      if (verdict.kind === 'malformed') {
+        malformed ??= verdict.why
+        answers.set(id, failure('service-unavailable'))
+      } else if (verdict.kind === 'ok') {
+        const result: ResolveResult = { ok: true, video: verdict.video }
+        this.#remember(id, result, FOUND_TTL_MS)
+        answers.set(id, result)
+      } else {
+        const result = failure(verdict.error)
+        this.#remember(id, result, verdict.error === 'not-found' ? MISSING_TTL_MS : FOUND_TTL_MS)
+        answers.set(id, result)
+      }
     }
-    if (verdict.kind === 'ok') {
-      const result: ResolveResult = { ok: true, video: verdict.video }
-      this.#remember(videoId, result, FOUND_TTL_MS)
-      return result
-    }
-    const result = failure(verdict.error)
-    this.#remember(videoId, result, verdict.error === 'not-found' ? MISSING_TTL_MS : FOUND_TTL_MS)
-    return result
+    if (malformed) this.#report('format', `réponse de YouTube inattendue (${malformed}).`)
+    return answers
   }
 
-  /** One call to the API. The address is built from the checked id alone: nothing the user typed goes into it. */
-  async #ask(videoId: string): Promise<{ status: number; text: string }> {
+  /** One call to the API. The address is built from the checked ids alone: nothing the user typed goes into it. */
+  async #ask(videoIds: readonly string[]): Promise<{ status: number; text: string }> {
     const url = new URL(API_URL)
     url.searchParams.set('part', 'snippet,contentDetails,status')
-    url.searchParams.set('id', videoId)
+    url.searchParams.set('id', videoIds.join(','))
     url.searchParams.set('fields', FIELDS)
 
     const controller = new AbortController()

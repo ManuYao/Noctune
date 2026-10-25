@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import type { ChatMessage, DjQueue, Participant, QueuedTrack, RoomRules, Track } from '../../shared/protocol'
 import { djCount, findMyPlace } from '../realtime/djQueue'
-import type { SendAddTrackResult, SendChatResult, SendDjResult } from '../realtime/useRoom'
+import type { SendAddTrackResult, SendChatResult, SendDjResult, SendPlaylistStatusResult } from '../realtime/useRoom'
 import Chat from './Chat'
 import DjDialog from './DjDialog'
 import DjQueuePanel from './DjQueuePanel'
@@ -31,6 +31,8 @@ interface RoomSideProps {
   /** Milliseconds to add to the local clock to get the server clock. */
   clockOffsetMs: number
   onAddTrack: (input: string) => Promise<SendAddTrackResult>
+  onAddFromPlaylist: (playlistTrackId: string) => Promise<SendAddTrackResult>
+  onPlaylistStatus: (playlistId: string) => Promise<SendPlaylistStatusResult>
   onRemoveTrack: (trackId: string) => Promise<SendDjResult>
   onLeaveQueue: () => Promise<SendDjResult>
 }
@@ -53,6 +55,8 @@ export default function RoomSide({
   nowPlaying,
   clockOffsetMs,
   onAddTrack,
+  onAddFromPlaylist,
+  onPlaylistStatus,
   onRemoveTrack,
   onLeaveQueue,
 }: RoomSideProps) {
@@ -176,6 +180,8 @@ export default function RoomSide({
           nowPlaying={nowPlaying}
           clockOffsetMs={clockOffsetMs}
           onAdd={onAddTrack}
+          onAddFromPlaylist={onAddFromPlaylist}
+          onPlaylistStatus={onPlaylistStatus}
           onRemove={onRemoveTrack}
           onLeave={onLeaveQueue}
         />

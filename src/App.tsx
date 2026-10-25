@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router'
 import EntryPage from './pages/EntryPage'
 import LoginPage from './pages/LoginPage'
+import PlaylistPage from './pages/PlaylistPage'
 import RegisterPage from './pages/RegisterPage'
 import RoomsPage from './pages/RoomsPage'
 import RoomPage from './pages/RoomPage'
@@ -12,6 +13,7 @@ export default function App() {
       <Route path="/rooms" element={<RoomsPage />} />
       <Route path="/connexion" element={<LoginPage />} />
       <Route path="/inscription" element={<RegisterPage />} />
+      <Route path="/playlist" element={<PlaylistPage />} />
       <Route path="/room/:roomId" element={<RoomPage />} />
     </Routes>
   )

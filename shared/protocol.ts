@@ -160,6 +160,20 @@ export type DjResult = { ok: true } | DjFailure
 /** The track was added to the member's line-up; if they were not in the queue, they are now (at the end). */
 export type AddTrackResult = { ok: true; track: QueuedTrack } | DjFailure
 
+/** Where a playlist track stands in the room the member is in: whether the room would take it now. */
+export type TrackStatus =
+  | { state: 'ok' }
+  | { state: 'too-long'; maxSec: number }
+  /** `retryAfterSec`: when it may play again, null if the room never lets a track play twice. */
+  | { state: 'recently-played'; retryAfterSec: number | null }
+  /** A DJ of this room already lined it up, or it plays right now. */
+  | { state: 'queued' }
+  /** It could no longer be played at the last refresh (removed, private, no longer embeddable). */
+  | { state: 'unavailable' }
+
+/** Keyed by playlist track id. */
+export type PlaylistStatusResult = { ok: true; statuses: Record<string, TrackStatus> } | DjFailure
+
 /** Said to one DJ, and to nobody else. */
 export type DjNotice =
   /** A track of the line-up was taken out when its turn came: it no longer fits the rules of the room. */
@@ -208,6 +222,68 @@ export interface JoinPayload {
   pseudo: string
   avatarId: string
 }
+
+// ---- Playlists (HTTP, under /api/playlists). Members only: the session cookie says whose they are.
+//
+//   GET    /api/playlists                                  -> PlaylistReply<{ playlists: PlaylistSummary[] }>
+//   POST   /api/playlists                 { name }          -> PlaylistReply<{ playlist: PlaylistSummary }>
+//   PATCH  /api/playlists/:id             { name }          -> PlaylistReply<{ playlist: PlaylistSummary }>
+//   DELETE /api/playlists/:id                               -> PlaylistReply
+//   GET    /api/playlists/:id                               -> PlaylistReply<{ playlist: Playlist }>
+//   POST   /api/playlists/:id/tracks      { input }         -> PlaylistReply<{ track: PlaylistTrack }>   (a link or a video id)
+//   DELETE /api/playlists/:id/tracks/:trackId               -> PlaylistReply
+//   POST   /api/playlists/:id/tracks/:trackId/move { position } -> PlaylistReply   (new place, from 0)
+
+export const PLAYLISTS_MAX = 20
+export const PLAYLIST_TRACKS_MAX = 200
+export const PLAYLIST_NAME_MAX = 40
+
+export interface PlaylistSummary {
+  id: string
+  name: string
+  trackCount: number
+}
+
+export interface PlaylistTrack {
+  id: string
+  videoId: string
+  /** What YouTube said the last time the server asked. Null when that is too old to show and could not be refreshed now. */
+  title: string | null
+  artist: string | null
+  durationSec: number | null
+  /** At the last refresh the video could no longer be played (removed, private, no longer embeddable). */
+  unavailable: boolean
+}
+
+export interface Playlist extends PlaylistSummary {
+  tracks: PlaylistTrack[]
+}
+
+export type PlaylistError =
+  | 'not-signed-in'
+  /** The request does not come from the site itself. */
+  | 'forbidden'
+  | 'bad-request'
+  /** The server runs without a database: visitors still work, accounts and playlists do not. */
+  | 'no-database'
+  /** Not found, or not the member's own: never said which. */
+  | 'playlist-not-found'
+  | 'track-not-found'
+  | 'invalid-name'
+  | 'name-taken'
+  | 'playlists-full'
+  | 'playlist-full'
+  | 'already-in-playlist'
+  // The video, read from the link (same meaning as in DjError).
+  | 'invalid-link'
+  | 'not-found'
+  | 'not-embeddable'
+  | 'unavailable'
+  | 'service-unavailable'
+  | 'server-error'
+
+export type PlaylistFailure = { ok: false; error: PlaylistError } | { ok: false; error: 'rate-limited'; retryAfterSec: number }
+export type PlaylistReply<T = object> = ({ ok: true } & T) | PlaylistFailure
 
 // ---- Accounts (HTTP, under /api/auth). The browser keeps the session in a cookie it cannot read.
 
@@ -275,8 +351,13 @@ export interface ClientToServerEvents {
   'track:like': (payload: { value: boolean }, ack: (result: ReactResult) => void) => void
   /** Sets or takes back the viewer's vote to skip the current track. A DJ skipping their own track: it changes at once. */
   'track:skip': (payload: { value: boolean }, ack: (result: ReactResult) => void) => void
-  /** Lines a YouTube video up for the member's turns (`input`: a link or a video id). Puts them in the queue if they are not. */
-  'dj:add': (payload: { input: string }, ack: (result: AddTrackResult) => void) => void
+  /**
+   * Lines a YouTube video up for the member's turns. Either `input` (a link or a video id) or `playlistTrackId` (a track
+   * of one of the member's own playlists). Puts them in the queue if they are not.
+   */
+  'dj:add': (payload: { input: string } | { playlistTrackId: string }, ack: (result: AddTrackResult) => void) => void
+  /** For each track of one of the member's playlists: would this room take it now? */
+  'dj:playlist-status': (payload: { playlistId: string }, ack: (result: PlaylistStatusResult) => void) => void
   /** Takes one track out of the member's own line-up. */
   'dj:remove': (payload: { trackId: string }, ack: (result: DjResult) => void) => void
   /** Leaves the queue, line-up included. On the decks, that cuts the track that plays. */

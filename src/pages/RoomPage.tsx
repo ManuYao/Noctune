@@ -58,6 +58,8 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
     like,
     voteSkip,
     addTrack,
+    addFromPlaylist,
+    playlistStatus,
     removeTrack,
     leaveQueue,
     dismissNotice,
@@ -119,6 +121,8 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
             nowPlaying={nowPlaying}
             clockOffsetMs={clockOffsetMs}
             onAddTrack={addTrack}
+            onAddFromPlaylist={addFromPlaylist}
+            onPlaylistStatus={playlistStatus}
             onRemoveTrack={removeTrack}
             onLeaveQueue={leaveQueue}
           />

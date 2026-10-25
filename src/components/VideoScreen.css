@@ -102,11 +102,42 @@
 .screen__message {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
-  margin: 0;
+  display: flex;
+  overflow: auto;
   padding: 16px;
   background: var(--floor);
   color: var(--text-muted);
   text-align: center;
+}
+
+/* Centred when it fits; from the top (and scrollable) when it does not, which `margin: auto` does and a centring
+   flex container would not (it would cut the top of the text). */
+.screen__message-body {
+  margin: auto;
+  max-width: 46ch;
+}
+
+.screen__message-body p {
+  margin: 0;
+}
+
+.screen__message-title {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text);
+  font-size: 1.05rem;
+}
+
+/* The shortest the player may be (200 px) with a long text: smaller type and less padding, so that it fits. */
+@container stage (max-width: 440px) {
+  .screen__message {
+    padding: 10px 12px;
+    font-size: 0.875rem;
+    line-height: 1.35;
+  }
+
+  .screen__message-title {
+    margin-bottom: 4px;
+    font-size: 0.95rem;
+  }
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import { isOutOfSync, isTrackOver, trackPositionSec } from '../../shared/clock'
 import type { Track } from '../../shared/protocol'
+import { unavailableReason, type UnavailableReason } from './unavailable'
 import { loadYouTubeApi, PLAYER_STATE, type YouTubePlayer } from './youtubeApi'
 
 export type PlayerStatus =
@@ -52,6 +53,8 @@ function correctDrift(player: YouTubePlayer, track: Track, clockOffsetMs: number
 export function useYouTubePlayer(hostRef: RefObject<HTMLDivElement | null>, options: PlayerOptions) {
   const { track, volume, muted } = options
   const [status, setStatus] = useState<PlayerStatus>('loading')
+  // Why the player refused the track, while the status says it did. Only this viewer's player knows it.
+  const [reason, setReason] = useState<UnavailableReason | null>(null)
   const [ready, setReady] = useState(false)
 
   const playerRef = useRef<YouTubePlayer | null>(null)
@@ -125,7 +128,13 @@ export function useYouTubePlayer(hostRef: RefObject<HTMLDivElement | null>, opti
               setReady(true)
             },
             onStateChange: (event) => onStateChange(event.data),
-            onError: () => setStatus('video-unavailable'),
+            onError: (event) => {
+              // The start-up watchdog of the track must not run on: it would read a video that cannot play as a browser
+              // that blocks autoplay, put the player in "sound blocked" for every track after it, and hide the message.
+              window.clearTimeout(timer.current)
+              setReason(unavailableReason(event.data))
+              setStatus('video-unavailable')
+            },
           },
         })
       })
@@ -162,6 +171,8 @@ export function useYouTubePlayer(hostRef: RefObject<HTMLDivElement | null>, opti
     firstSyncDone.current = false
     resumeAttempts.current = 0
 
+    // A new track (or none): whatever the player said about the previous one is over.
+    setReason(null)
     const serverNow = Date.now() + latest.current.clockOffsetMs
     if (!track || isTrackOver(track, serverNow)) {
       player.stopVideo()
@@ -241,5 +252,5 @@ export function useYouTubePlayer(hostRef: RefObject<HTMLDivElement | null>, opti
     }, AUTOPLAY_WAIT_MS)
   }, [])
 
-  return { status, enableSound }
+  return { status, unavailableReason: reason, enableSound }
 }

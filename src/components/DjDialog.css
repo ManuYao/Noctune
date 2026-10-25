@@ -118,6 +118,52 @@ html:has(.dj-dialog[open]) {
   gap: 8px;
 }
 
+/* "Ma playlist" | "Lien": a segmented control, the chosen one filled (mock-ups 3c and M4). */
+.dj-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--bg);
+}
+
+.dj-tabs__tab {
+  flex: 1;
+  min-height: var(--tap);
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dj-tabs__tab[aria-selected='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.dj-dialog__panel {
+  margin-top: 12px;
+}
+
+/* After a link was lined up: keeping it for the next time. */
+.dj-dialog__keep {
+  margin-top: 10px;
+}
+
+.dj-dialog__keep button {
+  min-height: var(--tap);
+  padding: 0 16px;
+  border: 2px solid var(--accent-2);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--accent-2);
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .dj-dialog__form label {
   font-weight: 700;
 }
@@ -161,6 +207,11 @@ html:has(.dj-dialog[open]) {
 .dj-dialog__feedback {
   margin: 0;
   font-weight: 600;
+}
+
+/* Empty, it takes no room; it stays in the page all the same (display: none would make a screen reader miss it). */
+.dj-dialog__feedback:not(:empty) {
+  margin-top: 8px;
 }
 
 .dj-dialog__feedback--error {

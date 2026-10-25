@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { afterEach, beforeEach, describe, it, mock } from 'node:test'
 import { inspect } from 'node:util'
 import type { ResolveResult } from './TrackResolver'
-import { classifyVideo, YouTubeResolver, type YouTubeResolverOptions } from './YouTubeResolver'
+import { classifyVideo, classifyVideos, YouTubeResolver, type YouTubeResolverOptions } from './YouTubeResolver'
 
 const KEY = 'AIzaSyTest_key-0123456789abcdefghijklmnop'
 const START = 1_700_000_000_000
@@ -884,5 +884,283 @@ describe('YouTubeResolver: never throws', () => {
     const proxy = new Proxy({}, { get: () => { throw new Error('nope') } })
     assert.deepEqual(await resolver.resolve(proxy as unknown as string), { ok: false, error: 'invalid-link' })
     assert.equal(api.calls.length, 0)
+  })
+})
+
+// ---- Several videos in one call (a playlist being refreshed)
+
+const idsOf = (call: Call) => idOf(call).split(',')
+/** An API that knows every video it is asked about, except the ones named. */
+const knowing =
+  (missing: string[] = []) =>
+  (call: Call) =>
+    reply(listing(...idsOf(call).filter((id) => !missing.includes(id)).map((id) => item(id, { title: `Title ${id}` }))))
+const manyIds = (count: number) => Array.from({ length: count }, (_, index) => `id${String(index).padStart(9, '0')}`)
+
+describe('YouTubeResolver: several videos at once', () => {
+  it('asks for them all in one call, with the same care as for one', async () => {
+    const { resolver, api } = setup(knowing())
+    const answers = await resolver.resolveMany([A, B, C])
+    assert.equal(api.calls.length, 1)
+    const { url, headers, init } = api.calls[0]
+    assert.deepEqual([...url.searchParams.keys()].sort(), ['fields', 'id', 'part'])
+    assert.equal(url.searchParams.get('id'), `${A},${B},${C}`)
+    assert.equal(headers['x-goog-api-key'], KEY)
+    assert.ok(!url.href.includes(KEY), 'the key is not in the address')
+    assert.equal(init.redirect, 'error')
+    assert.deepEqual([...answers.keys()], [A, B, C])
+    for (const id of [A, B, C]) {
+      const answer = answers.get(id)
+      assert.equal(answer?.ok && answer.video.title, `Title ${id}`)
+    }
+  })
+
+  it('goes 50 at a time: a hundred and twenty videos are three calls', async () => {
+    const { resolver, api } = setup(knowing())
+    const ids = manyIds(120)
+    const answers = await resolver.resolveMany(ids)
+    assert.deepEqual(api.calls.map((call) => idsOf(call).length), [50, 50, 20])
+    assert.equal(answers.size, 120)
+    assert.ok([...answers.values()].every((answer) => answer.ok), 'every one was answered')
+    assert.deepEqual(api.calls.flatMap(idsOf), ids, 'each asked once, in order')
+  })
+
+  it('asks about each video once, however many times it is named', async () => {
+    const { resolver, api } = setup(knowing())
+    const answers = await resolver.resolveMany([A, B, A, A, B])
+    assert.deepEqual(idsOf(api.calls[0]), [A, B])
+    assert.equal(answers.size, 2)
+  })
+
+  it('does not ask again about what it already knows, and asks only for the rest', async () => {
+    const { resolver, api } = setup(knowing())
+    await resolver.resolve(link(A))
+    const answers = await resolver.resolveMany([A, B, C])
+    assert.equal(api.calls.length, 2)
+    assert.deepEqual(idsOf(api.calls[1]), [B, C])
+    assert.equal(answers.get(A)?.ok, true)
+
+    await resolver.resolveMany([A, B, C])
+    assert.equal(api.calls.length, 2, 'all three are in the memory now')
+  })
+
+  it('learns from one call what it can answer to the next question about any of them', async () => {
+    const { resolver, api } = setup(knowing())
+    await resolver.resolveMany([A, B])
+    assert.equal((await resolver.resolve(link(B))).ok, true)
+    assert.equal(api.calls.length, 1)
+  })
+
+  it('says a video the API does not list does not exist, remembers it for a few minutes, and the others are fine', async () => {
+    const { resolver, api } = setup(knowing([B]))
+    const answers = await resolver.resolveMany([A, B])
+    assert.equal(answers.get(A)?.ok, true)
+    assert.deepEqual(answers.get(B), { ok: false, error: 'not-found' })
+
+    await resolver.resolveMany([A, B])
+    assert.equal(api.calls.length, 1, 'remembered')
+    clock += 5 * MINUTE
+    await resolver.resolveMany([B])
+    assert.equal(api.calls.length, 2, 'a missing video may be published any minute: asked again after five minutes')
+  })
+
+  it('judges each video on its own', async () => {
+    const { resolver } = setup((call) =>
+      reply(
+        listing(
+          item(idsOf(call)[0]),
+          item(idsOf(call)[1], { embeddable: false }),
+          item(idsOf(call)[2], { live: 'live' }),
+          item(idsOf(call)[3], { privacy: 'private' }),
+          item(idsOf(call)[4], { duration: 'PT0S' }),
+        ),
+      ),
+    )
+    const answers = await resolver.resolveMany([A, B, C, D, 'eeeeeeeeeee'])
+    assert.equal(answers.get(A)?.ok, true)
+    assert.deepEqual(answers.get(B), { ok: false, error: 'not-embeddable' })
+    assert.deepEqual(answers.get(C), { ok: false, error: 'unavailable' })
+    assert.deepEqual(answers.get(D), { ok: false, error: 'not-found' })
+    assert.deepEqual(answers.get('eeeeeeeeeee'), { ok: false, error: 'unavailable' })
+  })
+
+  it('does not ask about what is not a video id, and answers it', async () => {
+    const { resolver, api } = setup(knowing())
+    const answers = await resolver.resolveMany([A, 'short', 'has space!!', '', 'https://youtu.be/' + B, 5 as unknown as string, B])
+    assert.deepEqual(idsOf(api.calls[0]), [A, B], 'only the real ones went out')
+    assert.deepEqual(answers.get('short'), { ok: false, error: 'invalid-link' })
+    assert.deepEqual(answers.get('has space!!'), { ok: false, error: 'invalid-link' })
+    assert.deepEqual(answers.get(''), { ok: false, error: 'invalid-link' })
+    assert.deepEqual(answers.get('5'), { ok: false, error: 'invalid-link' })
+    assert.equal(answers.get(A)?.ok, true)
+  })
+
+  it('makes no call at all when there is nothing to ask', async () => {
+    const { resolver, api } = setup(knowing())
+    assert.equal((await resolver.resolveMany([])).size, 0)
+    assert.equal((await resolver.resolveMany(['nope'])).size, 1)
+    assert.equal(api.calls.length, 0)
+  })
+
+  it('ignores an item for a video nobody asked about, and reads the ones asked', async () => {
+    const { resolver } = setup(() => reply(listing(item(A, { title: 'Mine' }), item(D, { title: 'Stranger' }))))
+    const answers = await resolver.resolveMany([A, B])
+    const mine = answers.get(A)
+    assert.equal(mine?.ok && mine.video.title, 'Mine')
+    assert.deepEqual(answers.get(B), { ok: false, error: 'not-found' })
+    assert.equal(answers.has(D), false)
+  })
+
+  it('does not take for an answer a list that holds nothing that was asked about', async () => {
+    const { resolver, api } = setup(() => reply(listing(item(D))))
+    const answers = await resolver.resolveMany([A, B])
+    for (const id of [A, B]) assert.deepEqual(answers.get(id), { ok: false, error: 'service-unavailable' })
+    await resolver.resolveMany([A, B])
+    assert.equal(api.calls.length, 2, 'nothing was remembered')
+  })
+
+  const BROKEN: [string, (call: Call) => Response | Promise<Response>][] = [
+    ['a server error', () => reply('oops', 500)],
+    ['a quota error', () => apiError(403, 'quotaExceeded')],
+    ['a refused key', () => apiError(400, 'keyInvalid', 'INVALID_ARGUMENT')],
+    ['text that is not JSON', () => reply('<html>')],
+    ['a list that is not one', () => reply({ kind: 'youtube#channelListResponse', items: [] })],
+    ['a null item', () => reply({ kind: LIST, items: [null] })],
+    [
+      'a network error',
+      () => {
+        throw new TypeError('fetch failed')
+      },
+    ],
+  ]
+  for (const [what, handler] of BROKEN) {
+    it(`answers service-unavailable for every video, remembering none, after ${what}`, async () => {
+      const { resolver } = setup(handler)
+      const answers = await resolver.resolveMany([A, B, C])
+      assert.deepEqual([...answers.keys()], [A, B, C])
+      for (const answer of answers.values()) assert.deepEqual(answer, { ok: false, error: 'service-unavailable' })
+    })
+  }
+
+  it('does not go on asking after a quota error: the batches that follow are not sent', async () => {
+    const { resolver, api } = setup(() => apiError(403, 'quotaExceeded'))
+    const answers = await resolver.resolveMany(manyIds(120))
+    assert.equal(api.calls.length, 1, 'the first one told it')
+    assert.equal(answers.size, 120)
+    assert.ok([...answers.values()].every((answer) => !answer.ok && answer.error === 'service-unavailable'))
+  })
+
+  it('counts a call, not a video, against the budget: 50 videos cost what one costs', async () => {
+    const { resolver, api } = setup(knowing(), { budget: { burst: 2, refillMs: 10 * SECOND } })
+    const ids = manyIds(150)
+    const answers = await resolver.resolveMany(ids) // three calls, two in the budget
+    assert.equal(api.calls.length, 2)
+    const failed = [...answers.entries()].filter(([, answer]) => !answer.ok)
+    assert.equal(failed.length, 50, 'the third batch had no call left')
+    assert.deepEqual(failed.map(([id]) => id), ids.slice(100))
+
+    clock += 10 * SECOND
+    assert.equal((await resolver.resolveMany(ids.slice(100))).get(ids[100])?.ok, true, 'a call earned back')
+  })
+
+  it('shares the call of a video that is being asked about, and sends only the others', async () => {
+    let open!: () => void
+    const gate = new Promise<void>((resolve) => (open = resolve))
+    const { resolver, api } = setup(async (call) => {
+      await gate
+      return knowing()(call)
+    })
+    const single = resolver.resolve(link(A))
+    await flush()
+    const many = resolver.resolveMany([A, B])
+    await flush()
+    open()
+    const [first, answers] = await Promise.all([single, many])
+    assert.equal(first.ok, true)
+    assert.equal(answers.get(A)?.ok, true)
+    assert.equal(answers.get(B)?.ok, true)
+    assert.deepEqual(api.calls.map((call) => idsOf(call).join()).sort(), [A, B].sort(), 'A once, B once')
+  })
+
+  it('shares the call between two batches that name the same videos', async () => {
+    let open!: () => void
+    const gate = new Promise<void>((resolve) => (open = resolve))
+    const { resolver, api } = setup(async (call) => {
+      await gate
+      return knowing()(call)
+    })
+    const first = resolver.resolveMany([A, B])
+    await flush()
+    const second = resolver.resolveMany([B, A, C])
+    await flush()
+    open()
+    const [one, two] = await Promise.all([first, second])
+    assert.equal(one.size, 2)
+    assert.equal(two.size, 3)
+    assert.deepEqual(api.calls.map((call) => idsOf(call).join(',')), [`${A},${B}`, C])
+  })
+
+  it('hands out copies: what one caller does to an answer does not reach the next', async () => {
+    const { resolver } = setup(knowing())
+    const first = await resolver.resolveMany([A])
+    const answer = first.get(A)
+    if (answer?.ok) answer.video.title = 'Tampered'
+    const again = (await resolver.resolveMany([A])).get(A)
+    assert.equal(again?.ok && again.video.title, `Title ${A}`)
+  })
+
+  it('never writes the key in the log, and says what happened', async () => {
+    const { resolver } = setup(() => apiError(400, 'API_KEY_INVALID', 'INVALID_ARGUMENT'))
+    await resolver.resolveMany([A, B])
+    assert.ok(logs.length > 0, 'it said something')
+    for (const line of logs) assert.ok(!line.includes(KEY), `the key is not in: ${line}`)
+  })
+
+  it('answers, and does not throw, when something it did not plan for goes wrong', async () => {
+    let broken = false
+    const resolver = new YouTubeResolver({
+      apiKey: KEY,
+      fetch: fakeApi(knowing()).fetch,
+      now: () => {
+        if (broken) throw new Error('clock exploded')
+        return clock
+      },
+      log: (line) => logs.push(line),
+    })
+    broken = true
+    const answers = await resolver.resolveMany([A, B])
+    assert.deepEqual([...answers.keys()], [A, B])
+    for (const answer of answers.values()) assert.deepEqual(answer, { ok: false, error: 'service-unavailable' })
+  })
+
+  it('does not touch an object it is given instead of a list', async () => {
+    const { resolver, api } = setup(knowing())
+    const answers = await resolver.resolveMany(5 as unknown as string[])
+    assert.equal(answers.size, 0)
+    assert.equal(api.calls.length, 0)
+  })
+})
+
+describe('classifyVideos', () => {
+  it('says every video does not exist when the list is empty', () => {
+    const verdicts = classifyVideos([A, B], listing())
+    assert.deepEqual([...verdicts.values()], [
+      { kind: 'refused', error: 'not-found' },
+      { kind: 'refused', error: 'not-found' },
+    ])
+  })
+
+  it('says nothing about any video when an item is not an item', () => {
+    for (const body of [listing(null), listing('x'), listing({ ...item(A), id: undefined }), { kind: LIST }, 'text', null]) {
+      for (const verdict of classifyVideos([A, B], body).values()) assert.equal(verdict.kind, 'malformed')
+    }
+  })
+
+  it('gives a verdict to every video asked about, in the order asked', () => {
+    const verdicts = classifyVideos([B, A, C], listing(item(A), item(B, { embeddable: false })))
+    assert.deepEqual([...verdicts.keys()], [B, A, C])
+    assert.deepEqual(verdicts.get(B), { kind: 'refused', error: 'not-embeddable' })
+    assert.equal(verdicts.get(A)?.kind, 'ok')
+    assert.deepEqual(verdicts.get(C), { kind: 'refused', error: 'not-found' })
   })
 })

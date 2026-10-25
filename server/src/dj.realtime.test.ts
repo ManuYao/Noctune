@@ -336,6 +336,9 @@ describe('lining a video up', () => {
       resolve: async () => {
         throw new Error('boom')
       },
+      resolveMany: async () => {
+        throw new Error('boom')
+      },
     }
     await start({ resolver: broken })
     const ann = await memberIn('Ann')
@@ -350,6 +353,7 @@ describe('lining a video up', () => {
     const slow: TrackResolver = {
       resolve: async (input): Promise<ResolveResult> =>
         hang ? new Promise(() => undefined) : { ok: true, video: VIDEOS[input] },
+      resolveMany: async () => new Map(),
     }
     await start({ resolver: slow, resolverTimeoutMs: 100 })
     const ann = await memberIn('Ann')

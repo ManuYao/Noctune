@@ -8,6 +8,8 @@ import { after, describe, it, type TestContext } from 'node:test'
 import pg from 'pg'
 import { describeAccountStoreContract } from '../accounts/accountStoreContract'
 import { PgAccountStore } from '../accounts/PgAccountStore'
+import { describePlaylistStoreContract } from '../playlists/playlistStoreContract'
+import { PgPlaylistStore } from '../playlists/PgPlaylistStore'
 import { migrate } from './migrate'
 import { createPool } from './pool'
 import { closeTestPool, openTestPool, testDatabaseUrl } from './testDatabase'
@@ -17,7 +19,25 @@ after(closeTestPool)
 describeAccountStoreContract('postgres account store', async () => {
   const pool = await openTestPool()
   if (!pool) return null
-  return { store: new PgAccountStore(pool), reset: async () => void (await pool.query('TRUNCATE sessions, users')) }
+  return { store: new PgAccountStore(pool), reset: async () => void (await pool.query('TRUNCATE playlist_tracks, playlists, sessions, users')) }
+})
+
+let memberCount = 0
+describePlaylistStoreContract('postgres playlist store', async () => {
+  const pool = await openTestPool()
+  if (!pool) return null
+  return {
+    store: new PgPlaylistStore(pool),
+    reset: async () => void (await pool.query('TRUNCATE playlist_tracks, playlists, sessions, users')),
+    newAccount: async () => {
+      memberCount += 1
+      const { rows } = await pool.query<{ id: string }>(
+        "INSERT INTO users (email, password_hash, pseudo, pseudo_key, avatar_id) VALUES ($1, 'h', $2, $2, 'pulse') RETURNING id",
+        [`member${memberCount}@example.com`, `m${memberCount}`],
+      )
+      return rows[0].id
+    },
+  }
 })
 
 /** A test that needs the database, or a note that it was skipped. */
@@ -31,7 +51,7 @@ function withPool(title: string, body: (pool: pg.Pool) => Promise<void>) {
 
 describe('the schema', () => {
   withPool('refuses a second e-mail or a second pseudo itself, whatever the code does', async (pool) => {
-    await pool.query('TRUNCATE sessions, users')
+    await pool.query('TRUNCATE playlist_tracks, playlists, sessions, users')
     const insert = (email: string, key: string) =>
       pool.query("INSERT INTO users (email, password_hash, pseudo, pseudo_key, avatar_id) VALUES ($1, 'h', 'P', $2, 'pulse')", [email, key])
     await insert('a@example.com', 'a')
@@ -41,7 +61,7 @@ describe('the schema', () => {
   })
 
   withPool('removes the sessions of an account with the account', async (pool) => {
-    await pool.query('TRUNCATE sessions, users')
+    await pool.query('TRUNCATE playlist_tracks, playlists, sessions, users')
     const store = new PgAccountStore(pool)
     const created = await store.create({ email: 'a@example.com', passwordHash: 'h', pseudo: 'A1', avatarId: 'pulse' })
     assert.ok(created.ok)
@@ -53,7 +73,7 @@ describe('the schema', () => {
   })
 
   withPool('keeps the hash of the token, as bytes, and never the token', async (pool) => {
-    await pool.query('TRUNCATE sessions, users')
+    await pool.query('TRUNCATE playlist_tracks, playlists, sessions, users')
     const store = new PgAccountStore(pool)
     const created = await store.create({ email: 'a@example.com', passwordHash: 'h', pseudo: 'A1', avatarId: 'pulse' })
     assert.ok(created.ok)
@@ -66,6 +86,87 @@ describe('the schema', () => {
     assert.deepEqual(rows[0].token_hash, hash)
     const dump = JSON.stringify((await pool.query('SELECT * FROM sessions')).rows)
     assert.equal(dump.includes(token), false)
+  })
+})
+
+describe('the schema of the playlists', () => {
+  const ADDED = new Date('2026-10-24T20:00:00Z')
+
+  /** A member with a playlist, ready for tracks. */
+  async function member(pool: pg.Pool) {
+    await pool.query('TRUNCATE playlist_tracks, playlists, sessions, users')
+    const user = await pool.query<{ id: string }>("INSERT INTO users (email, password_hash, pseudo, pseudo_key, avatar_id) VALUES ('a@example.com', 'h', 'A1', 'a1', 'pulse') RETURNING id")
+    const playlist = await pool.query<{ id: string }>("INSERT INTO playlists (user_id, name, name_key) VALUES ($1, 'Chill', 'chill') RETURNING id", [user.rows[0].id])
+    return { userId: user.rows[0].id, playlistId: playlist.rows[0].id }
+  }
+  const addTrack = (pool: pg.Pool | pg.PoolClient, playlistId: string, video: string, position: number) =>
+    pool.query(
+      "INSERT INTO playlist_tracks (playlist_id, position, video_id, title, artist, duration_sec, fetched_at, checked_at) VALUES ($1, $2, $3, 't', 'a', 200, $4, $4)",
+      [playlistId, position, video, ADDED],
+    )
+
+  withPool('removes the playlists and their tracks with the account', async (pool) => {
+    const { userId, playlistId } = await member(pool)
+    await addTrack(pool, playlistId, 'aaaaaaaaaa1', 0)
+    await pool.query('DELETE FROM users WHERE id = $1', [userId])
+    assert.equal((await pool.query('SELECT 1 FROM playlists')).rowCount, 0)
+    assert.equal((await pool.query('SELECT 1 FROM playlist_tracks')).rowCount, 0)
+  })
+
+  withPool('refuses a playlist of nobody, whatever the code does', async (pool) => {
+    await member(pool)
+    await assert.rejects(
+      pool.query("INSERT INTO playlists (user_id, name, name_key) VALUES (gen_random_uuid(), 'X', 'x')"),
+      (error: { code?: string }) => error.code === '23503',
+    )
+  })
+
+  withPool('refuses a second playlist with the same name key for a member, and a second video or place in a playlist', async (pool) => {
+    const { userId, playlistId } = await member(pool)
+    await assert.rejects(
+      pool.query("INSERT INTO playlists (user_id, name, name_key) VALUES ($1, 'CHILL', 'chill')", [userId]),
+      (error: { code?: string }) => error.code === '23505',
+    )
+    await addTrack(pool, playlistId, 'aaaaaaaaaa1', 0)
+    await assert.rejects(addTrack(pool, playlistId, 'aaaaaaaaaa1', 1), (error: { code?: string }) => error.code === '23505', 'a video once')
+    await assert.rejects(addTrack(pool, playlistId, 'bbbbbbbbbb1', 0), (error: { code?: string }) => error.code === '23505', 'a place once')
+  })
+
+  withPool('checks the places when the transaction ends, so that a move may pass through a duplicate but not end on one', async (pool) => {
+    const { playlistId } = await member(pool)
+    await addTrack(pool, playlistId, 'aaaaaaaaaa1', 0)
+    await addTrack(pool, playlistId, 'bbbbbbbbbb1', 1)
+
+    const client = await pool.connect()
+    try {
+      await client.query('BEGIN')
+      await client.query('UPDATE playlist_tracks SET position = 1 WHERE video_id = $1', ['aaaaaaaaaa1']) // two at 1, for now
+      await client.query('UPDATE playlist_tracks SET position = 0 WHERE video_id = $1', ['bbbbbbbbbb1'])
+      await client.query('COMMIT')
+    } finally {
+      client.release()
+    }
+    const { rows } = await pool.query<{ video_id: string }>('SELECT video_id FROM playlist_tracks ORDER BY position')
+    assert.deepEqual(rows.map((row) => row.video_id), ['bbbbbbbbbb1', 'aaaaaaaaaa1'])
+
+    const stuck = await pool.connect()
+    try {
+      await stuck.query('BEGIN')
+      await stuck.query('UPDATE playlist_tracks SET position = 1 WHERE video_id = $1', ['bbbbbbbbbb1']) // two at 1 and it stays so
+      await assert.rejects(stuck.query('COMMIT'), (error: { code?: string }) => error.code === '23505')
+    } finally {
+      await stuck.query('ROLLBACK').catch(() => undefined)
+      stuck.release()
+    }
+  })
+
+  withPool('refuses a length of nothing and a place below zero', async (pool) => {
+    const { playlistId } = await member(pool)
+    await assert.rejects(addTrack(pool, playlistId, 'aaaaaaaaaa1', -1), (error: { code?: string }) => error.code === '23514')
+    await assert.rejects(
+      pool.query("INSERT INTO playlist_tracks (playlist_id, position, video_id, title, artist, duration_sec, fetched_at, checked_at) VALUES ($1, 0, 'aaaaaaaaaa1', 't', 'a', 0, $2, $2)", [playlistId, ADDED]),
+      (error: { code?: string }) => error.code === '23514',
+    )
   })
 })
 
@@ -89,7 +190,7 @@ describe('migrations', () => {
   withPool('are all applied, and applying them again does nothing', async (pool) => {
     assert.deepEqual(await migrate(pool), [])
     const { rows } = await pool.query<{ name: string }>('SELECT name FROM schema_migrations ORDER BY name')
-    assert.deepEqual(rows.map((row) => row.name), ['001_accounts.sql'])
+    assert.deepEqual(rows.map((row) => row.name), ['001_accounts.sql', '002_playlists.sql'])
   })
 
   it('apply in order, once each, and a failing one leaves no trace and stops the rest', async (t: TestContext) => {

@@ -12,6 +12,8 @@ import {
   type Participant,
   type ReactResult,
   type ServerToClientEvents,
+  type TrackStatus,
+  type VideoInfo,
 } from '../../shared/protocol'
 import { isStaffLookalike, normalizePseudo } from '../../shared/validation'
 import type { AccountService } from './accounts/AccountService'
@@ -20,8 +22,10 @@ import { ROOM_DEFS } from './catalog'
 import { Lobby, LOBBY_CHANNEL, summarize } from './Lobby'
 import { MinInterval } from './MinInterval'
 import { Room, type RoomOptions } from './Room'
-import { TokenBucket } from './youtube/TokenBucket'
-import type { ResolveResult, TrackResolver } from './youtube/TrackResolver'
+import type { PlaylistService } from './playlists/PlaylistService'
+import { withTimeout } from './withTimeout'
+import { LookupBudget } from './youtube/LookupBudget'
+import type { TrackResolver } from './youtube/TrackResolver'
 
 export interface HandlerOptions extends RoomOptions {
   /** How long changes to the list of rooms are gathered before it is sent (tests make it short). */
@@ -39,7 +43,11 @@ export interface HandlerOptions extends RoomOptions {
   /** How long a member waits between two edits of their line-up or queue place (tests shorten it). */
   editIntervalMs?: number
   /** Lookups of videos an account may make at once, and the time it takes to earn one more (tests widen it). */
-  accountLookupBudget?: { burst: number; refillMs: number }
+  accountLookupBudget?: { burst?: number; refillMs?: number }
+  /** The budget the whole server shares (the playlists API draws on it too). Made here when it is not given. */
+  lookupBudget?: LookupBudget
+  /** Where a member's own playlists are read from, to line one of their tracks up. Null without a database. */
+  playlists?: PlaylistService | null
 }
 
 interface SocketData {
@@ -71,29 +79,11 @@ const RESOLVER_TIMEOUT_MS = 8000
 const DJ_EDIT_MIN_INTERVAL_MS = 300
 // Track ids are UUIDs: anything much longer is not one.
 const TRACK_ID_MAX_LENGTH = 100
-// The YouTube quota is one for the whole site, and a limit per connection does not protect it: a member opens one
-// connection per room, and a new one each time they drop. So each account has a budget of its own, whatever the number
-// of its connections: a few lookups at once (a DJ lining up a set), then one every ten seconds.
-const ACCOUNT_LOOKUP_BURST = 6
-const ACCOUNT_LOOKUP_REFILL_MS = 10_000
-// Accounts whose budget is kept: past this, the ones that are whole again are forgotten, then the oldest.
-const MAX_TRACKED_ACCOUNTS = 5000
+// The YouTube quota is one for the whole site, and a limit per connection does not protect it: each account has a budget
+// of its own (see LookupBudget), whatever the number of its connections.
 
-function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`pas de réponse en ${ms} ms`)), ms)
-    work.then(
-      (value) => {
-        clearTimeout(timer)
-        resolve(value)
-      },
-      (error) => {
-        clearTimeout(timer)
-        reject(error)
-      },
-    )
-  })
-}
+/** A video found for a DJ (read from a link, or from their own playlist), or why it was not. */
+type FoundVideo = { ok: true; video: VideoInfo } | DjFailure
 
 function isAvatarId(value: unknown): value is AvatarId {
   return (AVATAR_IDS as readonly unknown[]).includes(value)
@@ -140,22 +130,8 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
   const accounts = options.accounts ?? null
   const resolver = options.resolver ?? null
 
-  const lookupBudget = options.accountLookupBudget ?? { burst: ACCOUNT_LOOKUP_BURST, refillMs: ACCOUNT_LOOKUP_REFILL_MS }
-  const lookupBudgets = new Map<string, TokenBucket>()
-  /** Spends one lookup of the account's budget. 0: go ahead. Otherwise the milliseconds to wait. */
-  function takeAccountLookup(accountId: string, now: number): number {
-    let bucket = lookupBudgets.get(accountId)
-    if (!bucket) {
-      if (lookupBudgets.size >= MAX_TRACKED_ACCOUNTS) {
-        for (const [id, kept] of lookupBudgets) if (kept.isFull(now)) lookupBudgets.delete(id)
-        // Still full of accounts that are spending: the oldest goes (the map keeps the order of arrival).
-        if (lookupBudgets.size >= MAX_TRACKED_ACCOUNTS) lookupBudgets.delete(lookupBudgets.keys().next().value as string)
-      }
-      bucket = new TokenBucket(lookupBudget.burst, lookupBudget.refillMs, now)
-      lookupBudgets.set(accountId, bucket)
-    }
-    return bucket.tryTake(now) ? 0 : Math.max(1, bucket.waitMs(now))
-  }
+  const playlists = options.playlists ?? null
+  const lookupBudget = options.lookupBudget ?? new LookupBudget(options.accountLookupBudget)
 
   // Who is behind a connection is decided once, when it opens, from the session cookie of the handshake.
   // (Signing in or out on the page therefore reopens the connection.)
@@ -233,6 +209,10 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
     const lookupLimit = new MinInterval(lookupInterval)
     let lookupPending = false
     const editLimit = new MinInterval(options.editIntervalMs ?? DJ_EDIT_MIN_INTERVAL_MS)
+    // Lining up a track of the member's own playlist, and asking the room's verdict on a playlist, are read from what is
+    // kept: no quota used. Each has its own light allowance, so that one does not make the other wait.
+    const playlistAddLimit = new MinInterval(options.editIntervalMs ?? DJ_EDIT_MIN_INTERVAL_MS)
+    const statusLimit = new MinInterval(options.editIntervalMs ?? DJ_EDIT_MIN_INTERVAL_MS)
 
     /** The room and participant this connection stands for, or null: a DJ request before (or after) a room. */
     function here(): { room: Room; participantId: string } | null {
@@ -356,28 +336,33 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
     socket.on('track:like', (payload, ack) => react(payload, ack, (room, id, value) => room.like(id, value)))
     socket.on('track:skip', (payload, ack) => react(payload, ack, (room, id, value) => room.voteSkip(id, value)))
 
-    /** Takes a turn from the allowance of removing a track or leaving the queue. Null: go ahead. */
-    function editLimited(): DjResult | null {
+    /** Takes a turn from an allowance of one request every so often. Null: go ahead. */
+    function limitedBy(limit: MinInterval): Extract<DjFailure, { error: 'rate-limited' }> | null {
       const now = Date.now()
-      const wait = editLimit.waitTime('edit', now)
+      const wait = limit.waitTime('edit', now)
       if (wait > 0) return { ok: false, error: 'rate-limited', retryAfterMs: wait }
-      editLimit.record('edit', now)
+      limit.record('edit', now)
       return null
     }
 
-    /** Reads the video, then lines it up. */
-    async function lineUp(resolver: TrackResolver, room: Room, participantId: string, input: string): Promise<AddTrackResult> {
-      let found: ResolveResult
+    /** Taking a track out or leaving the queue. */
+    const editLimited = () => limitedBy(editLimit)
+
+    /**
+     * Finds the video, then lines it up. `find` is what differs (a link read at YouTube, or a track of the member's own
+     * playlist); what follows is the same: time has passed while it was found, so the member may have left, or moved to
+     * another room (as another participant), and the queue, the line-up and the history may have changed. The room checks
+     * all of it again, in the same breath as the change, so that the answer lands only where and when it still holds.
+     */
+    async function lineUp(find: () => Promise<FoundVideo>, room: Room, participantId: string, timeoutMs: number): Promise<AddTrackResult> {
+      let found: FoundVideo
       try {
-        found = await withTimeout(resolver.resolve(input), options.resolverTimeoutMs ?? RESOLVER_TIMEOUT_MS)
+        found = await withTimeout(find(), timeoutMs)
       } catch (error) {
         console.error(`[dj] vidéo non lue : ${(error as Error).message}`)
         found = { ok: false, error: 'service-unavailable' }
       }
-      if (!found.ok) return { ok: false, error: found.error }
-      // Time has passed while YouTube was being asked: the member may have left, or moved to another room (as another
-      // participant), and the queue, the line-up and the history may have changed. The room checks all of it again, in
-      // the same breath as the change, so that the answer lands only where and when it still holds.
+      if (!found.ok) return found
       return room.addTrack(participantId, found.video)
     }
 
@@ -393,33 +378,69 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
         const notMember = room.memberError(participantId)
         if (notMember) return ack(notMember)
 
-        const input = (payload as { input?: unknown } | null | undefined)?.input
-        if (typeof input !== 'string' || input.length < 1 || input.length > DJ_INPUT_MAX) {
+        // Exactly one of the two: a link (or a video id), or a track of the member's own playlist.
+        const body = payload as { input?: unknown; playlistTrackId?: unknown } | null | undefined
+        const input = body?.input
+        const trackId = body?.playlistTrackId
+        if ((input === undefined) === (trackId === undefined)) return ack({ ok: false, error: 'invalid' })
+        if (input !== undefined && (typeof input !== 'string' || input.length < 1 || input.length > DJ_INPUT_MAX)) {
+          return ack({ ok: false, error: 'invalid' })
+        }
+        if (trackId !== undefined && (typeof trackId !== 'string' || trackId.length < 1 || trackId.length > TRACK_ID_MAX_LENGTH)) {
           return ack({ ok: false, error: 'invalid' })
         }
 
         const now = Date.now()
-        const wait = lookupLimit.waitTime('lookup', now)
-        if (lookupPending || wait > 0) {
-          // A lookup still being answered: come back in a moment, there is no telling how long it will take.
-          const retryAfterMs = lookupPending ? Math.max(wait, DJ_LOOKUP_MIN_INTERVAL_MS) : wait
-          return ack({ ok: false, error: 'rate-limited', retryAfterMs })
+        // A link is read at YouTube: one at a time, one a second, because the quota is the whole site's. A track of the
+        // member's own playlist is read from what is kept (YouTube is only asked when it is getting old, and the account's
+        // budget pays for that): it only has the lighter allowance of the other edits.
+        const fromLink = typeof input === 'string'
+        if (fromLink) {
+          const wait = lookupLimit.waitTime('lookup', now)
+          if (lookupPending || wait > 0) {
+            // A lookup still being answered: come back in a moment, there is no telling how long it will take.
+            const retryAfterMs = lookupPending ? Math.max(wait, DJ_LOOKUP_MIN_INTERVAL_MS) : wait
+            return ack({ ok: false, error: 'rate-limited', retryAfterMs })
+          }
+          // Counted when the request arrives, not when the answer comes: requests cannot pile up behind a slow answer.
+          lookupLimit.record('lookup', now)
+        } else {
+          const limited = limitedBy(playlistAddLimit)
+          if (limited) return ack(limited)
         }
-        // Counted when the request arrives, not when YouTube answers: requests cannot pile up behind a slow answer.
-        lookupLimit.record('lookup', now)
 
         const unplaceable = room.placeError(participantId)
         if (unplaceable) return ack(unplaceable)
-        if (!resolver) return ack({ ok: false, error: 'service-unavailable' })
 
-        // Only a lookup that will really ask YouTube is charged to the account's budget.
         const accountId = socket.data.account?.id
         if (!accountId) return ack({ ok: false, error: 'members-only' })
-        const accountWait = takeAccountLookup(accountId, now)
-        if (accountWait > 0) return ack({ ok: false, error: 'rate-limited', retryAfterMs: accountWait })
 
-        lookupPending = true
-        lineUp(resolver, room, participantId, input)
+        let find: () => Promise<FoundVideo>
+        let timeoutMs = options.resolverTimeoutMs ?? RESOLVER_TIMEOUT_MS
+        if (typeof input === 'string') {
+          if (!resolver) return ack({ ok: false, error: 'service-unavailable' })
+          // Only a lookup that will really ask YouTube is charged to the account's budget.
+          const accountWait = lookupBudget.take(accountId, now)
+          if (accountWait > 0) return ack({ ok: false, error: 'rate-limited', retryAfterMs: accountWait })
+          find = async () => {
+            const read = await resolver.resolve(input)
+            return read.ok ? read : { ok: false, error: read.error }
+          }
+        } else {
+          if (!playlists) return ack({ ok: false, error: 'service-unavailable' })
+          const wanted = trackId as string
+          // From what is kept: nothing to pay at YouTube unless the track is getting old (the service charges the budget then).
+          // A little longer than a lookup: the database is read first.
+          timeoutMs += 4000
+          find = async () => {
+            const read = await playlists.videoForDj(accountId, wanted)
+            if (read.ok) return read
+            return read.error === 'rate-limited' ? { ok: false, error: 'rate-limited', retryAfterMs: read.retryAfterMs } : { ok: false, error: read.error }
+          }
+        }
+
+        if (fromLink) lookupPending = true
+        lineUp(find, room, participantId, timeoutMs)
           .then(
             (result) => ack(result),
             (error: Error) => {
@@ -428,8 +449,53 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
             },
           )
           .finally(() => {
-            lookupPending = false
+            if (fromLink) lookupPending = false
           })
+      })
+    })
+
+    // For each track of one of the member's playlists: would the room take it now? From what is kept, no call to YouTube.
+    socket.on('dj:playlist-status', (payload, ack) => {
+      if (typeof ack !== 'function') return
+      guarded(ack, () => {
+        const where = here()
+        if (!where) return ack({ ok: false, error: 'not-in-room' })
+        const { room, participantId } = where
+        const notMember = room.memberError(participantId)
+        if (notMember) return ack(notMember)
+
+        const playlistId = (payload as { playlistId?: unknown } | null | undefined)?.playlistId
+        if (typeof playlistId !== 'string' || playlistId.length < 1 || playlistId.length > TRACK_ID_MAX_LENGTH) {
+          return ack({ ok: false, error: 'invalid' })
+        }
+        const accountId = socket.data.account?.id
+        if (!accountId) return ack({ ok: false, error: 'members-only' })
+        if (!playlists) return ack({ ok: false, error: 'service-unavailable' })
+        const limited = limitedBy(statusLimit)
+        if (limited) return ack(limited)
+
+        playlists.tracksOf(accountId, playlistId).then(
+          (tracks) => {
+            // Not the member's, or not there: the same answer, whichever it was.
+            if (!tracks) return ack({ ok: false, error: 'invalid' })
+            const now = Date.now()
+            const statuses: Record<string, TrackStatus> = {}
+            for (const track of tracks) {
+              statuses[track.id] =
+                track.unavailable
+                  ? { state: 'unavailable' }
+                  // A length too old to rely on is not judged: the room looks again when the track is lined up.
+                  : track.durationSec === null
+                    ? { state: 'ok' }
+                    : room.statusOf({ videoId: track.videoId, durationSec: track.durationSec }, now)
+            }
+            ack({ ok: true, statuses })
+          },
+          (error: Error) => {
+            console.error(`[dj] ${error.message}`)
+            ack({ ok: false, error: 'server-error' })
+          },
+        )
       })
     })
 

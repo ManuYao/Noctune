@@ -29,6 +29,8 @@ export default function SiteHeader({ children }: { children?: ReactNode }) {
       {children}
       <nav className="site-header__nav" aria-label="Navigation principale">
         <Link to="/rooms">Les rooms</Link>
+        {/* Playlists belong to members: the link is theirs alone. */}
+        {status === 'ready' && account && <Link to="/playlist">Playlist</Link>}
         {/* Nothing until the server has said who is signed in: no flash of "Se connecter" for a member. */}
         {status === 'ready' &&
           (account ? (

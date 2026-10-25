@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { trackPositionSec } from '../../shared/clock'
 import type { DjQueueEntry, Track } from '../../shared/protocol'
 import { formatClock } from '../data/duration'
+import { UNAVAILABLE_TEXT, type UnavailableReason } from '../player/unavailable'
 import { useServerNow } from '../player/useServerNow'
 import type { PlayerStatus } from '../player/useYouTubePlayer'
 import SpeakerIcon from './SpeakerIcon'
@@ -16,6 +17,8 @@ interface NowPlayingBarProps {
   /** Milliseconds to add to the local clock to get the server clock. */
   clockOffsetMs: number
   status: PlayerStatus
+  /** Why this viewer's player refused the track, while `status` says it did. */
+  unavailableReason?: UnavailableReason | null
   volume: number
   muted: boolean
   onVolumeChange: (volume: number) => void
@@ -29,7 +32,6 @@ const STATUS_NOTES: Partial<Record<PlayerStatus, string>> = {
   loading: 'Chargement de la vidéo…',
   'sound-blocked': 'Ton navigateur a coupé le son : un clic suffit pour le remettre.',
   'tap-needed': 'Ton navigateur attend un clic pour lancer la vidéo.',
-  'video-unavailable': 'YouTube ne permet pas de lire cette vidéo ici. Le morceau suivant démarrera tout seul.',
 }
 
 export default function NowPlayingBar({
@@ -38,6 +40,7 @@ export default function NowPlayingBar({
   ownTurn,
   clockOffsetMs,
   status,
+  unavailableReason = null,
   volume,
   muted,
   onVolumeChange,
@@ -47,7 +50,8 @@ export default function NowPlayingBar({
 }: NowPlayingBarProps) {
   const serverNow = useServerNow(clockOffsetMs, track !== null)
   const position = track ? Math.min(track.durationSec, trackPositionSec(track, serverNow)) : 0
-  const note = STATUS_NOTES[status]
+  const unavailable = status === 'video-unavailable'
+  const note = unavailable ? UNAVAILABLE_TEXT[unavailableReason ?? 'other'].note : STATUS_NOTES[status]
   const needsTap = status === 'sound-blocked' || status === 'tap-needed'
 
   return (
@@ -98,7 +102,8 @@ export default function NowPlayingBar({
       )}
 
       {note && (
-        <p className="bar__note" role="status">
+        // The video screen announces the unavailable track in full: the bar only repeats it, shorter, for the eye.
+        <p className="bar__note" role={unavailable ? undefined : 'status'}>
           {note}
         </p>
       )}

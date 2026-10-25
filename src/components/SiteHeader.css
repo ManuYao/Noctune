@@ -77,6 +77,32 @@
   .site-header__pseudo {
     display: none;
   }
+
+  /* With "Playlist" in the navigation the row is full. A word never breaks over two lines, the avatar (next to the
+     pseudo, which is hidden already) steps aside, and on the narrowest phones the links wrap onto a second row: the page
+     must never be wider than the screen. */
+  .site-header__nav {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+
+  .site-header__account button {
+    padding: 0 12px;
+  }
+
+  .site-header__nav a,
+  .site-header__account button {
+    white-space: nowrap;
+  }
+
+  .site-header__nav a {
+    padding: 0 8px;
+  }
+
+  .site-header__account > svg {
+    display: none;
+  }
 }
 
 .site-header__error {

@@ -69,11 +69,37 @@
   min-width: 0;
 }
 
-/* Empty most of the time, so it takes no room; it is a live region for refusals. */
+/* "+ Playlist": an outline in the cyan of everything that is not a vote. */
+.reactions__keep {
+  border-color: var(--border-field);
+  color: var(--text);
+}
+
+/* The DJ's bar is the busiest one (two notes beside the buttons): there "+ Playlist" is its icon only. The name is read
+   out and shown as a tooltip. */
+.reactions--own .reactions__keep .reactions__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.reactions--own .reactions__keep {
+  padding: 0 12px;
+}
+
+/* Empty most of the time, so it takes no room; it is a live region for refusals and for what was kept. */
 .reactions__message {
   margin: 0;
   color: var(--accent);
   font-weight: 600;
+}
+
+.reactions__message[data-kind='info'] {
+  color: var(--accent-2);
 }
 
 /* Hearts that rise from the button when the viewer likes. They stay around the button: nothing is

@@ -16,6 +16,7 @@ import {
   type Reactions,
   type RoomRules,
   type Track,
+  type TrackStatus,
   type VideoInfo,
 } from '../../shared/protocol'
 import { pseudoKey } from '../../shared/validation'
@@ -327,6 +328,18 @@ export class Room {
     this.scheduleQueueBroadcast()
     this.takeOverFromHouse()
     return { ok: true, track }
+  }
+
+  /**
+   * Would this room take this video now? The same checks, in the same order, as `addTrack` makes, without changing
+   * anything: for showing a member their playlist with the room's verdict on each track.
+   */
+  statusOf(video: { videoId: string; durationSec: number }, now = Date.now()): TrackStatus {
+    const refusal = this.refusal(video, now)
+    if (refusal?.reason === 'too-long') return { state: 'too-long', maxSec: refusal.maxSec }
+    if (refusal) return { state: 'recently-played', retryAfterSec: refusal.retryAfterSec }
+    if (this.nowPlaying?.videoId === video.videoId || this.booth.hasVideo(video.videoId)) return { state: 'queued' }
+    return { state: 'ok' }
   }
 
   /** Takes one track out of the member's own line-up. */

@@ -13,6 +13,8 @@
   --border-field: #7a70b8;
   --accent: #ff3d81;
   --accent-2: #3de0ff;
+  /* What is not available right now (a track the room would refuse): information, not an error. */
+  --warn: #ffd166;
   --on-accent: #0e0b1f;
   --outline: #16142b;
 
@@ -33,6 +35,7 @@
 
 [data-theme='vinyl'] {
   color-scheme: light;
+  --warn: #8a5a00;
   --accent: #3b4cff;
   --accent-2: #ff5c8a;
 }

@@ -4,6 +4,8 @@ import { createNoctuneServer } from './createServer'
 import { createPool } from './db/pool'
 import { loadLocalEnv } from './env'
 import { parseAllowedOrigins } from './http/origin'
+import { PgPlaylistStore } from './playlists/PgPlaylistStore'
+import type { PlaylistStore } from './playlists/PlaylistStore'
 import { YouTubeResolver } from './youtube/YouTubeResolver'
 
 loadLocalEnv()
@@ -38,27 +40,29 @@ const trustedProxies = setting(() => {
 // The session cookie only travels over HTTPS when the site is served over HTTPS.
 const secureCookies = process.env.NODE_ENV === 'production' || allowedOrigins.every((origin) => origin.startsWith('https://'))
 
-/** Accounts need a database. Without DATABASE_URL the server still runs, for visitors only. */
-async function openAccounts(): Promise<AccountService | null> {
+/** Accounts and playlists need a database. Without DATABASE_URL the server still runs, for visitors only. */
+async function openDatabase(): Promise<{ accounts: AccountService; playlistStore: PlaylistStore } | null> {
   const url = process.env.DATABASE_URL
   if (!url) {
-    console.log('[base] DATABASE_URL absent : le serveur tourne sans comptes (visiteurs seulement). Voir npm run db:setup.')
+    console.log('[base] DATABASE_URL absent : le serveur tourne sans comptes ni playlists (visiteurs seulement). Voir npm run db:setup.')
     return null
   }
   const pool = createPool(url)
   try {
     // Fails now, and loudly, rather than at the first sign-in.
     await pool.query('SELECT 1 FROM users LIMIT 1')
+    await pool.query('SELECT 1 FROM playlists LIMIT 1')
   } catch (error) {
     console.error(`[base] base inaccessible ou pas à jour : ${(error as Error).message}. Essaie npm run db:migrate.`)
     await pool.end()
     process.exit(1)
   }
-  console.log('[base] comptes activés.')
-  return new AccountService(new PgAccountStore(pool))
+  console.log('[base] comptes et playlists activés.')
+  return { accounts: new AccountService(new PgAccountStore(pool)), playlistStore: new PgPlaylistStore(pool) }
 }
 
-const accounts = await openAccounts()
+const database = await openDatabase()
+const accounts = database?.accounts ?? null
 if (accounts) {
   // The counters of attempts are cleaned every minute (they grow with every address seen), the expired sessions hourly.
   setInterval(() => accounts.sweepLimits(), MINUTE_MS).unref()
@@ -80,5 +84,14 @@ function openResolver(): YouTubeResolver | null {
 
 const resolver = openResolver()
 
-const { httpServer } = createNoctuneServer({ accounts, resolver, allowedOrigins, secureCookies, trustedProxies })
+const { httpServer, playlists } = createNoctuneServer({
+  accounts,
+  playlistStore: database?.playlistStore ?? null,
+  resolver,
+  allowedOrigins,
+  secureCookies,
+  trustedProxies,
+})
+// The counters of requests to the playlists are cleaned every minute, like those of the accounts.
+if (playlists) setInterval(() => playlists.sweep(), MINUTE_MS).unref()
 httpServer.listen(PORT, () => console.log(`Serveur temps réel sur :${PORT}`))

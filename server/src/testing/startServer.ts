@@ -8,6 +8,9 @@ import { AccountService, type AccountServiceOptions } from '../accounts/AccountS
 import type { AccountStore } from '../accounts/AccountStore'
 import { MemoryAccountStore } from '../accounts/MemoryAccountStore'
 import { createNoctuneServer, type ServerOptions } from '../createServer'
+import { MemoryPlaylistStore } from '../playlists/MemoryPlaylistStore'
+import type { PlaylistService } from '../playlists/PlaylistService'
+import type { PlaylistStore } from '../playlists/PlaylistStore'
 import type { IoServer } from '../registerRoomHandlers'
 
 export const ORIGIN = 'http://localhost:5173'
@@ -27,6 +30,9 @@ export interface Started {
   url: string
   store: AccountStore
   service: AccountService | null
+  /** Where the playlists are kept: memory by default (null when started without accounts or with `playlistStore: null`). */
+  playlistStore: PlaylistStore | null
+  playlists: PlaylistService | null
   io: IoServer
   httpServer: HttpServer
   /** A connection to the realtime server. `cookie` is what the browser would send along. */
@@ -37,7 +43,8 @@ export interface Started {
 export async function startServer(options: StartOptions = {}): Promise<Started> {
   const store = options.store ?? new MemoryAccountStore()
   const service = options.withoutAccounts ? null : new AccountService(store, { cost: CHEAP_COST, ...options.service })
-  const { httpServer, io } = createNoctuneServer({
+  const playlistStore = options.withoutAccounts ? null : 'playlistStore' in options ? (options.playlistStore ?? null) : new MemoryPlaylistStore()
+  const { httpServer, io, playlists } = createNoctuneServer({
     skipProtectedSec: 0,
     lobbyDelayMs: 20,
     queueBroadcastMs: 20,
@@ -50,6 +57,7 @@ export async function startServer(options: StartOptions = {}): Promise<Started> 
     allowedOrigins: [ORIGIN],
     ...options,
     accounts: service,
+    playlistStore,
   })
   await new Promise<void>((resolve) => httpServer.listen(0, '127.0.0.1', resolve))
   const url = `http://127.0.0.1:${(httpServer.address() as AddressInfo).port}`
@@ -80,6 +88,8 @@ export async function startServer(options: StartOptions = {}): Promise<Started> 
     url,
     store,
     service,
+    playlistStore,
+    playlists,
     io,
     httpServer,
     connect: open,

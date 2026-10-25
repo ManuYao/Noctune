@@ -37,9 +37,9 @@ export interface ApiOptions {
   onSessionEnded?: (token: string) => void
 }
 
-type ReadResult = { ok: true; value: unknown } | { ok: false; status: 400 | 408 | 413 | 415 }
+export type ReadResult = { ok: true; value: unknown } | { ok: false; status: 400 | 408 | 413 | 415 }
 
-function readJson(req: IncomingMessage): Promise<ReadResult> {
+export function readJson(req: IncomingMessage): Promise<ReadResult> {
   if (!/^application\/json\s*(;|$)/i.test(req.headers['content-type'] ?? '')) return Promise.resolve({ ok: false, status: 415 })
   return new Promise((resolve) => {
     const chunks: Buffer[] = []
@@ -68,7 +68,7 @@ function readJson(req: IncomingMessage): Promise<ReadResult> {
   })
 }
 
-function send(res: ServerResponse, status: number, body: unknown, headers: Record<string, string | string[]> = {}) {
+export function send(res: ServerResponse, status: number, body: unknown, headers: Record<string, string | string[]> = {}) {
   const text = JSON.stringify(body)
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',

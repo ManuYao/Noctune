@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { trackPositionSec } from '../../shared/clock'
 import { OWN_SKIP_MIN_SEC, SKIP_PROTECTED_SEC, type MyReactions, type Reactions, type Track } from '../../shared/protocol'
+import { useAccount } from '../auth/useAccount'
+import { keepInPlaylist } from '../playlists/keepInPlaylist'
 import { useServerNow } from '../player/useServerNow'
 import type { SendReactionResult } from '../realtime/useRoom'
 import ReactionIcon from './ReactionIcon'
@@ -21,6 +23,8 @@ interface ReactionButtonsProps {
 }
 
 const MESSAGE_MS = 3000
+// What was kept, or why not, is read rather than glanced at: it stays a little longer.
+const KEEP_MESSAGE_MS = 4500
 
 function errorMessage(result: Exclude<SendReactionResult, { ok: true }>, onDecks: boolean): string {
   switch (result.error) {
@@ -54,7 +58,11 @@ export default function ReactionButtons({
   onSkip,
 }: ReactionButtonsProps) {
   const serverNow = useServerNow(clockOffsetMs, track !== null)
+  const { account } = useAccount()
   const [message, setMessage] = useState('')
+  // A refusal is in the colour of refusals; "kept in your playlist" is good news.
+  const [messageKind, setMessageKind] = useState<'error' | 'info'>('error')
+  const [keeping, setKeeping] = useState(false)
   const [heartBurst, setHeartBurst] = useState(0)
   const messageTimer = useRef<number | undefined>(undefined)
   useEffect(() => () => window.clearTimeout(messageTimer.current), [])
@@ -70,9 +78,25 @@ export default function ReactionButtons({
   async function react(send: (value: boolean) => Promise<SendReactionResult>, value: boolean) {
     const result = await send(value)
     if (result.ok) return
-    setMessage(errorMessage(result, onDecks))
+    show('error', errorMessage(result, onDecks), MESSAGE_MS)
+  }
+
+  function show(kind: 'error' | 'info', text: string, forMs: number) {
+    setMessageKind(kind)
+    setMessage(text)
     window.clearTimeout(messageTimer.current)
-    messageTimer.current = window.setTimeout(() => setMessage(''), MESSAGE_MS)
+    messageTimer.current = window.setTimeout(() => setMessage(''), forMs)
+  }
+
+  /** "+ Playlist": keeps the track that plays in the member's active playlist (one is made for a member who has none). */
+  async function handleKeep() {
+    if (!track || keeping) return
+    setKeeping(true)
+    const result = await keepInPlaylist(track.videoId)
+    setKeeping(false)
+    if (result.ok) show('info', `Gardé dans « ${result.playlistName} ».`, KEEP_MESSAGE_MS)
+    else if (result.error === 'already') show('info', `Déjà dans « ${result.playlistName} ».`, KEEP_MESSAGE_MS)
+    else show('error', result.message, KEEP_MESSAGE_MS)
   }
 
   function handleLike() {
@@ -136,6 +160,20 @@ export default function ReactionButtons({
             </span>
           </button>
         )}
+        {/* Playlists are the members': a visitor has none to keep a track in. */}
+        {account && (
+          <button
+            type="button"
+            className="reactions__button reactions__keep"
+            aria-label="Garder ce morceau dans ma playlist"
+            title="Garder ce morceau dans ma playlist"
+            disabled={track === null || keeping}
+            onClick={() => void handleKeep()}
+          >
+            <ReactionIcon kind="plus" />
+            <span className="reactions__label">Playlist</span>
+          </button>
+        )}
       </div>
       {onDecks ? (
         // Said in words, not only in a tooltip: a touch screen has no hover.
@@ -154,7 +192,7 @@ export default function ReactionButtons({
           {hint}
         </p>
       )}
-      <p className="reactions__message" role="status">
+      <p className="reactions__message" data-kind={messageKind} role="status">
         {message}
       </p>
     </div>

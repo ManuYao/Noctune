@@ -15,4 +15,9 @@ export type ResolveResult = { ok: true; video: VideoInfo } | { ok: false; error:
 export interface TrackResolver {
   /** Never throws: whatever goes wrong on the way (network, quota, malformed answer) is an error value. */
   resolve(input: string): Promise<ResolveResult>
+  /**
+   * Several known video ids at once (a playlist being refreshed): one call to YouTube per 50 ids, not one per id.
+   * Every id asked about is in the answer. Never throws.
+   */
+  resolveMany(videoIds: readonly string[]): Promise<Map<string, ResolveResult>>
 }

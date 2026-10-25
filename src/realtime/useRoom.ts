@@ -10,6 +10,7 @@ import type {
   JoinError,
   MyReactions,
   Participant,
+  PlaylistStatusResult,
   QueuedTrack,
   ReactResult,
   Reactions,
@@ -32,6 +33,7 @@ export type RoomStatus = 'connecting' | 'joined' | 'error'
 export type SendChatResult = ChatResult | { ok: false; error: 'network' }
 export type SendReactionResult = ReactResult | { ok: false; error: 'network' }
 export type SendAddTrackResult = AddTrackResult | { ok: false; error: 'network' }
+export type SendPlaylistStatusResult = PlaylistStatusResult | { ok: false; error: 'network' }
 export type SendDjResult = DjResult | { ok: false; error: 'network' }
 
 /** Something the server told this DJ, and nobody else. The id lets the screen drop it once it was read. */
@@ -120,6 +122,29 @@ async function emitAddTrack(input: string): Promise<SendAddTrackResult> {
   }
 }
 
+/** Lines up a track of one of the member's own playlists: the server finds the video from its own records. */
+async function emitAddFromPlaylist(playlistTrackId: string): Promise<SendAddTrackResult> {
+  if (!socket.connected) return { ok: false, error: 'network' }
+  try {
+    // A track whose details are old is read from YouTube again first, like a link.
+    const result: AddTrackResult = await socket.timeout(DJ_ADD_ACK_TIMEOUT_MS).emitWithAck('dj:add', { playlistTrackId })
+    return result
+  } catch {
+    return { ok: false, error: 'network' }
+  }
+}
+
+/** For each track of a playlist: would this room take it now? Answered from what the server already knows. */
+async function emitPlaylistStatus(playlistId: string): Promise<SendPlaylistStatusResult> {
+  if (!socket.connected) return { ok: false, error: 'network' }
+  try {
+    const result: PlaylistStatusResult = await socket.timeout(ACK_TIMEOUT_MS).emitWithAck('dj:playlist-status', { playlistId })
+    return result
+  } catch {
+    return { ok: false, error: 'network' }
+  }
+}
+
 async function emitRemoveTrack(trackId: string): Promise<SendDjResult> {
   if (!socket.connected) return { ok: false, error: 'network' }
   try {
@@ -146,6 +171,8 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
   like: (value: boolean) => Promise<SendReactionResult>
   voteSkip: (value: boolean) => Promise<SendReactionResult>
   addTrack: (input: string) => Promise<SendAddTrackResult>
+  addFromPlaylist: (playlistTrackId: string) => Promise<SendAddTrackResult>
+  playlistStatus: (playlistId: string) => Promise<SendPlaylistStatusResult>
   removeTrack: (trackId: string) => Promise<SendDjResult>
   leaveQueue: () => Promise<SendDjResult>
   dismissNotice: (id: number) => void
@@ -306,6 +333,8 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
   // The queue and the line-up change through what the server pushes (`dj:queue`, `dj:lineup`), not through these
   // answers: the screen shows what the server holds, never a guess.
   const addTrack = useCallback((input: string) => emitAddTrack(input), [])
+  const addFromPlaylist = useCallback((playlistTrackId: string) => emitAddFromPlaylist(playlistTrackId), [])
+  const playlistStatus = useCallback((playlistId: string) => emitPlaylistStatus(playlistId), [])
   const removeTrack = useCallback((trackId: string) => emitRemoveTrack(trackId), [])
   const leaveQueue = useCallback(() => emitLeaveQueue(), [])
   const dismissNotice = useCallback(
@@ -313,5 +342,5 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
     [],
   )
 
-  return { ...state, sendChat, like, voteSkip, addTrack, removeTrack, leaveQueue, dismissNotice }
+  return { ...state, sendChat, like, voteSkip, addTrack, addFromPlaylist, playlistStatus, removeTrack, leaveQueue, dismissNotice }
 }

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { DjQueue, QueuedTrack, RoomRules, Track } from '../../shared/protocol'
-import type { SendAddTrackResult, SendDjResult } from '../realtime/useRoom'
+import type { SendAddTrackResult, SendDjResult, SendPlaylistStatusResult } from '../realtime/useRoom'
 import DjDialogContent from './DjDialogContent'
 import './DjDialog.css'
 
@@ -15,6 +15,8 @@ interface DjDialogProps {
   /** Milliseconds to add to the local clock to get the server clock. */
   clockOffsetMs: number
   onAdd: (input: string) => Promise<SendAddTrackResult>
+  onAddFromPlaylist: (playlistTrackId: string) => Promise<SendAddTrackResult>
+  onPlaylistStatus: (playlistId: string) => Promise<SendPlaylistStatusResult>
   onRemove: (trackId: string) => Promise<SendDjResult>
   onLeave: () => Promise<SendDjResult>
 }

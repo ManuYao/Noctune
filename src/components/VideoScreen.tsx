@@ -10,18 +10,37 @@ interface VideoScreenProps {
   pulseKey: number
   /** Replaces the video when there is none to show. Never laid over a video that is playing. */
   message: string | null
+  /** A line in bold above the message. */
+  messageTitle?: string | null
+  /** Said aloud when it appears (a state the viewer must learn about, not a passing "waiting for the next track"). */
+  announce?: boolean
   /** Lets taps reach the YouTube player, for browsers that only start a video when it is touched. */
   interactive: boolean
 }
 
-export default function VideoScreen({ hostRef, boomKey, pulseKey, message, interactive }: VideoScreenProps) {
+export default function VideoScreen({
+  hostRef,
+  boomKey,
+  pulseKey,
+  message,
+  messageTitle = null,
+  announce = false,
+  interactive,
+}: VideoScreenProps) {
   return (
     <div className={interactive ? 'screen screen--interactive' : 'screen'}>
       {boomKey !== undefined && <span key={boomKey} className="screen__boom" aria-hidden="true" />}
       {pulseKey > 0 && <span key={pulseKey} className="screen__pulse" aria-hidden="true" />}
       <div className="screen__video">
         <div ref={hostRef} className="screen__host" />
-        {message && <p className="screen__message">{message}</p>}
+        {message && (
+          <div className="screen__message" role={announce ? 'status' : undefined}>
+            <div className="screen__message-body">
+              {messageTitle && <strong className="screen__message-title">{messageTitle}</strong>}
+              <p>{message}</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

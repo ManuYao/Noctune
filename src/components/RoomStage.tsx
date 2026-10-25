@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import type { DjQueue, MyReactions, Participant, Reactions, Track } from '../../shared/protocol'
 import { useVolume } from '../player/useVolume'
+import { UNAVAILABLE_TEXT } from '../player/unavailable'
 import { useYouTubePlayer, type PlayerStatus } from '../player/useYouTubePlayer'
 import { ownSkipHint } from '../realtime/djMessages'
 import { findMyPlace } from '../realtime/djQueue'
@@ -47,7 +48,11 @@ export default function RoomStage({
 }: RoomStageProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const { volume, muted, setVolume, toggleMute } = useVolume()
-  const { status, enableSound } = useYouTubePlayer(hostRef, { track, clockOffsetMs, volume, muted })
+  const { status, unavailableReason, enableSound } = useYouTubePlayer(hostRef, { track, clockOffsetMs, volume, muted })
+  // This viewer's player could not play the track (blocked in their country, forbidden by its owner, removed): they are
+  // told on the screen, which has nothing else to show. The room does not skip the track for one person: the others
+  // hear it, and this one goes on with the next.
+  const unavailable = status === 'video-unavailable' ? UNAVAILABLE_TEXT[unavailableReason ?? 'other'] : null
 
   // The DJ on the decks does not like or vote on their own track; skipping it hands the decks over, and the button
   // says to whom (the next DJ who can play, or their own next track).
@@ -63,7 +68,9 @@ export default function RoomStage({
           hostRef={hostRef}
           boomKey={track?.startedAt}
           pulseKey={likePulse}
-          message={SCREEN_MESSAGES[status] ?? null}
+          message={unavailable ? unavailable.text : (SCREEN_MESSAGES[status] ?? null)}
+          messageTitle={unavailable?.title}
+          announce={unavailable !== null}
           interactive={status === 'tap-needed'}
         />
       </Scene>
@@ -73,6 +80,7 @@ export default function RoomStage({
         ownTurn={onDecks}
         clockOffsetMs={clockOffsetMs}
         status={status}
+        unavailableReason={unavailableReason}
         volume={volume}
         muted={muted}
         onVolumeChange={setVolume}
