@@ -18,6 +18,8 @@ const MESSAGES: Record<Exclude<AuthError, 'rate-limited'> | 'network', string> =
   'bad-credentials': 'E-mail ou mot de passe incorrect.',
   'bad-request': 'Quelque chose a échoué. Recharge la page et réessaie.',
   forbidden: 'Cette demande a été refusée. Recharge la page et réessaie.',
+  'not-signed-in': 'Ta session a pris fin. Connecte-toi de nouveau.',
+  'wrong-password': "Le mot de passe actuel n'est pas le bon.",
   unavailable: "Les comptes ne sont pas disponibles pour l'instant. Tu peux quand même écouter sans compte.",
   busy: 'Le serveur est très sollicité. Réessaie dans un instant.',
   'server-error': 'Le serveur a eu un souci. Réessaie dans un instant.',

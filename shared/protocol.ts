@@ -322,12 +322,29 @@ export type AuthError =
   | 'unavailable'
   /** Too many passwords being checked at once. */
   | 'busy'
+  /** A request that needs a session was made without one (or with one that ended). */
+  | 'not-signed-in'
+  /** The current password given to confirm a sensitive change is not the account's. */
+  | 'wrong-password'
   | 'server-error'
 
 export type AuthResult =
   | { ok: true; account: Account }
   | { ok: false; error: Exclude<AuthError, 'rate-limited'> }
   | { ok: false; error: 'rate-limited'; retryAfterSec: number }
+
+// ---- The member's own account (HTTP, under /api/auth; a session is needed, and the origin is checked on every method)
+//
+//   PATCH  /api/auth/me          { pseudo?, avatarId? }                -> AuthResult           the new account
+//   POST   /api/auth/password    { currentPassword, newPassword }      -> AuthResult           this session stays, every other one ends
+//   POST   /api/auth/logout-all  {}                                    -> AuthDone             every session ends, this one included
+//   DELETE /api/auth/me          { password }                          -> AuthDone             the account and everything of theirs goes
+//   GET    /api/auth/export                                            -> the member's data as a JSON file (right of access)
+//
+// A pseudo or avatar change shows in a room the next time the member enters it.
+
+/** The answer of a call that gives nothing back but "done". */
+export type AuthDone = { ok: true } | { ok: false; error: Exclude<AuthError, 'rate-limited'> } | { ok: false; error: 'rate-limited'; retryAfterSec: number }
 
 /** The account behind the session cookie, or null for a visitor. */
 export type SessionResult = { ok: true; account: Account | null }

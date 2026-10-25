@@ -52,6 +52,13 @@ export interface RoomStore {
   create(host: { accountId: string; pseudo: string }, id: string, input: RoomInput, max: number): Promise<CreateRoomResult>
   update(accountId: string, id: string, input: RoomInput): Promise<ChangeRoomResult>
   delete(accountId: string, id: string): Promise<DeleteRoomResult>
+  /**
+   * Every room the member hosts, deleted; the ids that went. The end of their account: in the database the cascade from the
+   * account already did it (this finds nothing to do); in memory nothing else would.
+   */
+  deleteByHost(accountId: string): Promise<string[]>
+  /** The host changed their pseudo. The database reads it from the account; a store that keeps a copy updates it. */
+  renameHost(accountId: string, pseudo: string): Promise<void>
 }
 
 /** The six rooms of the team, as migration 003 puts them in the database. */

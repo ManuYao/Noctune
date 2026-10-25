@@ -231,8 +231,10 @@ describe('what the API refuses', () => {
     assert.equal(get.headers.allow, 'POST')
     const post = await api(server.url, '/api/auth/me', { method: 'POST', body: {} })
     assert.equal(post.status, 405)
-    assert.equal(post.headers.allow, 'GET')
+    assert.equal(post.headers.allow, 'GET, PATCH, DELETE')
     for (const method of ['PUT', 'DELETE', 'PATCH']) assert.equal((await api(server.url, '/api/auth/login', { method, body: {} })).status, 405, method)
+    const put = await api(server.url, '/api/auth/me', { method: 'PUT', body: {} })
+    assert.equal(put.status, 405)
   })
 
   it('a route that does not exist, including the names every object has', async () => {

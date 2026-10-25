@@ -45,6 +45,25 @@ export function describeRoomStoreContract(name: string, open: () => Promise<Room
       })
     }
 
+    test('drops every room a member hosts, tells which, and touches neither the team\'s rooms nor another host\'s', async (store, ann, ben) => {
+      const mine = [await made(store, ann, 'Rock nocturne'), await made(store, ann, 'Jazz de nuit')]
+      const bens = await made(store, ben, 'Salon de Ben')
+      const gone = await store.deleteByHost(ann.id)
+      assert.deepEqual([...gone].sort(), mine.map((room) => room.id).sort())
+      assert.deepEqual(await store.listByHost(ann.id), [])
+      assert.ok(await store.get(bens.id), 'another host keeps their room')
+      assert.equal((await store.list()).filter((room) => room.hostAccountId === null).length, ROOM_DEFS.length, 'the rooms of the team stay')
+      assert.deepEqual(await store.deleteByHost(ann.id), [], 'again: nothing to delete')
+    })
+
+    test('lets a store that keeps a copy of the host\'s pseudo update it, and reads a changed one either way', async (store, ann) => {
+      const room = await made(store, ann, 'Rock nocturne')
+      await store.renameHost(ann.id, 'Anna')
+      const read = await store.get(room.id)
+      // A database reads the pseudo from the account (which this test did not change): only the copy of a memory store moves.
+      assert.ok(read?.hostPseudo === 'Anna' || read?.hostPseudo === ann.pseudo, `host pseudo is ${read?.hostPseudo}`)
+    })
+
     async function made(store: RoomStore, host: { id: string; pseudo: string }, roomName: string, extra: Partial<RoomInput> = {}) {
       const id = freshId()
       const created = await store.create({ accountId: host.id, pseudo: host.pseudo }, id, input(roomName, extra), MAX)

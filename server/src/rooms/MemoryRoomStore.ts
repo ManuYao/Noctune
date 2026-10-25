@@ -76,6 +76,21 @@ export class MemoryRoomStore implements RoomStore {
     return { ok: true, room: copy(entry.room) }
   }
 
+  async deleteByHost(accountId: string): Promise<string[]> {
+    const gone: string[] = []
+    for (const [id, entry] of this.entries) {
+      if (entry.room.hostAccountId === accountId) {
+        this.entries.delete(id)
+        gone.push(id)
+      }
+    }
+    return gone
+  }
+
+  async renameHost(accountId: string, pseudo: string): Promise<void> {
+    for (const entry of this.entries.values()) if (entry.room.hostAccountId === accountId) entry.room.hostPseudo = pseudo
+  }
+
   async delete(accountId: string, id: string): Promise<DeleteRoomResult> {
     const entry = this.entries.get(id)
     if (!entry) return { ok: false, error: 'room-not-found' }

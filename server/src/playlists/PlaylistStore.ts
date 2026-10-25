@@ -53,6 +53,11 @@ export type AddTrackResult =
 export interface PlaylistStore {
   /** The member's playlists, oldest first. */
   list(accountId: string): Promise<StoredPlaylist[]>
+  /**
+   * Everything the member has, tracks included: the end of their account. In the database the cascade from the account
+   * already did it (this finds nothing to do); in memory nothing else would.
+   */
+  deleteAll(accountId: string): Promise<void>
   /** Fails, with nothing created, when the name key is used by another playlist of the member or they have `max` already. */
   create(accountId: string, name: string, nameKey: string, max: number): Promise<CreatePlaylistResult>
   rename(accountId: string, playlistId: string, name: string, nameKey: string): Promise<RenamePlaylistResult>

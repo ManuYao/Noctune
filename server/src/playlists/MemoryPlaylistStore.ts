@@ -33,6 +33,10 @@ export class MemoryPlaylistStore implements PlaylistStore {
     return { id: entry.id, name: entry.name, trackCount: entry.tracks.length }
   }
 
+  async deleteAll(accountId: string): Promise<void> {
+    for (const [id, entry] of this.playlists) if (entry.accountId === accountId) this.playlists.delete(id)
+  }
+
   async list(accountId: string): Promise<StoredPlaylist[]> {
     return [...this.playlists.values()]
       .filter((entry) => entry.accountId === accountId)

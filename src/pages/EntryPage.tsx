@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import Avatar from '../components/Avatar'
 import AvatarPicker from '../components/AvatarPicker'
 import SiteHeader from '../components/SiteHeader'
@@ -16,6 +16,8 @@ import './EntryPage.css'
 export default function EntryPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  // A short message from the page that sent us here ("Ton compte a été supprimé.").
+  const notice = (useLocation().state as { notice?: unknown } | null)?.notice
   const [pseudo, setPseudo] = useState(() => readEntryDraft().pseudo)
   const [avatarId, setAvatarId] = useState<AvatarId>(() => readEntryDraft().avatarId)
   const [error, setError] = useState('')
@@ -51,6 +53,11 @@ export default function EntryPage() {
     <div className="entry">
       <SiteHeader />
       <main className="entry__main">
+        {typeof notice === 'string' && (
+          <p className="entry__notice" role="status">
+            {notice}
+          </p>
+        )}
         <section className="entry__hero">
           <h1>Écoute ensemble.</h1>
           <p className="entry__tagline">Partage ta musique.</p>

@@ -67,14 +67,20 @@ export type IoServer = Server<ClientToServerEvents, ServerToClientEvents, Record
 export interface Realtime {
   /** Closes the connections opened with this session. The page opens new ones, as a visitor. */
   endSession: (token: string) => void
+  /**
+   * Cuts the connections of an account: all of them, or all but those opened with the session whose key is given (the one
+   * that just changed the password). With `forget`, the account is gone for good: its places are taken out of every DJ queue
+   * too, whether it was present or not.
+   */
+  endAccount: (accountId: string, options?: { exceptSessionKey?: string; forget?: boolean }) => void
   /** A host made a room: it can be joined, and the list shows it. */
   roomCreated: (room: StoredRoom) => void
   /** A host changed a room: the people in it are told, the list is updated, the new rules count from now on. */
   roomUpdated: (room: StoredRoom) => void
   /**
    * A host deleted a room: everybody in it is told and put out, nothing of it is left running.
-   * The deletion of an ACCOUNT that hosts rooms (a later step) takes their rooms out of the database with it (ON DELETE
-   * CASCADE): it must call this for each of them, or the live rooms would outlive their host.
+   * The deletion of an ACCOUNT that hosts rooms takes their rooms out of the database with it (ON DELETE CASCADE): the
+   * account lifecycle (createServer.ts) calls this for each of them, or the live rooms would outlive their host.
    */
   roomDeleted: (id: string) => void
 }
@@ -585,6 +591,16 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
       for (const socket of io.sockets.sockets.values()) {
         if (socket.data.sessionKey === key) socket.disconnect(true)
       }
+    },
+
+    endAccount(accountId, { exceptSessionKey, forget = false } = {}) {
+      // The account of a connection was learned from its cookie when it opened: it is what says whose it is.
+      for (const socket of [...io.sockets.sockets.values()]) {
+        if (socket.data.account?.id !== accountId) continue
+        if (exceptSessionKey !== undefined && socket.data.sessionKey === exceptSessionKey) continue
+        socket.disconnect(true)
+      }
+      if (forget) for (const room of rooms.values()) room.forgetAccount(accountId)
     },
 
     roomCreated(def) {

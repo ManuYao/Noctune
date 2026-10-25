@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Account } from '../../shared/protocol'
 import { socket } from '../realtime/socket'
+import * as accountApi from './accountApi'
 import { AccountContext, type AccountState } from './accountContext'
 import * as authApi from './authApi'
 
@@ -27,15 +28,18 @@ function notifyOtherTabs() {
   channel.close()
 }
 
+const accountKey = (account: Account) => `${account.email}|${account.pseudo}|${account.avatarId}`
+
 export default function AccountProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AccountState['status']>('loading')
   const [account, setAccount] = useState<Account | null>(null)
-  // What this tab believes, readable from the callbacks that outlive a render.
-  const knownEmail = useRef<string | null>(null)
+  // What this tab believes, readable from the callbacks that outlive a render. The pseudo and the avatar are part of it:
+  // a profile changed in another tab must show here too.
+  const knownKey = useRef<string | null>(null)
   const lastRefresh = useRef(0)
 
   const adopt = useCallback((next: Account | null) => {
-    knownEmail.current = next?.email ?? null
+    knownKey.current = next ? accountKey(next) : null
     setAccount(next)
     setStatus('ready')
   }, [])
@@ -63,7 +67,7 @@ export default function AccountProvider({ children }: { children: ReactNode }) {
       const found = await authApi.fetchSession()
       // Could not be asked: what is known stays.
       if (!active || found === undefined) return
-      if ((found?.email ?? null) !== knownEmail.current) {
+      if ((found ? accountKey(found) : null) !== knownKey.current) {
         adopt(found)
         reopenConnection()
       }
@@ -97,6 +101,19 @@ export default function AccountProvider({ children }: { children: ReactNode }) {
     [adopt],
   )
 
+  /** A session that ended under the page (another browser changed the password, signed out everywhere): signed out here. */
+  const watching = useCallback(
+    async <T extends { ok: boolean }>(call: Promise<T>): Promise<T> => {
+      const result = await call
+      if (!result.ok && (result as { error?: string }).error === 'not-signed-in') {
+        adopt(null)
+        reopenConnection()
+      }
+      return result
+    },
+    [adopt],
+  )
+
   const value = useMemo<AccountState>(
     () => ({
       status,
@@ -111,8 +128,37 @@ export default function AccountProvider({ children }: { children: ReactNode }) {
         notifyOtherTabs()
         return true
       },
+      updateProfile: async (input) => {
+        const result = await watching(accountApi.updateProfile(input))
+        if (result.ok) {
+          adopt(result.account)
+          // The realtime connection learned who it belongs to when it opened: it must learn the new pseudo and avatar.
+          reopenConnection()
+          notifyOtherTabs()
+        }
+        return result
+      },
+      changePassword: (input) => watching(accountApi.changePassword(input)),
+      logoutEverywhere: async () => {
+        const result = await watching(accountApi.logoutEverywhere())
+        if (result.ok) {
+          adopt(null)
+          reopenConnection()
+          notifyOtherTabs()
+        }
+        return result
+      },
+      deleteAccount: async (password) => {
+        const result = await watching(accountApi.deleteAccount(password))
+        if (result.ok) {
+          adopt(null)
+          reopenConnection()
+          notifyOtherTabs()
+        }
+        return result
+      },
     }),
-    [status, account, enter, adopt],
+    [status, account, enter, adopt, watching],
   )
 
   return <AccountContext.Provider value={value}>{children}</AccountContext.Provider>

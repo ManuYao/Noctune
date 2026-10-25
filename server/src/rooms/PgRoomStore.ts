@@ -120,6 +120,14 @@ export class PgRoomStore implements RoomStore {
     }
   }
 
+  async deleteByHost(accountId: string): Promise<string[]> {
+    const { rows } = await this.pool.query<{ id: string }>('DELETE FROM rooms WHERE host_account_id = $1 RETURNING id', [accountId])
+    return rows.map((row) => row.id)
+  }
+
+  /** The pseudo of a host is read from their account (a join): there is no copy to update. */
+  async renameHost(): Promise<void> {}
+
   async delete(accountId: string, id: string): Promise<DeleteRoomResult> {
     return this.inTransaction(async (client): Promise<DeleteRoomResult> => {
       const found = await client.query<{ host_account_id: string | null }>('SELECT host_account_id FROM rooms WHERE id = $1 FOR UPDATE', [id])

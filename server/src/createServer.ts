@@ -1,5 +1,6 @@
 import { createServer, type Server as HttpServer } from 'node:http'
 import { Server } from 'socket.io'
+import type { AccountLifecycle } from './accounts/AccountLifecycle'
 import { createApiHandler } from './http/apiHandler'
 import { originAllowed } from './http/origin'
 import { createPlaylistHandler } from './http/playlistApi'
@@ -53,7 +54,8 @@ export function createNoctuneServer(options: ServerOptions): {
 
   // The rooms API changes the store, the realtime side holds the live rooms: the listener is filled in once both exist.
   const roomListener: RoomListener = {}
-  const rooms = new RoomService(options.roomStore ?? new MemoryRoomStore(), roomListener, options.roomOptions)
+  const roomStore = options.roomStore ?? new MemoryRoomStore()
+  const rooms = new RoomService(roomStore, roomListener, options.roomOptions)
   const roomApi = createRoomHandler(rooms, options.accounts ?? null, {
     allowedOrigins: options.allowedOrigins,
     writable: Boolean(options.roomStore) && Boolean(options.accounts),
@@ -61,11 +63,44 @@ export function createNoctuneServer(options: ServerOptions): {
 
   // The API ends sessions, the realtime side holds the connections they opened: each needs the other, one comes first.
   const sessionEnded: { handler?: (token: string) => void } = {}
+  const live: { realtime?: Realtime } = {}
+  // What a change of the member's account means for what lives elsewhere: the rooms and playlists they own, and the live
+  // rooms. In the database the deletion of the account takes the rows with it; the memory stores must do the same.
+  const lifecycle: AccountLifecycle = {
+    hostedRoomIds: async (accountId) => (await roomStore.listByHost(accountId)).map((room) => room.id),
+    exportData: async (accountId) => ({
+      playlists: playlists ? await playlists.exportOf(accountId) : [],
+      rooms: (await roomStore.listByHost(accountId)).map(({ name, description, styles, theme, rules }) => ({
+        name,
+        description,
+        styles: [...styles],
+        theme,
+        rules: { ...rules },
+      })),
+    }),
+    accountDeleted: async (accountId, hostedRoomIds) => {
+      try {
+        await roomStore.deleteByHost(accountId)
+        await options.playlistStore?.deleteAll(accountId)
+      } finally {
+        // Whatever the stores did, nothing of the account may stay alive: a store that fails must not leave its rooms
+        // open, its connections up and its DJ places taken until the process restarts.
+        for (const roomId of hostedRoomIds) live.realtime?.roomDeleted(roomId)
+        live.realtime?.endAccount(accountId, { forget: true })
+      }
+    },
+    sessionsEnded: (accountId, exceptSessionKey) => live.realtime?.endAccount(accountId, { exceptSessionKey }),
+    profileChanged: async (accountId, pseudo) => {
+      await roomStore.renameHost(accountId, pseudo)
+      for (const room of await roomStore.listByHost(accountId)) live.realtime?.roomUpdated(room)
+    },
+  }
   const api = createApiHandler(options.accounts ?? null, {
     allowedOrigins: options.allowedOrigins,
     secureCookies: options.secureCookies ?? false,
     trustedProxies: options.trustedProxies ?? 0,
     onSessionEnded: (token) => sessionEnded.handler?.(token),
+    lifecycle,
   })
   const httpServer = createServer((req, res) => {
     if (playlistApi(req, res)) return
@@ -85,6 +120,7 @@ export function createNoctuneServer(options: ServerOptions): {
     maxHttpBufferSize: 10_000,
   })
   const realtime = registerRoomHandlers(io, { ...options, lookupBudget, playlists })
+  live.realtime = realtime
   sessionEnded.handler = realtime.endSession
   roomListener.created = realtime.roomCreated
   roomListener.updated = realtime.roomUpdated

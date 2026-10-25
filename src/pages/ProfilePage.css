@@ -1,0 +1,162 @@
+/* The profile page (mock-up 5b): who I am, my pseudo and avatar, my password, my devices, my data, and the one thing that
+   cannot be undone, set apart at the end. Cards in a grid on a computer, stacked on a phone. */
+.profile {
+  --danger: #ff7a7a;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 16px clamp(16px, 5vw, 56px) 48px;
+}
+
+.profile__hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-width: 0;
+}
+
+.profile__hero h1 {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+}
+
+.profile__email {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.profile__email strong {
+  color: var(--text);
+}
+
+.profile__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.profile__card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--wall);
+}
+
+.profile__card h2 {
+  font-size: 1.15rem;
+}
+
+.profile__card label {
+  font-weight: 700;
+}
+
+.profile__card input {
+  min-height: var(--tap-main);
+  padding: 0 16px;
+  border: 2px solid var(--border-field);
+  border-radius: var(--radius-s);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.profile__card input[aria-invalid='true'] {
+  border-color: var(--accent);
+}
+
+.profile__hint {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+/* The line under a form always takes its place, so that the page does not jump when something is said. */
+.profile__feedback {
+  margin: 0;
+  min-height: 1.4em;
+  font-weight: 600;
+}
+
+.profile__feedback--done {
+  color: var(--accent-2);
+}
+
+.profile__feedback--error {
+  color: var(--accent);
+}
+
+.profile__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.profile__links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  color: var(--accent-2);
+  font-weight: 700;
+}
+
+.profile__secondary,
+.profile__danger {
+  align-self: flex-start;
+  min-height: var(--tap-main);
+  padding: 0 20px;
+  border-radius: var(--radius-m);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.profile__secondary {
+  border: 2px solid var(--border-field);
+  background: transparent;
+  color: var(--text);
+}
+
+.profile__secondary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.profile__card--danger {
+  border-color: var(--danger);
+}
+
+.profile__danger {
+  border: 2px solid var(--danger);
+  background: transparent;
+  color: var(--danger);
+}
+
+@media (max-width: 560px) {
+  .profile__hero {
+    gap: 14px;
+  }
+
+  .profile__secondary,
+  .profile__danger {
+    align-self: stretch;
+  }
+}
+
+/* The eight avatars take the width the card gives them: on the narrowest phones (320 px) three to a row, never a page
+   wider than the screen. (The picker is also used where there is more room: it is only squeezed here.) */
+.profile__card .avatar-picker {
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  min-width: 0;
+}
+
+.profile__card .avatar-picker button {
+  min-width: 0;
+}
+
+.profile__card .avatar-picker svg {
+  width: 100%;
+  max-width: 56px;
+  height: auto;
+}

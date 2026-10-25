@@ -407,6 +407,20 @@ export class Room {
     return { ok: true }
   }
 
+  /**
+   * An account is gone for good: its place in the queue goes with it (on the decks, its track is cut), absent or not. The
+   * connections of the account are closed by whoever calls this, which takes its participants out first.
+   */
+  forgetAccount(accountId: string): void {
+    const place = this.booth.find(accountId)
+    if (!place) return
+    const wasOnDecks = this.booth.current === place
+    this.booth.remove(place)
+    // Nobody is left to hear it, in an empty room: nothing to start.
+    if (wasOnDecks && this.participants.size > 0) this.advance()
+    else this.scheduleQueueBroadcast()
+  }
+
   private member(participantId: string): { ok: true; accountId: string; participant: Participant } | DjFailure {
     const participant = this.participants.get(participantId)
     if (!participant) return { ok: false, error: 'not-in-room' }

@@ -300,6 +300,18 @@ export function describePlaylistStoreContract(name: string, open: () => Promise<
       assert.deepEqual([track?.unavailable, track?.fetchedAt], [false, LATER])
     })
 
+    test('drops every playlist and track of a member, and only theirs', async (store, ann, ben) => {
+      const annOne = await filled(store, ann, 'Chill', 'a1', 'a2')
+      const annTwo = await filled(store, ann, 'Jazz', 'a1')
+      const benOne = await filled(store, ben, 'Chill', 'a1', 'b1')
+      await store.deleteAll(ann)
+      assert.deepEqual(await store.list(ann), [])
+      assert.equal(await store.get(ann, annOne), null)
+      assert.equal(await store.get(ann, annTwo), null)
+      assert.deepEqual(ids((await store.get(ben, benOne))?.tracks ?? []), [video('a1').videoId, video('b1').videoId], 'another member keeps theirs')
+      await store.deleteAll(ann) // again: nothing to do, no error
+    })
+
     test('does not touch other videos when it refreshes one', async (store, ann) => {
       const id = await filled(store, ann, 'Chill', 'a1', 'a2')
       await store.applyRefresh([{ videoId: video('a1').videoId, video: { ...video('a1'), title: 'Changed' }, at: LATER }])

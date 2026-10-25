@@ -36,6 +36,20 @@
   gap: 10px;
 }
 
+.site-header__nav .site-header__profile {
+  gap: 10px;
+  padding: 0 8px;
+  border-radius: 999px;
+}
+
+.site-header__nav .site-header__profile:hover {
+  background: var(--wall);
+}
+
+.site-header__profile-short {
+  display: none;
+}
+
 .site-header__pseudo {
   max-width: 14ch;
   overflow: hidden;
@@ -78,6 +92,10 @@
     display: none;
   }
 
+  .site-header__profile-short {
+    display: inline;
+  }
+
   /* With "Playlist" in the navigation the row is full. A word never breaks over two lines, the avatar (next to the
      pseudo, which is hidden already) steps aside, and on the narrowest phones the links wrap onto a second row: the page
      must never be wider than the screen. */
@@ -100,7 +118,7 @@
     padding: 0 8px;
   }
 
-  .site-header__account > svg {
+  .site-header__profile > svg {
     display: none;
   }
 }

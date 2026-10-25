@@ -132,6 +132,27 @@ export class PlaylistService {
     }
   }
 
+  /**
+   * Everything the member keeps in playlists, for their copy of their data: straight from the store, with no call to
+   * YouTube, and with the same rule on what YouTube said (shown only while it is fresh enough to keep).
+   */
+  async exportOf(accountId: string): Promise<{ name: string; tracks: { videoId: string; title: string | null; artist: string | null; durationSec: number | null }[] }[]> {
+    const now = this.now()
+    const exported = []
+    for (const listed of await this.store.list(accountId)) {
+      const found = await this.store.get(accountId, listed.id)
+      if (!found) continue
+      exported.push({
+        name: found.playlist.name,
+        tracks: found.tracks.map((row) => {
+          const track = this.toTrack(row, now)
+          return { videoId: track.videoId, title: track.title, artist: track.artist, durationSec: track.durationSec }
+        }),
+      })
+    }
+    return exported
+  }
+
   async listPlaylists(accountId: string): Promise<PlaylistReply<{ playlists: PlaylistSummary[] }>> {
     const limited = this.limited(this.reads, accountId)
     if (limited) return limited

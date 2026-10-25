@@ -1,0 +1,102 @@
+/* The dialog that deletes the account: centred, narrow. No display is set on the closed dialog: the browser hides it. */
+.account-dialog {
+  --danger: #ff7a7a;
+  width: min(480px, calc(100vw - 32px));
+  max-width: none;
+  max-height: min(92dvh, 720px);
+  padding: 0;
+  overflow-y: auto;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-l);
+  background: var(--wall);
+  color: var(--text);
+}
+
+/* A literal colour: the backdrop does not always see the custom properties of the page. */
+.account-dialog::backdrop {
+  background: rgb(14 11 31 / 0.78);
+}
+
+html:has(.account-dialog[open]) {
+  overflow: hidden;
+}
+
+.account-dialog__sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+}
+
+.account-dialog__sheet h2 {
+  font-size: 1.35rem;
+}
+
+.account-dialog__sheet p,
+.account-dialog__sheet ul {
+  margin: 0;
+}
+
+.account-dialog__sheet ul {
+  padding-left: 20px;
+  color: var(--text-muted);
+}
+
+.account-dialog__sheet label {
+  margin-top: 4px;
+  font-weight: 700;
+}
+
+.account-dialog__sheet input {
+  min-height: var(--tap-main);
+  padding: 0 16px;
+  border: 2px solid var(--border-field);
+  border-radius: var(--radius-s);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.account-dialog__error {
+  min-height: 1.4em;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.account-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.account-dialog__danger,
+.account-dialog__keep {
+  min-height: var(--tap-main);
+  padding: 0 20px;
+  border-radius: var(--radius-m);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.account-dialog__danger {
+  border: 0;
+  background: var(--danger);
+  color: #1a0b0b;
+}
+
+.account-dialog__keep {
+  border: 2px solid var(--border-field);
+  background: transparent;
+  color: var(--text);
+}
+
+.account-dialog__danger:disabled,
+.account-dialog__keep:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .account-dialog__actions > button {
+    flex: 1 1 100%;
+  }
+}

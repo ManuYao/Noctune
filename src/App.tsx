@@ -4,6 +4,7 @@ import EditRoomPage from './pages/EditRoomPage'
 import EntryPage from './pages/EntryPage'
 import LoginPage from './pages/LoginPage'
 import PlaylistPage from './pages/PlaylistPage'
+import ProfilePage from './pages/ProfilePage'
 import RegisterPage from './pages/RegisterPage'
 import RoomsPage from './pages/RoomsPage'
 import RoomPage from './pages/RoomPage'
@@ -18,6 +19,7 @@ export default function App() {
       <Route path="/connexion" element={<LoginPage />} />
       <Route path="/inscription" element={<RegisterPage />} />
       <Route path="/playlist" element={<PlaylistPage />} />
+      <Route path="/profil" element={<ProfilePage />} />
       <Route path="/room/:roomId" element={<RoomPage />} />
     </Routes>
   )

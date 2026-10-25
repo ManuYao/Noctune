@@ -77,6 +77,10 @@ export class PgPlaylistStore implements PlaylistStore {
     return (rowCount ?? 0) > 0
   }
 
+  async deleteAll(accountId: string): Promise<void> {
+    await this.pool.query('DELETE FROM playlists WHERE user_id = $1', [accountId])
+  }
+
   async list(accountId: string): Promise<StoredPlaylist[]> {
     const { rows } = await this.pool.query<PlaylistRow>(
       `SELECT p.id, p.name, count(t.id)::int AS track_count

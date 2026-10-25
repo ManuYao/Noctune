@@ -1,7 +1,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { Account, AuthError, AuthResult, SessionResult } from '../../../shared/protocol'
+import type { Account, AuthDone, AuthError, AuthResult, SessionResult } from '../../../shared/protocol'
+import type { AccountLifecycle, ExportedData } from '../accounts/AccountLifecycle'
 import type { AccountService, Granted, Refusal } from '../accounts/AccountService'
-import { clearedSessionCookie, readSessionToken, sessionCookie } from '../accounts/sessionToken'
+import type { AccountSummary } from '../accounts/AccountStore'
+import { clearedSessionCookie, hashToken, readSessionToken, sessionCookie } from '../accounts/sessionToken'
 import { clientIp, originAllowed } from './origin'
 
 // An e-mail, a password, a pseudo and an avatar fit in a small fraction of this.
@@ -22,6 +24,9 @@ const STATUS: Record<AuthError, number> = {
   unavailable: 503,
   busy: 503,
   'server-error': 500,
+  'not-signed-in': 401,
+  // Not 401: that would tell the page that the session is gone, and it is not.
+  'wrong-password': 403,
 }
 
 export interface ApiOptions {
@@ -35,6 +40,8 @@ export interface ApiOptions {
    * opened must not outlive it.
    */
   onSessionEnded?: (token: string) => void
+  /** What the rest of the server must do when an account changes or goes (see AccountLifecycle). */
+  lifecycle?: AccountLifecycle
 }
 
 export type ReadResult = { ok: true; value: unknown } | { ok: false; status: 400 | 408 | 413 | 415 }
@@ -84,8 +91,9 @@ export function send(res: ServerResponse, status: number, body: unknown, headers
 const fail = (error: Exclude<AuthError, 'rate-limited'>): Extract<AuthResult, { ok: false }> => ({ ok: false, error })
 
 /**
- * The accounts API: POST /api/auth/register, POST /api/auth/login, POST /api/auth/logout, GET /api/auth/me.
- * Returns a handler that answers the requests under /api/ and says whether the request was one of those.
+ * The accounts API: POST /api/auth/register, login and logout, GET /api/auth/me, and for the signed-in member PATCH and
+ * DELETE /api/auth/me (profile, end of the account), POST /api/auth/password and /api/auth/logout-all, GET
+ * /api/auth/export. Returns a handler that answers the requests under /api/ and says whether the request was one of those.
  * Without a database (`service` is null) visitors keep working: only registering and signing in are unavailable.
  */
 export function createApiHandler(service: AccountService | null, options: ApiOptions) {
@@ -102,16 +110,40 @@ export function createApiHandler(service: AccountService | null, options: ApiOpt
     send(res, STATUS[result.error], result, headers)
   }
 
+  /** The JSON body, or null once the request has been answered (wrong type, too big, not JSON). */
+  async function bodyOf(req: IncomingMessage, res: ServerResponse): Promise<{ value: unknown } | null> {
+    const body = await readJson(req)
+    if (body.ok) return { value: body.value }
+    const headers: Record<string, string> = body.status === 413 ? { Connection: 'close' } : {}
+    send(res, body.status, fail('bad-request'), headers)
+    // A body that is too big is not read to the end.
+    if (body.status === 413) res.once('finish', () => req.destroy())
+    return null
+  }
+
+  /** Who is asking: the member behind the session cookie, or null once the request has been answered. */
+  async function memberOf(
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<{ service: AccountService; account: AccountSummary; token: string } | null> {
+    if (!service) {
+      refused(res, fail('unavailable'))
+      return null
+    }
+    const token = readSessionToken(req.headers.cookie)
+    const account = await service.accountForToken(token)
+    if (!account || !token) {
+      // A cookie that opens nothing any more is removed from the browser.
+      send(res, STATUS['not-signed-in'], fail('not-signed-in'), token ? { 'Set-Cookie': clearedSessionCookie(cookieOptions) } : {})
+      return null
+    }
+    return { service, account, token }
+  }
+
   async function handleRegisterOrLogin(req: IncomingMessage, res: ServerResponse, action: 'register' | 'login') {
     if (!service) return refused(res, fail('unavailable'))
-    const body = await readJson(req)
-    if (!body.ok) {
-      const headers: Record<string, string> = body.status === 413 ? { Connection: 'close' } : {}
-      send(res, body.status, fail('bad-request'), headers)
-      // A body that is too big is not read to the end.
-      if (body.status === 413) res.once('finish', () => req.destroy())
-      return
-    }
+    const body = await bodyOf(req, res)
+    if (!body) return
     const result = await service[action](body.value, clientIp(req, options.trustedProxies))
     if (!result.ok) return refused(res, result)
     // Signing in over a session that is still open replaces it: it is not left behind, valid, for 30 days.
@@ -141,19 +173,95 @@ export function createApiHandler(service: AccountService | null, options: ApiOpt
     send(res, 200, body, token && service && !account ? { 'Set-Cookie': clearedSessionCookie(cookieOptions) } : {})
   }
 
-  const routes: Record<string, { method: 'GET' | 'POST'; run: (req: IncomingMessage, res: ServerResponse) => Promise<void> }> = {
-    '/api/auth/register': { method: 'POST', run: (req, res) => handleRegisterOrLogin(req, res, 'register') },
-    '/api/auth/login': { method: 'POST', run: (req, res) => handleRegisterOrLogin(req, res, 'login') },
-    '/api/auth/logout': { method: 'POST', run: handleLogout },
-    '/api/auth/me': { method: 'GET', run: handleMe },
+  /** The avatar and the pseudo. Shows in a room the next time the member enters it. */
+  async function handleUpdateProfile(req: IncomingMessage, res: ServerResponse) {
+    const member = await memberOf(req, res)
+    if (!member) return
+    const body = await bodyOf(req, res)
+    if (!body) return
+    const result = await member.service.updateProfile(member.account.id, body.value)
+    if (!result.ok) return refused(res, result)
+    // What carries a copy of the pseudo (the rooms the member hosts) is refreshed.
+    await options.lifecycle?.profileChanged(member.account.id, result.account.pseudo)
+    const reply: AuthResult = { ok: true, account: result.account }
+    send(res, 200, reply)
+  }
+
+  /** A new password: this session stays, every other session of the account ends and its connections close. */
+  async function handleChangePassword(req: IncomingMessage, res: ServerResponse) {
+    const member = await memberOf(req, res)
+    if (!member) return
+    const body = await bodyOf(req, res)
+    if (!body) return
+    const kept = hashToken(member.token)
+    const result = await member.service.changePassword(member.account.id, kept, body.value, clientIp(req, options.trustedProxies))
+    if (!result.ok) return refused(res, result)
+    options.lifecycle?.sessionsEnded(member.account.id, kept.toString('hex'))
+    const reply: AuthResult = { ok: true, account: result.account }
+    send(res, 200, reply)
+  }
+
+  /** Every session of the account ends, this one included, and every connection they opened closes. */
+  async function handleLogoutEverywhere(req: IncomingMessage, res: ServerResponse) {
+    const member = await memberOf(req, res)
+    if (!member) return
+    await member.service.logoutEverywhere(member.account.id)
+    options.lifecycle?.sessionsEnded(member.account.id)
+    const reply: AuthDone = { ok: true }
+    send(res, 200, reply, { 'Set-Cookie': clearedSessionCookie(cookieOptions) })
+  }
+
+  /** The end of the account, after the current password was given again. */
+  async function handleDeleteAccount(req: IncomingMessage, res: ServerResponse) {
+    const member = await memberOf(req, res)
+    if (!member) return
+    const body = await bodyOf(req, res)
+    if (!body) return
+    // Asked now: once the account is gone the database can no longer say which rooms it hosted.
+    const hosted = (await options.lifecycle?.hostedRoomIds(member.account.id)) ?? []
+    const result = await member.service.deleteAccount(member.account.id, body.value, clientIp(req, options.trustedProxies))
+    if (!result.ok) return refused(res, result)
+    try {
+      await options.lifecycle?.accountDeleted(member.account.id, hosted)
+    } catch (error) {
+      // The account is gone and the answer is "done": what could not be cleaned stays in the log, and goes with the process.
+      console.error(`[compte] nettoyage après suppression : ${(error as Error).message}`)
+    }
+    const reply: AuthDone = { ok: true }
+    send(res, 200, reply, { 'Set-Cookie': clearedSessionCookie(cookieOptions) })
+  }
+
+  /** The member's own data, as a file (right of access). Never the password hash, never a token, nobody else's data. */
+  async function handleExport(req: IncomingMessage, res: ServerResponse) {
+    const member = await memberOf(req, res)
+    if (!member) return
+    const profile = await member.service.exportProfile(member.account.id)
+    if (!profile.ok) return refused(res, profile)
+    const data = (await options.lifecycle?.exportData(member.account.id)) ?? { playlists: [], rooms: [] }
+    const body: ExportedData = { exportedAt: new Date().toISOString(), account: profile.profile, ...data }
+    send(res, 200, body, { 'Content-Disposition': 'attachment; filename="noctune-mes-donnees.json"' })
+  }
+
+  type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE'
+  type Run = (req: IncomingMessage, res: ServerResponse) => Promise<void>
+  const routes: Record<string, Partial<Record<Method, Run>>> = {
+    '/api/auth/register': { POST: (req, res) => handleRegisterOrLogin(req, res, 'register') },
+    '/api/auth/login': { POST: (req, res) => handleRegisterOrLogin(req, res, 'login') },
+    '/api/auth/logout': { POST: handleLogout },
+    '/api/auth/me': { GET: handleMe, PATCH: handleUpdateProfile, DELETE: handleDeleteAccount },
+    '/api/auth/password': { POST: handleChangePassword },
+    '/api/auth/logout-all': { POST: handleLogoutEverywhere },
+    '/api/auth/export': { GET: handleExport },
   }
 
   async function handle(req: IncomingMessage, res: ServerResponse, path: string) {
-    const route = Object.hasOwn(routes, path) ? routes[path] : undefined
-    if (!route) return send(res, 404, fail('bad-request'))
-    if (req.method !== route.method) return send(res, 405, fail('bad-request'), { Allow: route.method })
+    const methods = Object.hasOwn(routes, path) ? routes[path] : undefined
+    if (!methods) return send(res, 404, fail('bad-request'))
+    const run = req.method !== undefined && Object.hasOwn(methods, req.method) ? methods[req.method as Method] : undefined
+    if (!run) return send(res, 405, fail('bad-request'), { Allow: Object.keys(methods).join(', ') })
+    // Before anything else, whatever the method: the page's own address, or nothing.
     if (!originAllowed(req.headers, options.allowedOrigins)) return send(res, 403, fail('forbidden'))
-    await route.run(req, res)
+    await run(req, res)
   }
 
   return function handleApi(req: IncomingMessage, res: ServerResponse): boolean {
