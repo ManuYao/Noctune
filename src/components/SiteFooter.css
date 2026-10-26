@@ -18,7 +18,8 @@
   gap: 0 24px;
 }
 
-.site-footer a {
+.site-footer a,
+.site-footer button {
   display: inline-flex;
   align-items: center;
   min-height: var(--tap);
@@ -26,7 +27,18 @@
   font-size: 0.9rem;
 }
 
-.site-footer a:hover {
+/* A button that reads as one of the links beside it. */
+.site-footer button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.site-footer a:hover,
+.site-footer button:hover {
   color: var(--text);
 }
 

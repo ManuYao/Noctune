@@ -88,8 +88,8 @@ export const privacy: LegalDocument = {
           />
           <DataCard
             name="Stockage de ton navigateur"
-            why="Retenir le volume du son, le pseudo et l'avatar saisis sur l'écran d'entrée (pour l'onglet), et la dernière playlist choisie."
-            keptFor="Dans ton navigateur seulement. Le pseudo et l'avatar ne sont envoyés au serveur que lorsque tu entres dans une room."
+            why="Retenir le volume du son, le pseudo et l'avatar saisis sur l'écran d'entrée (pour l'onglet), la dernière playlist choisie, et ta réponse sur le lecteur YouTube."
+            keptFor="Dans ton navigateur seulement (ta réponse sur le lecteur YouTube : 12 mois, puis redemandée). Le pseudo et l'avatar ne sont envoyés au serveur que lorsque tu entres dans une room."
           />
           <DataCard
             name="Messages du chat"
@@ -153,8 +153,13 @@ export const privacy: LegalDocument = {
             est envoyée.
           </p>
           <p>
-            Un message de consentement avant le chargement du lecteur est prévu :{' '}
-            <ToComplete what="consentement avant le chargement du lecteur" />.
+            <strong>Avant de charger le lecteur, Noctune te demande ton accord.</strong> Tant que tu n'as pas accepté, aucune
+            requête n'est envoyée à YouTube ni à Google. Si tu refuses, tu peux entrer dans les rooms, discuter, voter et passer
+            DJ, mais tu n'entends pas la musique.
+          </p>
+          <p>
+            Ton choix est gardé 12 mois dans ton navigateur (stockage local), puis redemandé. Tu peux le changer à tout moment avec
+            le lien « Gérer le lecteur YouTube » en bas de chaque page.
           </p>
         </>
       ),

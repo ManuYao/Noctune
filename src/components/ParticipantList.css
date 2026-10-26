@@ -30,6 +30,10 @@
 }
 
 /* A member: an outline, so that it is not mistaken for the "toi" pill. */
+.participants .participants__more {
+  margin-inline-start: auto;
+}
+
 .participants em.participants__member {
   border: 1px solid var(--accent-2);
   background: transparent;

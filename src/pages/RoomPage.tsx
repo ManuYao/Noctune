@@ -2,6 +2,8 @@ import { Link, Navigate, useLocation, useParams } from 'react-router'
 import { useAccount } from '../auth/useAccount'
 import type { JoinError } from '../../shared/protocol'
 import DjNotices from '../components/DjNotices'
+import ModerationProvider from '../moderation/ModerationProvider'
+import ReportsButton from '../moderation/ReportsButton'
 import RoomSide from '../components/RoomSide'
 import RoomStage from '../components/RoomStage'
 import SiteHeader from '../components/SiteHeader'
@@ -24,6 +26,7 @@ const ERROR_MESSAGES: Record<JoinError, string> = {
   'already-in-room': 'Tu es déjà dans cette room (dans un autre onglet ou sur un autre appareil ?).',
   'server-error': 'Le serveur a eu un souci. Réessaie dans un instant.',
   'rate-limited': "Trop de tentatives d'entrée d'un coup. Réessaie dans un instant.",
+  excluded: "L'hôte de cette room a décidé de t'en exclure pendant 24 h. Tu peux écouter dans une autre room en attendant.",
 }
 
 // A member cannot "choose another pseudo": the message says what is really going on.
@@ -54,6 +57,9 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
     rules,
     info,
     closed,
+    excluded,
+    reports,
+    mutedUntil,
     queue,
     lineup,
     notices,
@@ -66,6 +72,11 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
     removeTrack,
     leaveQueue,
     dismissNotice,
+    report,
+    moderate,
+    moderateTrack,
+    dismissReport,
+    note,
   } = useRoom({ roomId, pseudo, avatarId })
   const { account } = useAccount()
   // Member or visitor as the room's server sees this connection, which can differ for a moment from the account of
@@ -86,13 +97,30 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
     )
   }
 
+  // The host excluded the viewer: the server has taken them out, and the player goes with this screen.
+  if (excluded) {
+    return (
+      <div>
+        <SiteHeader />
+        <main className="room">
+          <h1>Tu as été exclu de cette room</h1>
+          <p role="status">
+            L'hôte a décidé de t'exclure de cette room pendant 24 h. Tu peux écouter dans une autre room en attendant, et relire les{' '}
+            <Link to="/regles">règles de la communauté</Link>.
+          </p>
+          <Link to="/rooms">Voir les autres rooms</Link>
+        </main>
+      </div>
+    )
+  }
+
   if (status === 'error' && error) {
     return (
       <div>
         <SiteHeader />
         <main className="room">
           <p role="alert">{error === 'pseudo-taken' && account ? PSEUDO_TAKEN_FOR_MEMBER : ERROR_MESSAGES[error]}</p>
-          <Link to="/">Retour à l'entrée</Link>
+          {error === 'excluded' ? <Link to="/rooms">Voir les autres rooms</Link> : <Link to="/">Retour à l'entrée</Link>}
           {error === 'pseudo-reserved' && <Link to="/connexion">Me connecter</Link>}
         </main>
       </div>
@@ -100,59 +128,77 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
   }
 
   return (
-    // The ambiance is the room's alone: the attribute stays on this page, the others keep the default look.
-    <div className="room-page" data-theme={themeAttribute(info?.theme ?? 'neon')}>
-      <SiteHeader>
-        <h1 className="room__title">{info?.name ?? snapshot?.name ?? 'Connexion…'}</h1>
-        {/* Opens in a new tab: the room, and its player, keep going while the host changes the settings. */}
-        {info?.isHost && (
-          <Link to={`/rooms/${encodeURIComponent(roomId)}/edit`} target="_blank" rel="noopener noreferrer" className="room__settings">
-            Réglages<span className="visually-hidden"> de la room (nouvel onglet)</span>
-          </Link>
-        )}
-      </SiteHeader>
-      <main className="room">
-        {status === 'connecting' && (
-          <p className="room__status" role="status">
-            Connexion à la room en cours…
-          </p>
-        )}
-        <div className="room__layout">
-          <div className="room__stage">
-            <RoomStage
-              track={nowPlaying}
-              participants={participants}
+    <ModerationProvider
+      isHost={info?.isHost ?? false}
+      hasHost={(info?.host ?? null) !== null}
+      selfId={snapshot?.selfId}
+      participants={participants}
+      queue={queue}
+      nowPlaying={nowPlaying}
+      reports={reports}
+      clockOffsetMs={clockOffsetMs}
+      report={report}
+      moderate={moderate}
+      moderateTrack={moderateTrack}
+      dismissReport={dismissReport}
+      note={note}
+    >
+      {/* The ambiance is the room's alone: the attribute stays on this page, the others keep the default look. */}
+      <div className="room-page" data-theme={themeAttribute(info?.theme ?? 'neon')}>
+        <SiteHeader>
+          <h1 className="room__title">{info?.name ?? snapshot?.name ?? 'Connexion…'}</h1>
+          {/* The host's inbox of reports, and the settings: the latter opens in a new tab, so that the room and its player keep going. */}
+          <ReportsButton />
+          {info?.isHost && (
+            <Link to={`/rooms/${encodeURIComponent(roomId)}/edit`} target="_blank" rel="noopener noreferrer" className="room__settings">
+              Réglages<span className="visually-hidden"> de la room (nouvel onglet)</span>
+            </Link>
+          )}
+        </SiteHeader>
+        <main className="room">
+          {status === 'connecting' && (
+            <p className="room__status" role="status">
+              Connexion à la room en cours…
+            </p>
+          )}
+          <div className="room__layout">
+            <div className="room__stage">
+              <RoomStage
+                track={nowPlaying}
+                participants={participants}
+                selfId={snapshot?.selfId}
+                clockOffsetMs={clockOffsetMs}
+                reactions={reactions}
+                mine={mine}
+                likePulse={likePulse}
+                queue={queue}
+                onLike={like}
+                onSkip={voteSkip}
+              />
+            </div>
+            <RoomSide
               selfId={snapshot?.selfId}
-              clockOffsetMs={clockOffsetMs}
-              reactions={reactions}
-              mine={mine}
-              likePulse={likePulse}
+              isMember={isMember}
+              participants={participants}
+              messages={messages}
+              chatDisabledReason={status === 'joined' ? null : 'Connexion en cours… tu pourras écrire dans un instant.'}
+              mutedUntil={mutedUntil}
+              onSendChat={sendChat}
+              rules={rules}
               queue={queue}
-              onLike={like}
-              onSkip={voteSkip}
+              lineup={lineup}
+              nowPlaying={nowPlaying}
+              clockOffsetMs={clockOffsetMs}
+              onAddTrack={addTrack}
+              onAddFromPlaylist={addFromPlaylist}
+              onPlaylistStatus={playlistStatus}
+              onRemoveTrack={removeTrack}
+              onLeaveQueue={leaveQueue}
             />
           </div>
-          <RoomSide
-            selfId={snapshot?.selfId}
-            isMember={isMember}
-            participants={participants}
-            messages={messages}
-            chatDisabledReason={status === 'joined' ? null : 'Connexion en cours… tu pourras écrire dans un instant.'}
-            onSendChat={sendChat}
-            rules={rules}
-            queue={queue}
-            lineup={lineup}
-            nowPlaying={nowPlaying}
-            clockOffsetMs={clockOffsetMs}
-            onAddTrack={addTrack}
-            onAddFromPlaylist={addFromPlaylist}
-            onPlaylistStatus={playlistStatus}
-            onRemoveTrack={removeTrack}
-            onLeaveQueue={leaveQueue}
-          />
-        </div>
-      </main>
-      <DjNotices notices={notices} onDismiss={dismissNotice} />
-    </div>
+        </main>
+        <DjNotices notices={notices} onDismiss={dismissNotice} />
+      </div>
+    </ModerationProvider>
   )
 }

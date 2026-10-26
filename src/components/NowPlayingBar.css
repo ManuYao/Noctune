@@ -107,6 +107,13 @@
   cursor: pointer;
 }
 
+/* No player, no sound to adjust. */
+.bar__mute:disabled,
+.bar__volume:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .bar__mute[aria-pressed='true'] {
   border-color: var(--accent);
   color: var(--accent);

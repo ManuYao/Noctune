@@ -52,6 +52,24 @@
   color: var(--accent);
 }
 
+/* The "⋯" shows when the message is pointed at or focused; on a touch screen, where nothing is pointed at, it is always there. */
+.chat__message .chat__more {
+  margin-block: -6px;
+  margin-inline-start: auto;
+  opacity: 0;
+}
+
+.chat__message:hover .chat__more,
+.chat__message:focus-within .chat__more {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .chat__message .chat__more {
+    opacity: 1;
+  }
+}
+
 /* The ring is drawn on the whole field, so the inner input does not draw a second one. */
 .chat__form {
   display: flex;

@@ -1,0 +1,108 @@
+/* The consent window: a centred dialog, calm, with two buttons that weigh the same.
+   No display is set on the closed dialog: the browser hides it by itself. */
+.consent-dialog {
+  width: min(540px, calc(100vw - 32px));
+  max-width: none;
+  max-height: min(90dvh, 720px);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-l);
+  background: var(--wall);
+  color: var(--text);
+}
+
+.consent-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+/* A literal colour: the backdrop does not always see the custom properties of the page. */
+.consent-dialog::backdrop {
+  background: rgb(14 11 31 / 0.78);
+}
+
+/* Nothing behind the window scrolls while it is open. */
+html:has(.consent-dialog[open]) {
+  overflow: hidden;
+}
+
+.consent-dialog__sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.consent-dialog h2 {
+  font-size: 1.35rem;
+}
+
+.consent-dialog h2:focus {
+  outline: none;
+}
+
+.consent-dialog__text {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.consent-dialog__text p {
+  margin: 0;
+}
+
+.consent-dialog__text a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+}
+
+.consent-dialog__current {
+  color: var(--accent-2);
+  font-weight: 700;
+}
+
+.consent-dialog__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+/* The same look for both: a choice, not a push towards one of them. */
+.consent-dialog__choice {
+  flex: 1 1 200px;
+  min-height: var(--tap-main);
+  padding: 8px 18px;
+  border: 2px solid var(--accent-2);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-title);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.consent-dialog__choice:hover {
+  background: var(--wall-2);
+}
+
+@media (max-width: 760px) {
+  .consent-dialog__sheet {
+    padding: 20px 16px calc(20px + env(safe-area-inset-bottom));
+  }
+
+  .consent-dialog__buttons {
+    flex-direction: column;
+  }
+
+  .consent-dialog__choice {
+    flex: none;
+  }
+}

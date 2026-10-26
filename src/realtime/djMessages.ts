@@ -1,4 +1,4 @@
-import { LINEUP_MAX, type AddTrackResult, type DjNotice, type DjResult } from '../../shared/protocol'
+import { LINEUP_MAX, type AddTrackResult, type DjNotice, type DjResult, type ModNotice } from '../../shared/protocol'
 import { formatSpan, formatWait } from '../data/duration'
 import type { MyPlace } from './djQueue'
 
@@ -65,6 +65,22 @@ export function turnMessage(place: MyPlace | null, djs: number, waitSec: number)
 export function ownSkipHint(othersCanPlay: boolean, hasNextTrack: boolean): string {
   if (othersCanPlay) return 'Le DJ suivant prend la main.'
   return hasNextTrack ? 'Ton prochain morceau démarre.' : 'La sélection de la room prend le relais.'
+}
+
+/** What a note in the corner says: about a DJ's own turn, about what the host did to the viewer, or a word from the page. */
+export function roomNoticeMessage(notice: DjNotice | ModNotice | { kind: 'note'; text: string }): string {
+  switch (notice.kind) {
+    case 'warning':
+      return "L'hôte t'a envoyé un avertissement : respecte les règles de la communauté."
+    case 'muted':
+      return `L'hôte t'a mis en sourdine : tu pourras écrire à nouveau dans ${formatSpan(Math.ceil(notice.retryAfterMs / 1000))}.`
+    case 'track-removed':
+      return `L'hôte a retiré ton morceau « ${notice.title} » de la file.`
+    case 'note':
+      return notice.text
+    default:
+      return djNoticeMessage(notice)
+  }
 }
 
 /** What a DJ is told, by the server, about their own turn. */

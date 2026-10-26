@@ -9,6 +9,7 @@ import { useAccount } from '../auth/useAccount'
 import Avatar from '../components/Avatar'
 import AvatarPicker from '../components/AvatarPicker'
 import DeleteAccountDialog from '../components/DeleteAccountDialog'
+import PasswordField from '../components/PasswordField'
 import SiteHeader from '../components/SiteHeader'
 import { AVATARS } from '../data/avatars'
 import './ProfilePage.css'
@@ -220,18 +221,16 @@ function ProfileContent({ account, leaving }: { account: Account; leaving: RefOb
         <form className="profile__card" onSubmit={handlePassword} noValidate aria-labelledby="profile-password">
           <h2 id="profile-password">Mot de passe</h2>
           <label htmlFor="current-password">Mot de passe actuel</label>
-          <input
+          <PasswordField
             id="current-password"
-            type="password"
             autoComplete="current-password"
             maxLength={PASSWORD_MAX}
             value={currentPassword}
             onChange={(event) => setCurrentPassword(event.target.value)}
           />
           <label htmlFor="new-password">Nouveau mot de passe</label>
-          <input
+          <PasswordField
             id="new-password"
-            type="password"
             autoComplete="new-password"
             maxLength={PASSWORD_MAX}
             value={newPassword}
@@ -239,9 +238,8 @@ function ProfileContent({ account, leaving }: { account: Account; leaving: RefOb
             onChange={(event) => setNewPassword(event.target.value)}
           />
           <label htmlFor="confirm-password">Confirme le nouveau mot de passe</label>
-          <input
+          <PasswordField
             id="confirm-password"
-            type="password"
             autoComplete="new-password"
             maxLength={PASSWORD_MAX}
             value={confirmation}

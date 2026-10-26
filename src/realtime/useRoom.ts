@@ -8,12 +8,19 @@ import type {
   DjQueue,
   DjResult,
   JoinError,
+  ModAction,
+  ModNotice,
+  ModResult,
   MyReactions,
   Participant,
   PlaylistStatusResult,
   QueuedTrack,
   ReactResult,
   Reactions,
+  Report,
+  ReportReason,
+  ReportResult,
+  ReportTarget,
   RoomRules,
   RoomSettings,
   RoomSnapshot,
@@ -38,11 +45,16 @@ export type SendReactionResult = ReactResult | { ok: false; error: 'network' }
 export type SendAddTrackResult = AddTrackResult | { ok: false; error: 'network' }
 export type SendPlaylistStatusResult = PlaylistStatusResult | { ok: false; error: 'network' }
 export type SendDjResult = DjResult | { ok: false; error: 'network' }
+export type SendReportResult = ReportResult | { ok: false; error: 'network' }
+export type SendModResult = ModResult | { ok: false; error: 'network' }
 
-/** Something the server told this DJ, and nobody else. The id lets the screen drop it once it was read. */
+/** What a small note in the corner can say: what the server told this person alone, or something the page itself reports. */
+export type NoticeContent = DjNotice | ModNotice | { kind: 'note'; text: string }
+
+/** Something the server told this person, and nobody else. The id lets the screen drop it once it was read. */
 export interface RoomNotice {
   id: number
-  notice: DjNotice
+  notice: NoticeContent
 }
 
 /** What the host decided about the room, and whether the viewer is that host. */
@@ -76,6 +88,12 @@ interface RoomState {
   info: RoomInfo | null
   /** The host deleted the room: everybody is out. */
   closed: boolean
+  /** The host excluded the viewer: they are out, for 24 hours. */
+  excluded: boolean
+  /** What members reported in this room. Only the host is given any. */
+  reports: Report[]
+  /** When the viewer can write in the chat again (local clock, ms), after a mute; null when they are not muted. */
+  mutedUntil: number | null
   queue: DjQueue
   /** The tracks the viewer lined up, in the order they will play. */
   lineup: QueuedTrack[]
@@ -99,6 +117,9 @@ const INITIAL_STATE: RoomState = {
   rules: null,
   info: null,
   closed: false,
+  excluded: false,
+  reports: [],
+  mutedUntil: null,
   queue: EMPTY_QUEUE,
   lineup: [],
   notices: [],
@@ -185,6 +206,49 @@ async function emitLeaveQueue(): Promise<SendDjResult> {
   }
 }
 
+async function emitReport(target: ReportTarget, reason: ReportReason): Promise<SendReportResult> {
+  if (!socket.connected) return { ok: false, error: 'network' }
+  try {
+    const result: ReportResult = await socket.timeout(ACK_TIMEOUT_MS).emitWithAck('report:create', { target, reason })
+    return result
+  } catch {
+    return { ok: false, error: 'network' }
+  }
+}
+
+async function emitModAct(action: ModAction, participantId: string, reportId?: string): Promise<SendModResult> {
+  if (!socket.connected) return { ok: false, error: 'network' }
+  try {
+    const result: ModResult = await socket.timeout(ACK_TIMEOUT_MS).emitWithAck('mod:act', { action, participantId, reportId })
+    return result
+  } catch {
+    return { ok: false, error: 'network' }
+  }
+}
+
+async function emitModRemoveTrack(entryId: string, trackId: string, reportId?: string): Promise<SendModResult> {
+  if (!socket.connected) return { ok: false, error: 'network' }
+  try {
+    const result: ModResult = await socket.timeout(ACK_TIMEOUT_MS).emitWithAck('mod:remove-track', { entryId, trackId, reportId })
+    return result
+  } catch {
+    return { ok: false, error: 'network' }
+  }
+}
+
+async function emitModDismiss(reportId: string): Promise<SendModResult> {
+  if (!socket.connected) return { ok: false, error: 'network' }
+  try {
+    const result: ModResult = await socket.timeout(ACK_TIMEOUT_MS).emitWithAck('mod:dismiss', { reportId })
+    return result
+  } catch {
+    return { ok: false, error: 'network' }
+  }
+}
+
+/** The people behind the reports of a list: more people reporting is news for the host, fewer is not. */
+const reporters = (reports: Report[]) => reports.reduce((sum, report) => sum + report.count, 0)
+
 /** Joins a room over the realtime connection and keeps its live state. Rejoins after a reconnection. */
 export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
   sendChat: (text: string) => Promise<SendChatResult>
@@ -196,6 +260,16 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
   removeTrack: (trackId: string) => Promise<SendDjResult>
   leaveQueue: () => Promise<SendDjResult>
   dismissNotice: (id: number) => void
+  /** Reports a chat message or a queued track to the host. */
+  report: (target: ReportTarget, reason: ReportReason) => Promise<SendReportResult>
+  /** The host warns, mutes or excludes somebody of the room. */
+  moderate: (action: ModAction, participantId: string, reportId?: string) => Promise<SendModResult>
+  /** The host takes a track out of a DJ's line-up. */
+  moderateTrack: (entryId: string, trackId: string, reportId?: string) => Promise<SendModResult>
+  /** The host sets a report aside. */
+  dismissReport: (reportId: string) => Promise<SendModResult>
+  /** A small note in the corner, for something the page itself has to say (an action of the host done, a new report). */
+  note: (text: string) => void
 } {
   const [state, setState] = useState<RoomState>(INITIAL_STATE)
   const currentTrackKey = useRef('')
@@ -249,6 +323,8 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
             },
             queue: snapshot.queue ?? EMPTY_QUEUE,
             lineup: snapshot.lineup ?? [],
+            // An older server has no moderation: the host's tools then stay out of sight.
+            reports: snapshot.reports ?? [],
           }))
           return
         }
@@ -293,6 +369,26 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
         },
       }))
     const onClosed = () => setState((prev) => ({ ...prev, closed: true }))
+    // The host's inbox, whole, each time it changes. A report that adds people is news; one that goes is not.
+    const onReports = (reports: Report[]) =>
+      setState((prev) => {
+        const news = prev.status === 'joined' && reporters(reports) > reporters(prev.reports)
+        return {
+          ...prev,
+          reports,
+          notices: news
+            ? [...prev.notices, { id: nextNoticeId.current++, notice: { kind: 'note' as const, text: 'Nouveau signalement dans ta room.' } }].slice(-MAX_NOTICES_KEPT)
+            : prev.notices,
+        }
+      })
+    // What the host did to the viewer. A mute also keeps the chat shut until it ends.
+    const onModNotice = (notice: ModNotice) =>
+      setState((prev) => ({
+        ...prev,
+        mutedUntil: notice.kind === 'muted' ? Date.now() + notice.retryAfterMs : prev.mutedUntil,
+        notices: [...prev.notices, { id: nextNoticeId.current++, notice }].slice(-MAX_NOTICES_KEPT),
+      }))
+    const onExcluded = () => setState((prev) => ({ ...prev, excluded: true }))
     const onLineup = (lineup: QueuedTrack[]) => setState((prev) => ({ ...prev, lineup }))
     const onNotice = (notice: DjNotice) =>
       setState((prev) => ({
@@ -320,6 +416,9 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
     socket.on('dj:queue', onQueue)
     socket.on('room:settings', onSettings)
     socket.on('room:closed', onClosed)
+    socket.on('mod:reports', onReports)
+    socket.on('mod:notice', onModNotice)
+    socket.on('room:excluded', onExcluded)
     socket.on('dj:lineup', onLineup)
     socket.on('dj:notice', onNotice)
     socket.on('track:reactions', onReactions)
@@ -339,6 +438,9 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
       socket.off('dj:queue', onQueue)
       socket.off('room:settings', onSettings)
       socket.off('room:closed', onClosed)
+      socket.off('mod:reports', onReports)
+      socket.off('mod:notice', onModNotice)
+      socket.off('room:excluded', onExcluded)
       socket.off('dj:lineup', onLineup)
       socket.off('dj:notice', onNotice)
       socket.off('track:reactions', onReactions)
@@ -353,6 +455,10 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
     if (!socket.connected) return { ok: false, error: 'network' }
     try {
       const result: ChatResult = await socket.timeout(ACK_TIMEOUT_MS).emitWithAck('chat:send', { text })
+      // Muted (the notice may have been missed, or the viewer was muted before a reconnection): the chat stays shut.
+      if (!result.ok && result.error === 'muted') {
+        setState((prev) => ({ ...prev, mutedUntil: Date.now() + result.retryAfterMs }))
+      }
       return result
     } catch {
       return { ok: false, error: 'network' }
@@ -388,6 +494,35 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
     (id: number) => setState((prev) => ({ ...prev, notices: prev.notices.filter((notice) => notice.id !== id) })),
     [],
   )
+  const note = useCallback(
+    (text: string) =>
+      setState((prev) => ({
+        ...prev,
+        notices: [...prev.notices, { id: nextNoticeId.current++, notice: { kind: 'note' as const, text } }].slice(-MAX_NOTICES_KEPT),
+      })),
+    [],
+  )
+  // Reports and the host's actions: what the screen shows comes from what the server pushes (`mod:reports`).
+  const report = useCallback((target: ReportTarget, reason: ReportReason) => emitReport(target, reason), [])
+  const moderate = useCallback((action: ModAction, participantId: string, reportId?: string) => emitModAct(action, participantId, reportId), [])
+  const moderateTrack = useCallback((entryId: string, trackId: string, reportId?: string) => emitModRemoveTrack(entryId, trackId, reportId), [])
+  const dismissReport = useCallback((reportId: string) => emitModDismiss(reportId), [])
 
-  return { ...state, sendChat, like, voteSkip, addTrack, addFromPlaylist, playlistStatus, removeTrack, leaveQueue, dismissNotice }
+  return {
+    ...state,
+    sendChat,
+    like,
+    voteSkip,
+    addTrack,
+    addFromPlaylist,
+    playlistStatus,
+    removeTrack,
+    leaveQueue,
+    dismissNotice,
+    report,
+    moderate,
+    moderateTrack,
+    dismissReport,
+    note,
+  }
 }

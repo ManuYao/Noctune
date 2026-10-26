@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router'
 import { authMessage } from '../auth/authMessages'
 import { useAccount } from '../auth/useAccount'
+import PasswordField from '../components/PasswordField'
 import SiteHeader from '../components/SiteHeader'
 import { normalizeEmail } from '../../shared/validation'
 import './AuthPage.css'
@@ -52,9 +53,8 @@ export default function LoginPage() {
           />
 
           <label htmlFor="password">Mot de passe</label>
-          <input
+          <PasswordField
             id="password"
-            type="password"
             autoComplete="current-password"
             value={password}
             aria-invalid={error !== ''}

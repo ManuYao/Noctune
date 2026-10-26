@@ -5,6 +5,7 @@ import type { AuthCallResult } from '../auth/authApi'
 import { authField, authMessage } from '../auth/authMessages'
 import { useAccount } from '../auth/useAccount'
 import AvatarPicker from '../components/AvatarPicker'
+import PasswordField from '../components/PasswordField'
 import SiteHeader from '../components/SiteHeader'
 import { readEntryDraft } from '../data/entryDraft'
 import { PASSWORD_MAX, PASSWORD_MIN, PSEUDO_MAX, type AvatarId } from '../../shared/protocol'
@@ -76,9 +77,8 @@ export default function RegisterPage() {
           <p className="auth__hint">Il sert uniquement à te connecter.</p>
 
           <label htmlFor="password">Mot de passe</label>
-          <input
+          <PasswordField
             id="password"
-            type="password"
             autoComplete="new-password"
             maxLength={PASSWORD_MAX}
             value={password}

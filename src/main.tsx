@@ -3,13 +3,16 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import App from './App'
 import AccountProvider from './auth/AccountProvider'
+import ConsentProvider from './consent/ConsentProvider'
 import './index.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AccountProvider>
-        <App />
+        <ConsentProvider>
+          <App />
+        </ConsentProvider>
       </AccountProvider>
     </BrowserRouter>
   </StrictMode>,

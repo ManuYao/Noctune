@@ -16,6 +16,8 @@ interface VideoScreenProps {
   announce?: boolean
   /** Lets taps reach the YouTube player, for browsers that only start a video when it is touched. */
   interactive: boolean
+  /** A button under the message (to turn the player on), for the states where the viewer can do something about it. */
+  action?: { label: string; onClick: () => void } | null
 }
 
 export default function VideoScreen({
@@ -26,6 +28,7 @@ export default function VideoScreen({
   messageTitle = null,
   announce = false,
   interactive,
+  action = null,
 }: VideoScreenProps) {
   return (
     <div className={interactive ? 'screen screen--interactive' : 'screen'}>
@@ -38,6 +41,11 @@ export default function VideoScreen({
             <div className="screen__message-body">
               {messageTitle && <strong className="screen__message-title">{messageTitle}</strong>}
               <p>{message}</p>
+              {action && (
+                <button type="button" className="btn-primary screen__message-action" onClick={action.onClick}>
+                  {action.label}
+                </button>
+              )}
             </div>
           </div>
         )}

@@ -22,6 +22,8 @@ interface RoomSideProps {
   participants: Participant[]
   messages: ChatMessage[]
   chatDisabledReason: string | null
+  /** When the viewer can write again after a mute (local clock, ms); null when they are not muted. */
+  mutedUntil: number | null
   onSendChat: (text: string) => Promise<SendChatResult>
   /** Null on a server that has no DJs: the queue then stays out of sight. */
   rules: RoomRules | null
@@ -48,6 +50,7 @@ export default function RoomSide({
   participants,
   messages,
   chatDisabledReason,
+  mutedUntil,
   onSendChat,
   rules,
   queue,
@@ -163,7 +166,7 @@ export default function RoomSide({
         </div>
       )}
       <div {...panelProps('chat')}>
-        <Chat messages={messages} selfId={selfId} disabledReason={chatDisabledReason} onSend={onSendChat} />
+        <Chat messages={messages} selfId={selfId} disabledReason={chatDisabledReason} mutedUntil={mutedUntil} onSend={onSendChat} />
       </div>
       <div {...panelProps('public')}>
         <ParticipantList participants={participants} selfId={selfId} />

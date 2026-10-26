@@ -7,6 +7,8 @@ import SiteHeader from '../components/SiteHeader'
 import { AVATARS } from '../data/avatars'
 import { readEntryDraft, saveEntryDraft } from '../data/entryDraft'
 import { useAccount } from '../auth/useAccount'
+import { useConsentDialog } from '../consent/consentContext'
+import { useYouTubeConsent } from '../consent/useYouTubeConsent'
 import { useRooms } from '../realtime/useRooms'
 import { STYLE_LABELS } from '../rooms/roomLabels'
 import { PSEUDO_MAX, PSEUDO_MIN, type AvatarId } from '../../shared/protocol'
@@ -33,20 +35,31 @@ export default function EntryPage() {
   const suggested = rooms?.find((room) => room.id === searchParams.get('room')) ?? rooms?.[0] ?? null
   const totalOnline = rooms?.reduce((sum, room) => sum + room.online, 0) ?? 0
 
+  // Nothing is asked of YouTube before the visitor says yes to its player: the first time (and once a year), entering a
+  // room opens the consent window, and its two buttons are what enters. A refusal still enters, without the player.
+  const { choice } = useYouTubeConsent()
+  const { ask } = useConsentDialog()
+
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (!suggested || accountStatus === 'loading') return
-    // This click is the user gesture that will start the room player (autoplay policy).
+    let identity: { pseudo: string; avatarId: AvatarId }
     if (account) {
-      navigate(`/room/${suggested.id}`, { state: { pseudo: account.pseudo, avatarId: account.avatarId } })
-      return
+      identity = { pseudo: account.pseudo, avatarId: account.avatarId }
+    } else {
+      const chosen = normalizePseudo(pseudo)
+      if (!chosen) {
+        setError(`Choisis un pseudo de ${PSEUDO_MIN} à ${PSEUDO_MAX} caractères, sans caractère invisible.`)
+        return
+      }
+      identity = { pseudo: chosen, avatarId }
     }
-    const chosen = normalizePseudo(pseudo)
-    if (!chosen) {
-      setError(`Choisis un pseudo de ${PSEUDO_MIN} à ${PSEUDO_MAX} caractères, sans caractère invisible.`)
-      return
-    }
-    navigate(`/room/${suggested.id}`, { state: { pseudo: chosen, avatarId } })
+    // The click that enters is the user gesture that will start the room player (autoplay policy): when the consent
+    // window is in between, it is the click on one of its buttons that enters, from the same handler.
+    const roomId = suggested.id
+    const enter = () => navigate(`/room/${roomId}`, { state: identity })
+    if (choice === null) ask({ intent: 'enter', then: enter })
+    else enter()
   }
 
   return (
@@ -141,7 +154,20 @@ export default function EntryPage() {
           <button type="submit" className="btn-primary" disabled={!suggested || accountStatus === 'loading'}>
             ▶ Entrer dans la room
           </button>
-          <p className="entry__hint">Le son de la room démarre dès que tu entres.</p>
+          {choice === 'refused' ? (
+            <p className="entry__hint">
+              Le lecteur YouTube est désactivé : tu entres sans la musique.{' '}
+              <button type="button" className="entry__linklike" onClick={() => ask({ intent: 'manage' })}>
+                Changer ce choix
+              </button>
+            </p>
+          ) : choice === null ? (
+            <p className="entry__hint">
+              Avant d'entrer, on te demande ton accord pour le lecteur YouTube : c'est lui qui joue la musique.
+            </p>
+          ) : (
+            <p className="entry__hint">Le son de la room démarre dès que tu entres.</p>
+          )}
           <p className="entry__hint entry__legal">
             La vidéo est lue par le lecteur de YouTube.{' '}
             <Link to="/regles" target="_blank" rel="noopener noreferrer">

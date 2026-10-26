@@ -1,5 +1,7 @@
 import { useRef } from 'react'
 import type { DjQueue, MyReactions, Participant, Reactions, Track } from '../../shared/protocol'
+import { useConsentDialog } from '../consent/consentContext'
+import { useYouTubeConsent } from '../consent/useYouTubeConsent'
 import { useVolume } from '../player/useVolume'
 import { UNAVAILABLE_TEXT } from '../player/unavailable'
 import { useYouTubePlayer, type PlayerStatus } from '../player/useYouTubePlayer'
@@ -34,6 +36,12 @@ const SCREEN_MESSAGES: Partial<Record<PlayerStatus, string>> = {
     "Le lecteur vidéo n'a pas pu se charger. Désactive ton bloqueur de publicités ou recharge la page.",
 }
 
+// The viewer did not accept the YouTube player (or took the answer back): the room goes on without it, and says so calmly.
+const PLAYER_OFF = {
+  title: 'Le lecteur YouTube est désactivé',
+  text: "Tu n'entends pas la musique tant que le lecteur est désactivé. Tu peux toujours discuter, voter et passer DJ.",
+}
+
 export default function RoomStage({
   track,
   participants,
@@ -48,7 +56,17 @@ export default function RoomStage({
 }: RoomStageProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const { volume, muted, setVolume, toggleMute } = useVolume()
-  const { status, unavailableReason, enableSound } = useYouTubePlayer(hostRef, { track, clockOffsetMs, volume, muted })
+  // Nothing is requested from YouTube until the viewer accepted its player (the choice is asked on the entry screen).
+  const { choice } = useYouTubeConsent()
+  const { ask } = useConsentDialog()
+  const { status, unavailableReason, enableSound } = useYouTubePlayer(hostRef, {
+    track,
+    clockOffsetMs,
+    volume,
+    muted,
+    enabled: choice === 'accepted',
+  })
+  const playerOff = status === 'consent-needed'
   // This viewer's player could not play the track (blocked in their country, forbidden by its owner, removed): they are
   // told on the screen, which has nothing else to show. The room does not skip the track for one person: the others
   // hear it, and this one goes on with the next.
@@ -68,10 +86,11 @@ export default function RoomStage({
           hostRef={hostRef}
           boomKey={track?.startedAt}
           pulseKey={likePulse}
-          message={unavailable ? unavailable.text : (SCREEN_MESSAGES[status] ?? null)}
-          messageTitle={unavailable?.title}
-          announce={unavailable !== null}
+          message={playerOff ? PLAYER_OFF.text : unavailable ? unavailable.text : (SCREEN_MESSAGES[status] ?? null)}
+          messageTitle={playerOff ? PLAYER_OFF.title : unavailable?.title}
+          announce={unavailable !== null || playerOff}
           interactive={status === 'tap-needed'}
+          action={playerOff ? { label: 'Activer le lecteur', onClick: () => ask({ intent: 'enable' }) } : null}
         />
       </Scene>
       <NowPlayingBar

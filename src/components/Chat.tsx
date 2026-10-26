@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { CHAT_MAX_LENGTH, type ChatMessage } from '../../shared/protocol'
 import { AVATARS } from '../data/avatars'
+import { formatSpan } from '../data/duration'
+import { useModeration } from '../moderation/moderationContext'
+import MoreButton from '../moderation/MoreButton'
 import type { SendChatResult } from '../realtime/useRoom'
 import Avatar from './Avatar'
 import './Chat.css'
@@ -11,6 +14,8 @@ interface ChatProps {
   selfId: string | undefined
   /** Why writing is impossible right now. Shown to the user instead of a field that silently does nothing. */
   disabledReason: string | null
+  /** When the viewer can write again (local clock, ms) after the host muted them; null when they are not muted. */
+  mutedUntil: number | null
   onSend: (text: string) => Promise<SendChatResult>
 }
 
@@ -27,6 +32,8 @@ function errorMessage(result: Exclude<SendChatResult, { ok: true }>): string {
       return 'Les liens ne sont pas autorisés dans le chat.'
     case 'rate-limited':
       return `Doucement ! Tu pourras réécrire dans ${Math.ceil(result.retryAfterMs / 1000)} s.`
+    case 'muted':
+      return `L'hôte t'a mis en sourdine : tu pourras écrire à nouveau dans ${formatSpan(Math.ceil(result.retryAfterMs / 1000))}.`
     case 'not-in-room':
       return "Tu n'es plus dans la room. Retourne à l'entrée pour la rejoindre."
     case 'network':
@@ -34,12 +41,32 @@ function errorMessage(result: Exclude<SendChatResult, { ok: true }>): string {
   }
 }
 
-export default function Chat({ messages, selfId, disabledReason, onSend }: ChatProps) {
+export default function Chat({ messages, selfId, disabledReason, mutedUntil, onSend }: ChatProps) {
+  const moderation = useModeration()
   const [text, setText] = useState('')
   const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
   const listRef = useRef<HTMLOListElement>(null)
   const followsEnd = useRef(true)
+
+  // A mute: the field stays shut until it ends, with the time left read at a glance (not announced every second).
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (mutedUntil === null) return
+    setNow(Date.now())
+    const timer = window.setInterval(() => {
+      const current = Date.now()
+      setNow(current)
+      if (current >= mutedUntil) window.clearInterval(timer)
+    }, 1000)
+    return () => window.clearInterval(timer)
+  }, [mutedUntil])
+  const mutedMs = mutedUntil === null ? 0 : mutedUntil - now
+  const muted = mutedMs > 0
+  const mutedReason = muted
+    ? `L'hôte t'a mis en sourdine : tu pourras écrire à nouveau dans ${formatSpan(Math.ceil(mutedMs / 1000))}.`
+    : null
+  const shutReason = mutedReason ?? disabledReason
 
   useEffect(() => {
     const list = listRef.current
@@ -65,7 +92,7 @@ export default function Chat({ messages, selfId, disabledReason, onSend }: ChatP
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (sending || disabledReason) return
+    if (sending || shutReason) return
     if (text.trim() === '') {
       setError(errorMessage({ ok: false, error: 'empty' }))
       return
@@ -102,6 +129,22 @@ export default function Chat({ messages, selfId, disabledReason, onSend }: ChatP
                 </strong>{' '}
                 {message.text}
               </p>
+              {/* Report it (anybody), or act on it (the host): the person's own words have nothing to report. */}
+              {moderation && !isSelf && (
+                <MoreButton
+                  className="chat__more"
+                  label={`Actions sur le message de ${message.pseudo}`}
+                  onClick={() =>
+                    moderation.openActions({
+                      kind: 'chat',
+                      messageId: message.id,
+                      authorId: message.authorId,
+                      pseudo: message.pseudo,
+                      excerpt: message.text.length > 120 ? `${message.text.slice(0, 119)}…` : message.text,
+                    })
+                  }
+                />
+              )}
             </li>
           )
         })}
@@ -119,21 +162,29 @@ export default function Chat({ messages, selfId, disabledReason, onSend }: ChatP
           placeholder="Écris un message…"
           autoComplete="off"
           enterKeyHint="send"
-          readOnly={disabledReason !== null}
-          aria-describedby={disabledReason || error ? 'chat-feedback' : undefined}
+          readOnly={shutReason !== null}
+          aria-describedby={shutReason || error ? 'chat-feedback' : undefined}
           onChange={(event) => {
             setText(event.target.value)
             setError('')
           }}
         />
-        <button type="submit" aria-label="Envoyer" disabled={sending || disabledReason !== null}>
+        <button type="submit" aria-label="Envoyer" disabled={sending || shutReason !== null}>
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
             <path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
       </form>
 
-      {disabledReason ? (
+      {/* Said once when the mute begins, not at every tick of the countdown shown under it. */}
+      <p className="visually-hidden" role="status">
+        {muted ? "L'hôte t'a mis en sourdine : tu ne peux plus écrire pour un moment." : ''}
+      </p>
+      {mutedReason ? (
+        <p id="chat-feedback" className="chat__feedback">
+          {mutedReason}
+        </p>
+      ) : disabledReason ? (
         <p id="chat-feedback" className="chat__feedback" role="status">
           {disabledReason}
         </p>

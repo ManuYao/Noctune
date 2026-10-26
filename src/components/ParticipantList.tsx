@@ -1,5 +1,7 @@
 import type { Participant } from '../../shared/protocol'
 import { AVATARS } from '../data/avatars'
+import { useModeration } from '../moderation/moderationContext'
+import MoreButton from '../moderation/MoreButton'
 import Avatar from './Avatar'
 import './ParticipantList.css'
 
@@ -9,6 +11,7 @@ interface ParticipantListProps {
 }
 
 export default function ParticipantList({ participants, selfId }: ParticipantListProps) {
+  const moderation = useModeration()
   return (
     <section aria-labelledby="participants-title" className="participants">
       <h2 id="participants-title">Public ({participants.length})</h2>
@@ -21,6 +24,14 @@ export default function ParticipantList({ participants, selfId }: ParticipantLis
               <span>{participant.pseudo}</span>
               {participant.member && <em className="participants__member">membre</em>}
               {participant.id === selfId && <em>toi</em>}
+              {/* Only the host moderates the audience: warn, mute, exclude. */}
+              {moderation?.isHost && participant.id !== selfId && (
+                <MoreButton
+                  className="participants__more"
+                  label={`Actions de l'hôte sur ${participant.pseudo}`}
+                  onClick={() => moderation.openActions({ kind: 'person', participantId: participant.id, pseudo: participant.pseudo })}
+                />
+              )}
             </li>
           )
         })}

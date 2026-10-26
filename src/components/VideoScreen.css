@@ -128,6 +128,13 @@
   font-size: 1.05rem;
 }
 
+/* "Activer le lecteur": the one thing this viewer can do about a screen with no video. */
+.screen__message-action {
+  margin-top: 12px;
+  padding: 0 18px;
+  font-size: 0.9rem;
+}
+
 /* The shortest the player may be (200 px) with a long text: smaller type and less padding, so that it fits. */
 @container stage (max-width: 440px) {
   .screen__message {

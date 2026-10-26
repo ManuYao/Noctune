@@ -3,14 +3,19 @@ import type { Server } from 'socket.io'
 import {
   AVATAR_IDS,
   DJ_INPUT_MAX,
+  REPORT_REASONS,
   type AddTrackResult,
   type AvatarId,
   type ClientToServerEvents,
   type DjFailure,
   type DjResult,
   type JoinResult,
+  type ModResult,
   type Participant,
   type ReactResult,
+  type Report,
+  type ReportReason,
+  type ReportResult,
   type ServerToClientEvents,
   type TrackStatus,
   type VideoInfo,
@@ -18,8 +23,11 @@ import {
 import { isStaffLookalike, normalizePseudo } from '../../shared/validation'
 import type { AccountService } from './accounts/AccountService'
 import { hashToken, readSessionToken } from './accounts/sessionToken'
+import { clientIp } from './http/origin'
 import { Lobby, LOBBY_CHANNEL, summarize } from './Lobby'
 import { MinInterval } from './MinInterval'
+import { excerpt } from './moderation/Moderation'
+import { SanctionKeys } from './moderation/SanctionKeys'
 import { Room, type RoomOptions } from './Room'
 import type { PlaylistService } from './playlists/PlaylistService'
 import { seedRooms, type StoredRoom } from './rooms/RoomStore'
@@ -50,6 +58,8 @@ export interface HandlerOptions extends RoomOptions {
   playlists?: PlaylistService | null
   /** The rooms that exist when the server starts: the rooms of the team and, with a database, those of the members. */
   initialRooms?: StoredRoom[]
+  /** How many reverse proxies stand in front of the server: the address of a visitor (what their sanctions stick to) comes from it. */
+  trustedProxies?: number
 }
 
 interface SocketData {
@@ -57,6 +67,8 @@ interface SocketData {
   account?: { id: string; pseudo: string; avatarId: AvatarId }
   /** Which session that was (a hash of its token), to close the connection when the session ends. */
   sessionKey?: string
+  /** What this connection's sanctions stick to: the account of a member, a keyed hash of the address of a visitor. */
+  sanctionKey?: string
   roomId?: string
   participantId?: string
 }
@@ -150,6 +162,46 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
 
   for (const def of options.initialRooms ?? seedRooms()) openRoom(def)
 
+  const sanctionKeys = new SanctionKeys()
+  // The host is told of new reports a few times a second at most, like the other pushes.
+  const REPORTS_PUSH_MS = 250
+  const reportTimers = new Map<string, NodeJS.Timeout>()
+
+  /** The inbox goes to the host's connection only, once for any number of reports filed just before. */
+  function pushReports(room: Room) {
+    if (reportTimers.has(room.id)) return
+    reportTimers.set(
+      room.id,
+      setTimeout(() => {
+        reportTimers.delete(room.id)
+        const hostAccount = stored.get(room.id)?.hostAccountId
+        const host = hostAccount ? room.participantIdOf(hostAccount) : undefined
+        if (host) io.to(host).emit('mod:reports', room.moderation.list(Date.now()))
+      }, REPORTS_PUSH_MS),
+    )
+  }
+
+  /** The host excluded somebody: they are told, then they are out of the room as if they had left (and their DJ place goes). */
+  function evict(room: Room, participantId: string) {
+    const accountId = room.accountIdOf(participantId)
+    for (const socketId of [...(io.sockets.adapter.rooms.get(participantId) ?? [])]) {
+      const socket = io.sockets.sockets.get(socketId)
+      if (!socket) continue
+      socket.emit('room:excluded')
+      socket.leave(room.id)
+      socket.leave(participantId)
+      // Their connection forgets the room, so that nothing they send afterwards is taken for a word said in it.
+      socket.data.roomId = undefined
+      socket.data.participantId = undefined
+    }
+    if (room.remove(participantId)) {
+      io.to(room.id).emit('room:participant-left', participantId)
+      lobby.changed()
+    }
+    // An excluded member does not keep a place in the queue (on the decks, their track is cut).
+    if (accountId) room.forgetAccount(accountId)
+  }
+
   const accounts = options.accounts ?? null
   const resolver = options.resolver ?? null
 
@@ -186,6 +238,10 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
 
   io.on('connection', (socket) => {
     const joinLimit = new MinInterval(JOIN_MIN_INTERVAL_MS)
+    // Learned once, as the account is: a member is sanctioned by account, a visitor by their address.
+    socket.data.sanctionKey = socket.data.account
+      ? sanctionKeys.member(socket.data.account.id)
+      : sanctionKeys.visitor(clientIp(socket.request, options.trustedProxies ?? 0))
 
     // Joining may wait for the database. What the same connection asks next (leave, join again, disconnect) waits for
     // its turn, so that a late join can never land after the leave that was meant to cancel it. With nothing waiting,
@@ -289,6 +345,9 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
           // Never trust the client: the payload shape and every value are checked here.
           const room = typeof payload?.roomId === 'string' ? rooms.get(payload.roomId) : undefined
           if (!room) return reply({ ok: false, error: 'unknown-room' })
+          // Excluded by the host: before anything that could cost a database round trip.
+          const key = socket.data.sanctionKey
+          if (key && room.moderation.excludedFor(key, Date.now()) > 0) return reply({ ok: false, error: 'excluded' })
 
           // A member comes in as themself: the pseudo and the avatar the page sends only matter to a visitor.
           const account = socket.data.account
@@ -310,6 +369,8 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
 
           // Deleted by its host while the database was being asked (or replaced: never a room that is no longer the live one).
           if (rooms.get(room.id) !== room || room.isClosed) return reply({ ok: false, error: 'unknown-room' })
+          // Excluded while the database was being asked (another device of the same member, for instance).
+          if (key && room.moderation.excludedFor(key, Date.now()) > 0) return reply({ ok: false, error: 'excluded' })
 
           leave()
           if (account && room.hasAccount(account.id)) return reply({ ok: false, error: 'already-in-room' })
@@ -321,7 +382,7 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
           // with a room id (a slug) or with the list of rooms (#lobby).
           socket.join(participant.id)
           try {
-            room.add(participant, account?.id)
+            room.add(participant, account?.id, key)
           } catch (error) {
             // Half in is worse than out: the account would be "already in the room" until the server restarts.
             socket.leave(participant.id)
@@ -335,6 +396,8 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
           lobby.changed()
 
           const def = stored.get(room.id)
+          // From the account of the connection and the host of the room, never from what the page says.
+          const isHost = account !== undefined && def?.hostAccountId != null && def.hostAccountId === account.id
           reply({
             ok: true,
             snapshot: {
@@ -350,8 +413,9 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
               styles: def ? [...def.styles] : [],
               theme: def?.theme ?? 'neon',
               host: def?.hostPseudo ?? null,
-              // From the account of the connection and the host of the room, never from what the page says.
-              isHost: account !== undefined && def?.hostAccountId != null && def.hostAccountId === account.id,
+              isHost,
+              // Only the host is given the inbox.
+              reports: isHost ? room.moderation.list(Date.now()) : [],
               queue: room.queueView(),
               lineup: room.lineupOf(participant.id),
               chat: room.chat.recent(),
@@ -566,6 +630,200 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
       })
     })
 
+    // ---- Reports and moderation. Reports and the host's acts share a light allowance of their own.
+    const modLimit = new MinInterval(options.editIntervalMs ?? DJ_EDIT_MIN_INTERVAL_MS)
+    const isId = (value: unknown): value is string =>
+      typeof value === 'string' && value.length >= 1 && value.length <= TRACK_ID_MAX_LENGTH
+
+    socket.on('report:create', (payload, ack) => {
+      if (typeof ack !== 'function') return
+      const answer = (result: ReportResult) => ack(result)
+      try {
+        const where = here()
+        if (!where || !where.room.get(where.participantId)) return answer({ ok: false, error: 'not-in-room' })
+        const { room, participantId } = where
+
+        const body = payload as { target?: unknown; reason?: unknown } | null | undefined
+        const reason = body?.reason
+        const target = body?.target as { kind?: unknown; messageId?: unknown; entryId?: unknown; trackId?: unknown } | null | undefined
+        if (typeof reason !== 'string' || !(REPORT_REASONS as readonly string[]).includes(reason)) return answer({ ok: false, error: 'invalid' })
+        if (!target || typeof target !== 'object') return answer({ ok: false, error: 'invalid' })
+        const limited = limitedBy(modLimit)
+        if (limited) return answer(limited)
+
+        // One person, one allowance, whatever the number of their connections (a member by account, a visitor by address).
+        const reporter = socket.data.sanctionKey ?? participantId
+        const now = Date.now()
+        const wait = room.moderation.reportWait(reporter, now)
+        if (wait > 0) return answer({ ok: false, error: 'rate-limited', retryAfterMs: wait })
+
+        // What is reported must be there, in this room, now: found by the server, never taken from the page.
+        let info: Report['target']
+        let targetKey: string
+        if (target.kind === 'chat') {
+          if (!isId(target.messageId)) return answer({ ok: false, error: 'invalid' })
+          const message = room.chat.recent().find((candidate) => candidate.id === target.messageId)
+          if (!message) return answer({ ok: false, error: 'no-such-target' })
+          if (message.authorId === participantId) return answer({ ok: false, error: 'own-target' })
+          info = { kind: 'chat', messageId: message.id, participantId: message.authorId, pseudo: message.pseudo, text: excerpt(message.text) }
+          targetKey = `chat:${message.id}`
+        } else if (target.kind === 'track') {
+          if (!isId(target.entryId) || !isId(target.trackId)) return answer({ ok: false, error: 'invalid' })
+          const found = room.queuedTrack(target.entryId, target.trackId)
+          if (!found) return answer({ ok: false, error: 'no-such-target' })
+          if (found.accountId === room.accountIdOf(participantId)) return answer({ ok: false, error: 'own-target' })
+          info = { kind: 'track', entryId: target.entryId, trackId: target.trackId, pseudo: found.pseudo, title: found.title }
+          targetKey = `track:${target.trackId}`
+        } else {
+          return answer({ ok: false, error: 'invalid' })
+        }
+
+        const filed = room.moderation.file(reporter, targetKey, reason as ReportReason, info, now)
+        if (!filed.ok) return answer({ ok: false, error: filed.error })
+
+        if (stored.get(room.id)?.hostAccountId == null) {
+          // A room of the team has no host: the team reads its log. Never the text of a message, only what it is about.
+          if (filed.created) console.log(`[signalement] room=${room.id} motif=${reason} cible=${info.kind} pseudo=${info.pseudo}`)
+          return answer({ ok: true, toHost: false })
+        }
+        pushReports(room)
+        answer({ ok: true, toHost: true })
+      } catch (error) {
+        console.error(`[signalement] ${(error as Error).message}`)
+        answer({ ok: false, error: 'server-error' })
+      }
+    })
+
+    /** The room and participant of a host's request, or the refusal already given: only the host of THIS room acts. */
+    function asHost(ack: (result: ModResult) => void): { room: Room; participantId: string } | null {
+      const where = here()
+      if (!where) {
+        ack({ ok: false, error: 'not-in-room' })
+        return null
+      }
+      const account = socket.data.account
+      const hostAccount = stored.get(where.room.id)?.hostAccountId
+      // From the account of the connection and the host of the room, never from what the page says.
+      if (!account || !hostAccount || hostAccount !== account.id || where.room.participantIdOf(account.id) !== where.participantId) {
+        ack({ ok: false, error: 'not-host' })
+        return null
+      }
+      return where
+    }
+
+    /** What every act of a host goes through: the light allowance, then the host's own, counted once it is taken. */
+    function actAllowed(room: Room, participantId: string): Extract<ModResult, { error: 'rate-limited' }> | null {
+      const limited = limitedBy(modLimit)
+      if (limited) return limited
+      const hostKey = socket.data.sanctionKey ?? participantId
+      const wait = room.moderation.actionWait(hostKey, Date.now())
+      if (wait > 0) return { ok: false, error: 'rate-limited', retryAfterMs: wait }
+      return null
+    }
+
+    socket.on('mod:act', (payload, ack) => {
+      if (typeof ack !== 'function') return
+      const answer = (result: ModResult) => ack(result)
+      try {
+        const host = asHost(answer)
+        if (!host) return
+        const { room, participantId } = host
+        const body = payload as { action?: unknown; participantId?: unknown; reportId?: unknown } | null | undefined
+        const action = body?.action
+        const targetId = body?.participantId
+        const reportId = body?.reportId
+        if ((action !== 'warn' && action !== 'mute' && action !== 'exclude') || !isId(targetId) || (reportId !== undefined && !isId(reportId))) {
+          return answer({ ok: false, error: 'invalid' })
+        }
+        const refused = actAllowed(room, participantId)
+        if (refused) return answer(refused)
+
+        // The target is found in THIS room, by the server, and is not the host.
+        if (targetId === participantId) return answer({ ok: false, error: 'self' })
+        if (!room.get(targetId)) return answer({ ok: false, error: 'no-such-person' })
+        const targetAccount = room.accountIdOf(targetId)
+        if (targetAccount !== undefined && targetAccount === room.accountIdOf(participantId)) return answer({ ok: false, error: 'self' })
+        if (reportId !== undefined && !room.moderation.has(reportId)) return answer({ ok: false, error: 'no-such-report' })
+        const key = room.sanctionKeyOf(targetId)
+        if (!key) return answer({ ok: false, error: 'server-error' })
+
+        const now = Date.now()
+        room.moderation.recordAction(socket.data.sanctionKey ?? participantId, now)
+        let warnings: number | undefined
+        if (action === 'warn') {
+          warnings = room.moderation.warn(key, now)
+          io.to(targetId).emit('mod:notice', { kind: 'warning' })
+        } else if (action === 'mute') {
+          const retryAfterMs = room.moderation.mute(key, now)
+          io.to(targetId).emit('mod:notice', { kind: 'muted', retryAfterMs })
+        } else {
+          room.moderation.exclude(key, now)
+          evict(room, targetId)
+        }
+        if (reportId !== undefined) {
+          room.moderation.resolve(reportId)
+          pushReports(room)
+        }
+        answer(warnings === undefined ? { ok: true } : { ok: true, warnings })
+      } catch (error) {
+        console.error(`[modération] ${(error as Error).message}`)
+        answer({ ok: false, error: 'server-error' })
+      }
+    })
+
+    socket.on('mod:remove-track', (payload, ack) => {
+      if (typeof ack !== 'function') return
+      const answer = (result: ModResult) => ack(result)
+      try {
+        const host = asHost(answer)
+        if (!host) return
+        const { room, participantId } = host
+        const body = payload as { entryId?: unknown; trackId?: unknown; reportId?: unknown } | null | undefined
+        if (!isId(body?.entryId) || !isId(body?.trackId) || (body?.reportId !== undefined && !isId(body.reportId))) {
+          return answer({ ok: false, error: 'invalid' })
+        }
+        const refused = actAllowed(room, participantId)
+        if (refused) return answer(refused)
+        const reportId = body.reportId as string | undefined
+        if (reportId !== undefined && !room.moderation.has(reportId)) return answer({ ok: false, error: 'no-such-report' })
+
+        const removed = room.removeQueuedTrack(body.entryId, body.trackId)
+        if (!removed.ok) return answer({ ok: false, error: 'no-such-track' })
+        room.moderation.recordAction(socket.data.sanctionKey ?? participantId, Date.now())
+        const owner = room.participantIdOf(removed.accountId)
+        if (owner) io.to(owner).emit('mod:notice', { kind: 'track-removed', title: removed.title })
+        if (reportId !== undefined) {
+          room.moderation.resolve(reportId)
+          pushReports(room)
+        }
+        answer({ ok: true })
+      } catch (error) {
+        console.error(`[modération] ${(error as Error).message}`)
+        answer({ ok: false, error: 'server-error' })
+      }
+    })
+
+    socket.on('mod:dismiss', (payload, ack) => {
+      if (typeof ack !== 'function') return
+      const answer = (result: ModResult) => ack(result)
+      try {
+        const host = asHost(answer)
+        if (!host) return
+        const { room, participantId } = host
+        const reportId = (payload as { reportId?: unknown } | null | undefined)?.reportId
+        if (!isId(reportId)) return answer({ ok: false, error: 'invalid' })
+        const refused = actAllowed(room, participantId)
+        if (refused) return answer(refused)
+        if (!room.moderation.resolve(reportId)) return answer({ ok: false, error: 'no-such-report' })
+        room.moderation.recordAction(socket.data.sanctionKey ?? participantId, Date.now())
+        pushReports(room)
+        answer({ ok: true })
+      } catch (error) {
+        console.error(`[modération] ${(error as Error).message}`)
+        answer({ ok: false, error: 'server-error' })
+      }
+    })
+
     socket.on('chat:send', (payload, ack) => {
       if (typeof ack !== 'function') return
 
@@ -573,6 +831,11 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
       const room = roomId ? rooms.get(roomId) : undefined
       const author = participantId ? room?.get(participantId) : undefined
       if (!room || !author) return ack({ ok: false, error: 'not-in-room' })
+
+      // Muted by the host: refused before anything else, and it does not use up the author's turn.
+      const key = socket.data.sanctionKey
+      const mutedMs = key ? room.moderation.mutedFor(key, Date.now()) : 0
+      if (mutedMs > 0) return ack({ ok: false, error: 'muted', retryAfterMs: mutedMs })
 
       const result = room.chat.post(author, payload?.text)
       if (!result.ok) return ack(result)
@@ -632,6 +895,8 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
       // Gone from the registry first: nothing can join it from this moment, whatever is still waiting on the database.
       rooms.delete(id)
       stored.delete(id)
+      clearTimeout(reportTimers.get(id))
+      reportTimers.delete(id)
       io.to(id).emit('room:closed')
       // Everybody in it is put out: out of its channel and of their own, and their connection forgets the room, so that
       // nothing they send afterwards is taken for a word said in it.

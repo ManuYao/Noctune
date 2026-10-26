@@ -132,6 +132,20 @@
   font-size: 0.85rem;
 }
 
+/* A button that reads as a link, inside a sentence. */
+.entry__linklike {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-2);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .entry__legal a {
   display: inline-flex;
   align-items: center;

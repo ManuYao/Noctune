@@ -24,6 +24,7 @@ import { TEST_TRACKS } from './catalog'
 import { ChatLog } from './ChatLog'
 import { DjBooth, type DjEntry, type DropReason, type TurnContext, type TurnEvent } from './DjBooth'
 import { MinInterval } from './MinInterval'
+import { Moderation, type ModerationOptions } from './moderation/Moderation'
 
 // One person changing a reaction (like, vote) more than a few times a second is a bug or a flood.
 const REACTION_MIN_INTERVAL_MS = 300
@@ -71,6 +72,8 @@ export interface RoomOptions {
   rules?: RoomRules
   /** How long changes to the queue are gathered before the room hears of them (tests make it short). */
   queueBroadcastMs?: number
+  /** Lengths of the sanctions and limits of the reports (tests shorten them). */
+  moderation?: ModerationOptions
 }
 
 type Refusal = { reason: 'too-long'; maxSec: number } | { reason: 'recently-played'; retryAfterSec: number | null }
@@ -82,6 +85,8 @@ export class Room {
   private accountOf = new Map<string, string>()
   /** The other way round: which participant an account is right now. A member is in a room once. */
   private participantOf = new Map<string, string>()
+  /** What each participant's sanctions stick to (account or hashed address): see SanctionKeys. Never sent anywhere. */
+  private sanctionKeys = new Map<string, string>()
   private readonly booth = new DjBooth()
   /** When each video last started in this room (house selection included). Insertion order is time order. */
   private playedAt = new Map<string, number>()
@@ -103,6 +108,8 @@ export class Room {
   private closed = false
   nowPlaying: Track | null = null
   readonly chat = new ChatLog()
+  /** Sanctions, reports and their allowances. Memory only; the host's inbox, and what keeps somebody out or silent. */
+  readonly moderation: Moderation
 
   constructor(
     readonly id: string,
@@ -115,6 +122,7 @@ export class Room {
     this.ownSkipMinSec = options.ownSkipMinSec ?? OWN_SKIP_MIN_SEC
     this.queueBroadcastMs = options.queueBroadcastMs ?? QUEUE_BROADCAST_MS
     this.rules = options.rules ?? DEFAULT_RULES
+    this.moderation = new Moderation(options.moderation)
   }
 
   get size() {
@@ -167,7 +175,9 @@ export class Room {
     this.participants.clear()
     this.accountOf.clear()
     this.participantOf.clear()
+    this.sanctionKeys.clear()
     this.chat.clear()
+    this.moderation.clear()
     this.stopPlayback()
     clearTimeout(this.reactionsTimer)
     this.reactionsTimer = undefined
@@ -175,10 +185,26 @@ export class Room {
     this.queueTimer = undefined
   }
 
-  add(participant: Participant, accountId?: string) {
+  /** The account behind a participant, or undefined for a visitor. For the server's own use: never sent to a client. */
+  accountIdOf(participantId: string): string | undefined {
+    return this.accountOf.get(participantId)
+  }
+
+  /** The participant an account is in this room, if it is here. */
+  participantIdOf(accountId: string): string | undefined {
+    return this.participantOf.get(accountId)
+  }
+
+  /** What this participant's sanctions stick to (set when they came in). */
+  sanctionKeyOf(participantId: string): string | undefined {
+    return this.sanctionKeys.get(participantId)
+  }
+
+  add(participant: Participant, accountId?: string, sanctionKey?: string) {
     // A join that was waiting for the database while the host deleted the room must not bring it back to life.
     if (this.closed) throw new Error('room closed')
     this.participants.set(participant.id, participant)
+    if (sanctionKey) this.sanctionKeys.set(participant.id, sanctionKey)
     let place: DjEntry | undefined
     if (accountId) {
       this.accountOf.set(participant.id, accountId)
@@ -209,14 +235,16 @@ export class Room {
       const accountId = this.accountOf.get(participantId)
       this.accountOf.delete(participantId)
       if (accountId && this.participantOf.get(accountId) === participantId) this.participantOf.delete(accountId)
+      this.sanctionKeys.delete(participantId)
       this.chat.forget(participantId)
       this.reactionLimit.forget(participantId)
       // A vote counts only while its author is here. Likes stay: they are about the track, not the audience.
       this.skipVotes.delete(participantId)
       if (this.participants.size === 0) {
         this.stopPlayback()
-        // Nobody left to read it: the chat history is not kept for the next visitor.
+        // Nobody left to read it: the chat history and the reports are not kept for the next visitor.
         this.chat.clear()
+        this.moderation.clearReports()
       } else {
         // A DJ who leaves keeps their place and their track plays on: they are only away now.
         if (accountId && this.booth.find(accountId)) this.scheduleQueueBroadcast()
@@ -391,6 +419,43 @@ export class Room {
     this.sendLineup(who.accountId)
     if (index === 0) this.scheduleQueueBroadcast() // the queue shows the first track of each line-up
     return { ok: true }
+  }
+
+  /**
+   * A DJ's queued track as the queue shows it, for a report to point at: the place by its public id, and the track either
+   * in the line-up or the one that plays now. Null when either is not there.
+   */
+  queuedTrack(entryId: string, trackId: string): { pseudo: string; title: string; accountId: string } | null {
+    const entry = this.entryById(entryId)
+    if (!entry) return null
+    const playing = this.booth.current === entry && this.nowPlaying?.id === trackId ? this.nowPlaying : null
+    const track = playing ?? entry.lineup.find((candidate) => candidate.id === trackId)
+    return track ? { pseudo: entry.pseudo, title: track.title, accountId: entry.accountId } : null
+  }
+
+  /**
+   * The host takes a track out of a DJ's line-up; the one that plays is cut and the turn passes on. The caller has
+   * checked that the asker is the host: this only finds the track. Returns whose it was, to tell them.
+   */
+  removeQueuedTrack(entryId: string, trackId: string): { ok: true; title: string; accountId: string } | { ok: false; error: 'no-such-track' } {
+    const entry = this.entryById(entryId)
+    if (!entry) return { ok: false, error: 'no-such-track' }
+    if (this.booth.current === entry && this.nowPlaying?.id === trackId) {
+      const title = this.nowPlaying.title
+      this.advance()
+      return { ok: true, title, accountId: entry.accountId }
+    }
+    const index = entry.lineup.findIndex((track) => track.id === trackId)
+    if (index === -1) return { ok: false, error: 'no-such-track' }
+    const [track] = entry.lineup.splice(index, 1)
+    this.sendLineup(entry.accountId)
+    if (index === 0) this.scheduleQueueBroadcast() // the queue shows the first track of each line-up
+    return { ok: true, title: track.title, accountId: entry.accountId }
+  }
+
+  private entryById(entryId: string): DjEntry | undefined {
+    if (this.booth.current?.id === entryId) return this.booth.current
+    return this.booth.waiting.find((entry) => entry.id === entryId)
   }
 
   /** Leaves the queue, line-up included. On the decks, that cuts the track that plays. */

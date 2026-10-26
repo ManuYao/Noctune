@@ -40,12 +40,12 @@ export interface ChatMessage {
   sentAt: number
 }
 
-export type ChatError = 'not-in-room' | 'empty' | 'too-long' | 'links-not-allowed' | 'rate-limited'
+export type ChatError = 'not-in-room' | 'empty' | 'too-long' | 'links-not-allowed' | 'rate-limited' | 'muted'
 
 export type ChatResult =
   | { ok: true }
-  | { ok: false; error: Exclude<ChatError, 'rate-limited'> }
-  | { ok: false; error: 'rate-limited'; retryAfterMs: number }
+  | { ok: false; error: Exclude<ChatError, 'rate-limited' | 'muted'> }
+  | { ok: false; error: 'rate-limited' | 'muted'; retryAfterMs: number }
 
 /** The first seconds of a track are protected: nobody can vote to skip it yet. */
 export const SKIP_PROTECTED_SEC = 30
@@ -74,6 +74,63 @@ export type ReactResult =
   | { ok: true }
   | { ok: false; error: ReactError }
   | { ok: false; error: 'rate-limited' | 'too-early'; retryAfterMs: number }
+
+// ---- Moderation and reports. The host of a room (a member who made it) moderates it; the rooms of the team have no host:
+// their reports are logged for the team. One ladder everywhere: 1 warning, 2 mute 10 minutes, 3 exclusion 24 hours, (4 ban
+// from the platform: the team only, not built). Everything is kept in memory (like the chat) and goes when the room empties.
+
+export const MUTE_SEC = 10 * 60
+export const EXCLUDE_SEC = 24 * 60 * 60
+export const REPORT_REASONS = ['spam', 'harassment', 'inappropriate', 'off-topic', 'other'] as const
+export type ReportReason = (typeof REPORT_REASONS)[number]
+
+/** What a report points at: a message of the chat, or the next track of a DJ in the queue. */
+export type ReportTarget = { kind: 'chat'; messageId: string } | { kind: 'track'; entryId: string; trackId: string }
+
+/** A report as the host reads it (several people reporting the same thing make one report, with a count). */
+export interface Report {
+  id: string
+  reason: ReportReason
+  /** Server clock (ms since epoch) of the first report. */
+  at: number
+  /** How many different people reported it. */
+  count: number
+  target:
+    | { kind: 'chat'; messageId: string; participantId: string; pseudo: string; text: string }
+    | { kind: 'track'; entryId: string; trackId: string; pseudo: string; title: string }
+}
+
+export type ReportError = 'not-in-room' | 'invalid' | 'no-such-target' | 'own-target' | 'already-reported' | 'server-error'
+export type ReportResult =
+  /** `toHost`: false in a room without host (the team gets it in its log). */
+  | { ok: true; toHost: boolean }
+  | { ok: false; error: ReportError }
+  | { ok: false; error: 'rate-limited'; retryAfterMs: number }
+
+export type ModAction = 'warn' | 'mute' | 'exclude'
+export type ModError =
+  | 'not-in-room'
+  | 'not-host'
+  | 'invalid'
+  | 'no-such-person'
+  | 'no-such-report'
+  | 'no-such-track'
+  /** The host cannot sanction themselves. */
+  | 'self'
+  | 'server-error'
+export type ModResult =
+  /** `warnings`: how many warnings the person has had in this room (answer of `warn`), to choose the next step. */
+  | { ok: true; warnings?: number }
+  | { ok: false; error: ModError }
+  | { ok: false; error: 'rate-limited'; retryAfterMs: number }
+
+/** Said to the person a host acted on, and to nobody else. */
+export type ModNotice =
+  | { kind: 'warning' }
+  /** `retryAfterMs`: when they can write again. */
+  | { kind: 'muted'; retryAfterMs: number }
+  /** The host took a track of theirs out of the queue (or cut it). */
+  | { kind: 'track-removed'; title: string }
 
 // ---- DJs: the rules of a room, the queue, the tracks a DJ lines up. Only members can be DJs.
 
@@ -198,6 +255,8 @@ export interface RoomSnapshot {
   host: string | null
   /** The viewer is the host of this room (decided by the server from the account, never from the page). */
   isHost: boolean
+  /** What members reported in this room: only the host is given it, anybody else gets an empty list. */
+  reports: Report[]
   queue: DjQueue
   /** The viewer's own line-up (the tracks they will play, in order). Empty for a visitor. */
   lineup: QueuedTrack[]
@@ -220,6 +279,8 @@ export type JoinError =
   | 'server-error'
   /** Joins asked for faster than anybody does. */
   | 'rate-limited'
+  /** The host of the room excluded this person (or this address, for a visitor) for 24 hours. */
+  | 'excluded'
 
 export type JoinResult = { ok: true; snapshot: RoomSnapshot } | { ok: false; error: JoinError }
 
@@ -461,6 +522,14 @@ export interface ClientToServerEvents {
   'dj:remove': (payload: { trackId: string }, ack: (result: DjResult) => void) => void
   /** Leaves the queue, line-up included. On the decks, that cuts the track that plays. */
   'dj:leave': (ack: (result: DjResult) => void) => void
+  /** Anybody in a room can report a chat message or a queued track; it goes to the host. */
+  'report:create': (payload: { target: ReportTarget; reason: unknown }, ack: (result: ReportResult) => void) => void
+  /** The host warns, mutes (10 min) or excludes (24 h) somebody of the room. `reportId`: the report that led to it, handled. */
+  'mod:act': (payload: { action: ModAction; participantId: string; reportId?: string }, ack: (result: ModResult) => void) => void
+  /** The host takes a track out of a DJ's line-up (on the decks: cuts it). */
+  'mod:remove-track': (payload: { entryId: string; trackId: string; reportId?: string }, ack: (result: ModResult) => void) => void
+  /** The host sets a report aside. */
+  'mod:dismiss': (payload: { reportId: string }, ack: (result: ModResult) => void) => void
 }
 
 export interface ServerToClientEvents {
@@ -480,6 +549,12 @@ export interface ServerToClientEvents {
   'dj:lineup': (lineup: QueuedTrack[]) => void
   /** To one DJ only. */
   'dj:notice': (notice: DjNotice) => void
+  /** To the host only: the whole inbox of reports, each time it changes. */
+  'mod:reports': (reports: Report[]) => void
+  /** To the person a host acted on. */
+  'mod:notice': (notice: ModNotice) => void
+  /** To the person the host excluded: they are out of the room (and cannot come back for 24 hours). */
+  'room:excluded': () => void
   /** Sent in batches, a few times a second at most. */
   'track:reactions': (reactions: Reactions) => void
   'chat:message': (message: ChatMessage) => void

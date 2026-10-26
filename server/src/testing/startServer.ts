@@ -58,6 +58,8 @@ export async function startServer(options: StartOptions = {}): Promise<Started> 
     // Tests line several tracks up in a row: the allowances between two requests are tested on their own.
     lookupIntervalMs: 0,
     editIntervalMs: 0,
+    // A person may report twice in a row here: the allowances of reports have their own tests.
+    moderation: { reportGapMs: 0 },
     // Wide open: the allowance of an account has its own tests.
     accountLookupBudget: { burst: 1000, refillMs: 1 },
     ownSkipMinSec: 0,

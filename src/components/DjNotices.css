@@ -30,10 +30,22 @@
   pointer-events: auto;
 }
 
-.dj-notices__item p {
+.dj-notices__text {
   flex: 1;
+  min-width: 0;
+}
+
+.dj-notices__item p {
   margin: 0;
   overflow-wrap: anywhere;
+}
+
+.dj-notices__item a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  color: var(--accent-2);
+  font-weight: 600;
 }
 
 .dj-notices__item button {

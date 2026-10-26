@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { djNoticeMessage } from '../realtime/djMessages'
+import { Link } from 'react-router'
+import { roomNoticeMessage } from '../realtime/djMessages'
 import type { RoomNotice } from '../realtime/useRoom'
 import './DjNotices.css'
 
@@ -19,7 +20,15 @@ function Notice({ notice, onDismiss }: { notice: RoomNotice; onDismiss: (id: num
 
   return (
     <li className="dj-notices__item">
-      <p>{djNoticeMessage(notice.notice)}</p>
+      <div className="dj-notices__text">
+        <p>{roomNoticeMessage(notice.notice)}</p>
+        {/* A warning says what was not respected: the rules are one click away, in a new tab so the room keeps playing. */}
+        {notice.notice.kind === 'warning' && (
+          <Link to="/regles" target="_blank" rel="noopener noreferrer">
+            Lire les règles<span className="visually-hidden"> (nouvel onglet)</span>
+          </Link>
+        )}
+      </div>
       <button type="button" aria-label="Fermer ce message" onClick={() => onDismiss(notice.id)}>
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
           <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
@@ -30,8 +39,9 @@ function Notice({ notice, onDismiss }: { notice: RoomNotice; onDismiss: (id: num
 }
 
 /**
- * What the server tells a DJ about their own turn (a track taken out, a turn skipped, a place lost). Small notes in a
- * corner of the window, never over the video: YouTube requires its player to stay unobstructed.
+ * What the server tells somebody about themselves (a DJ's turn, a warning or a mute from the host, a track taken out) and
+ * what the page has to say (the host's step done, a new report). Small notes in a corner of the window, never over the
+ * video: YouTube requires its player to stay unobstructed.
  * The region is always in the page, so that a screen reader reads each note as it arrives.
  */
 export default function DjNotices({ notices, onDismiss }: DjNoticesProps) {

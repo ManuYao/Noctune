@@ -13,8 +13,11 @@ export type PlayerStatus =
   | 'tap-needed' // the browser refused to start at all before a tap
   | 'video-unavailable' // YouTube refuses this video in an embedded player
   | 'player-failed' // the player itself could not load (offline, blocked script)
+  | 'consent-needed' // the visitor has not accepted the YouTube player: nothing is requested from YouTube
 
 interface PlayerOptions {
+  /** The visitor accepted the YouTube player. Without it the script and the player are not loaded at all. */
+  enabled: boolean
   track: Track | null
   /** Milliseconds to add to the local clock to get the server clock. */
   clockOffsetMs: number
@@ -51,8 +54,8 @@ function correctDrift(player: YouTubePlayer, track: Track, clockOffsetMs: number
  * correct drift, and cope with browsers that refuse to start a video with sound.
  */
 export function useYouTubePlayer(hostRef: RefObject<HTMLDivElement | null>, options: PlayerOptions) {
-  const { track, volume, muted } = options
-  const [status, setStatus] = useState<PlayerStatus>('loading')
+  const { track, volume, muted, enabled } = options
+  const [status, setStatus] = useState<PlayerStatus>(enabled ? 'loading' : 'consent-needed')
   // Why the player refused the track, while the status says it did. Only this viewer's player knows it.
   const [reason, setReason] = useState<UnavailableReason | null>(null)
   const [ready, setReady] = useState(false)
@@ -69,8 +72,14 @@ export function useYouTubePlayer(hostRef: RefObject<HTMLDivElement | null>, opti
     latest.current = options
   })
 
-  // Create the player once, and destroy it with the screen.
+  // Create the player once the visitor accepted it, and destroy it with the screen (or when they take the consent back
+  // in another tab). Without the consent nothing is loaded: no script, no iframe, no request to YouTube or Google.
   useEffect(() => {
+    if (!enabled) {
+      setStatus('consent-needed')
+      return
+    }
+    setStatus((previous) => (previous === 'consent-needed' ? 'loading' : previous))
     const host = hostRef.current
     if (!host) return
     let cancelled = false
@@ -151,7 +160,7 @@ export function useYouTubePlayer(hostRef: RefObject<HTMLDivElement | null>, opti
       player?.destroy()
       mount.remove()
     }
-  }, [hostRef])
+  }, [hostRef, enabled])
 
   // Volume and mute. Declared before the track effect so they are set when a video starts.
   useEffect(() => {
