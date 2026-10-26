@@ -15,6 +15,14 @@ export function formatSpan(totalSeconds: number): string {
   return `${seconds} s`
 }
 
+/** The same estimate, short, for a label: "~12 min", "~1 h 30 min", "< 1 min". */
+export function formatWaitShort(totalSeconds: number): string {
+  if (totalSeconds < 45) return '< 1 min'
+  const minutes = Math.round(totalSeconds / 60)
+  if (minutes < 60) return `~${minutes} min`
+  return `~${formatSpan(Math.round(totalSeconds / 300) * 300)}`
+}
+
 /** A rough wait, rounded to the minute: it is an estimate, so it never pretends to the second. */
 export function formatWait(totalSeconds: number): string {
   if (totalSeconds < 45) return "moins d'une minute"

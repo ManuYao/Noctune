@@ -48,7 +48,7 @@ export const ROOM_DEFS: RoomDef[] = [
     name: 'Jazz café',
     description: 'Un piano, un café, du jazz à toute heure.',
     styles: ['jazz'],
-    theme: 'vinyl',
+    theme: 'sunset',
     rules: { maxTrackSec: 10 * MINUTE, repeatDelaySec: 4 * HOUR, maxDjs: 8 },
   },
   {

@@ -1,47 +1,45 @@
+/* "File d'attente" (mock-ups 3 and 3b): a glass panel, its title and the estimated wait, the rows. */
 .dj-queue {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 14px 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-  background: var(--wall);
+  gap: 4px;
+  padding: 12px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  background: var(--glass);
 }
 
 .dj-queue__header {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 2px 12px;
+  gap: 2px 8px;
 }
 
 .dj-queue h2 {
-  font-size: 1.1rem;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 .dj-queue__slots {
   margin: 0;
-  color: var(--accent-2);
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.dj-queue__slots span {
   color: var(--text-muted);
-  font-weight: 600;
+  font-size: 13px;
 }
 
 .dj-queue__slots--full {
-  color: var(--text-muted);
+  color: var(--accent-text);
+  font-weight: 700;
 }
 
 .dj-queue__list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   margin: 0;
-  padding: 0;
+  padding: 0 8px;
   list-style: none;
 }
 
@@ -52,21 +50,26 @@
   color: var(--text-muted);
 }
 
+.dj-queue__empty {
+  font-size: 14px;
+}
+
 .dj-queue__status {
   font-size: 0.9rem;
 }
 
 .dj-queue__status--warn {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 
-/* What the viewer has to know about their turn on the left, the one button on the right: a single short row. */
+/* What the viewer has to know about their turn on the left, the one button on the right (a phone: see below). */
 .dj-queue__footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  margin-top: 8px;
 }
 
 .dj-queue__footer .dj-queue__status {
@@ -87,9 +90,9 @@
   padding: 0 18px;
   border: 0;
   border-radius: var(--radius-s);
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 700;
+  background: var(--accent-2);
+  color: var(--on-accent-2);
+  font-weight: 800;
   cursor: pointer;
 }
 
@@ -101,13 +104,10 @@
   cursor: not-allowed;
 }
 
-/* On a computer the whole room fits in the window (see RoomPage.css): the list of DJs scrolls inside its box. */
-@media (min-width: 761px) and (min-height: 700px) {
+/* On a computer the room fits in the window (see RoomPage.css): the rows scroll inside the panel. */
+@media (min-width: 761px) {
   .dj-queue {
-    flex: 0 1 auto;
     min-height: 0;
-    max-height: 32%;
-    padding-block: 12px;
   }
 
   .dj-queue__list {
@@ -115,16 +115,17 @@
     --fade-bottom: 0px;
     flex: 1 1 auto;
     min-height: 0;
+    margin-inline: -8px;
     overflow-y: auto;
   }
 
   /* More rows above or below: the edge fades out instead of cutting a row in two. */
   .dj-queue__list[data-above='true'] {
-    --fade-top: 28px;
+    --fade-top: 20px;
   }
 
   .dj-queue__list[data-below='true'] {
-    --fade-bottom: 28px;
+    --fade-bottom: 20px;
   }
 
   .dj-queue__list[data-above='true'],

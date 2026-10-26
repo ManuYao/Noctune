@@ -1,21 +1,19 @@
 import { useEffect, useState } from 'react'
 import type { KeyboardEvent } from 'react'
-import type { ChatMessage, DjQueue, Participant, QueuedTrack, RoomRules, Track } from '../../shared/protocol'
+import type { ChatMessage, DjQueue, Participant, RoomRules, Track } from '../../shared/protocol'
 import { djCount, findMyPlace } from '../realtime/djQueue'
-import type { SendAddTrackResult, SendChatResult, SendDjResult, SendPlaylistStatusResult } from '../realtime/useRoom'
+import type { SendChatResult } from '../realtime/useRoom'
 import Chat from './Chat'
-import DjDialog from './DjDialog'
 import DjQueuePanel from './DjQueuePanel'
 import ParticipantList from './ParticipantList'
-import { useMediaQuery } from './useMediaQuery'
+import RoomPeople from './RoomPeople'
 import './RoomSide.css'
-
-// The same breakpoint as the phone layout of the room (RoomPage.css).
-const PHONE_QUERY = '(max-width: 760px)'
 
 type TabId = 'chat' | 'queue' | 'public'
 
 interface RoomSideProps {
+  /** A phone: the three panels are tabs under the pinned video. */
+  phone: boolean
   selfId: string | undefined
   /** Signed in, as the server sees it: only members can be DJs. */
   isMember: boolean
@@ -28,23 +26,22 @@ interface RoomSideProps {
   /** Null on a server that has no DJs: the queue then stays out of sight. */
   rules: RoomRules | null
   queue: DjQueue
-  lineup: QueuedTrack[]
+  /** How many tracks the viewer has lined up. */
+  lineupSize: number
   nowPlaying: Track | null
   /** Milliseconds to add to the local clock to get the server clock. */
   clockOffsetMs: number
-  onAddTrack: (input: string) => Promise<SendAddTrackResult>
-  onAddFromPlaylist: (playlistTrackId: string) => Promise<SendAddTrackResult>
-  onPlaylistStatus: (playlistId: string) => Promise<SendPlaylistStatusResult>
-  onRemoveTrack: (trackId: string) => Promise<SendDjResult>
-  onLeaveQueue: () => Promise<SendDjResult>
+  /** Opens "Passer DJ". */
+  onOpenDj: () => void
 }
 
 /**
- * Everything beside the video: the queue of DJs, the chat, the audience. On a computer the three are stacked and all in
- * view. On a phone the video stays pinned at the top and these are three tabs under it (mock-up M3); the panels stay
- * mounted when hidden, so that the chat does not lose its place when somebody looks at the queue.
+ * Everything beside the video: the queue of DJs, the audience, the chat. On a computer the three are stacked and all in
+ * view (mock-ups 3 and 3b). On a phone the video stays pinned at the top and these are three tabs under it (mock-up
+ * M3); the panels stay mounted when hidden, so that the chat does not lose its place when somebody looks at the queue.
  */
 export default function RoomSide({
+  phone,
   selfId,
   isMember,
   participants,
@@ -54,23 +51,12 @@ export default function RoomSide({
   onSendChat,
   rules,
   queue,
-  lineup,
+  lineupSize,
   nowPlaying,
   clockOffsetMs,
-  onAddTrack,
-  onAddFromPlaylist,
-  onPlaylistStatus,
-  onRemoveTrack,
-  onLeaveQueue,
+  onOpenDj,
 }: RoomSideProps) {
-  const phone = useMediaQuery(PHONE_QUERY)
   const [tab, setTab] = useState<TabId>('chat')
-  const [dialogOpen, setDialogOpen] = useState(false)
-
-  // Signed out while the dialog is open (another tab, a session that ended): nothing left to do in it.
-  useEffect(() => {
-    if (!isMember) setDialogOpen(false)
-  }, [isMember])
 
   // A dot on the Chat tab when messages arrive while another tab is shown.
   const chatShown = !phone || tab === 'chat'
@@ -109,7 +95,7 @@ export default function RoomSide({
 
   /** On a phone each panel is a tab panel, shown or not; on a computer it is just there. */
   function panelProps(id: TabId) {
-    if (!phone) return { className: 'room-panel' }
+    if (!phone) return { className: `room-panel room-panel--${id}` }
     return {
       className: 'room-panel room-panel--tab',
       role: 'tabpanel',
@@ -160,34 +146,21 @@ export default function RoomSide({
             isMember={isMember}
             nowPlaying={nowPlaying}
             clockOffsetMs={clockOffsetMs}
-            lineupSize={lineup.length}
-            onOpen={() => setDialogOpen(true)}
+            lineupSize={lineupSize}
+            showCta={phone}
+            onOpen={onOpenDj}
           />
         </div>
       )}
+      {/* A computer: the faces and "Voir tout", above the chat. A phone: the whole list, in its tab. */}
+      {!phone && <RoomPeople participants={participants} selfId={selfId} djId={queue.current?.participantId ?? null} />}
       <div {...panelProps('chat')}>
         <Chat messages={messages} selfId={selfId} disabledReason={chatDisabledReason} mutedUntil={mutedUntil} onSend={onSendChat} />
       </div>
-      <div {...panelProps('public')}>
-        <ParticipantList participants={participants} selfId={selfId} />
-      </div>
-
-      {rules && isMember && (
-        <DjDialog
-          open={dialogOpen}
-          onClose={() => setDialogOpen(false)}
-          rules={rules}
-          queue={queue}
-          selfId={selfId}
-          lineup={lineup}
-          nowPlaying={nowPlaying}
-          clockOffsetMs={clockOffsetMs}
-          onAdd={onAddTrack}
-          onAddFromPlaylist={onAddFromPlaylist}
-          onPlaylistStatus={onPlaylistStatus}
-          onRemove={onRemoveTrack}
-          onLeave={onLeaveQueue}
-        />
+      {phone && (
+        <div {...panelProps('public')}>
+          <ParticipantList participants={participants} selfId={selfId} />
+        </div>
       )}
     </div>
   )

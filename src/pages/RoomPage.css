@@ -1,64 +1,88 @@
-/* The page paints its own background: with an ambiance of its own (a light one, for instance) the body behind would show. */
+/* The page paints its own background, with the halo of its ambiance: the body behind has the default one. */
 .room-page {
+  /* The column of panels: 376 px as drawn, a little less on a smaller screen. */
+  --side-w: clamp(300px, 28vw, 376px);
   min-height: 100dvh;
-  background: var(--bg);
+  background: var(--page-glow) no-repeat, var(--bg);
   color: var(--text);
+  line-height: 1.5;
 }
 
+/* The host's buttons (settings, reports): outlined pills. RoomHeader.css sets their size in the header of a computer. */
 .room__settings {
   display: inline-flex;
   flex: none;
   align-items: center;
   min-height: var(--tap);
   padding: 0 16px;
-  border: 1px solid var(--border-field);
+  border: 1.5px solid var(--border-field);
   border-radius: 999px;
   color: var(--text);
   font-size: 0.9rem;
+  font-weight: 700;
   text-decoration: none;
-}
-
-.room {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 16px clamp(16px, 5vw, 56px) 48px;
 }
 
 .room__status {
   margin: 0;
   padding: 10px 16px;
-  border: 1px solid var(--accent-2);
+  border: 1.5px solid var(--accent-2);
   border-radius: var(--radius-s);
-  color: var(--accent-2);
+  color: var(--accent-2-text);
 }
 
-.room__layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
-  gap: 32px;
-  align-items: start;
-}
-
-.room__side {
+/* The screens that say the room is over for the viewer (closed, excluded, could not join). */
+.room-message {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px clamp(16px, 5vw, 56px) 48px;
 }
 
-/* On a phone the video comes first and stays in view while the chat scrolls: the player must stay visible. */
-@media (max-width: 760px) {
-  .room__layout {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
+/* ---- A computer: the grid of mock-ups 3 and 3b, measured at 1440 x 900 ----
+   Rail 84 px; header 60 px tall, 12 px from the top; scene and column 12 px under it; bar 84 px, 16 px from the bottom;
+   12 px between everything. The whole room fits in the window: nothing to scroll to reach the like button, the chat
+   scrolls inside its box. A window shorter than 720 px scrolls instead, so that the video never gets smaller than
+   YouTube allows (200 x 200 px). */
+@media (min-width: 761px) {
+  .room-page {
+    display: grid;
+    grid-template-columns: 84px 12px minmax(0, 1fr) 16px;
+    grid-template-rows: 12px 60px 12px minmax(0, 1fr) 16px;
+    grid-template-areas:
+      'rail . .    .'
+      'rail . head .'
+      'rail . .    .'
+      'rail . main .'
+      'rail . .    .';
+    height: max(100dvh, 720px);
   }
 
-  .room__stage {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    padding-block: 8px;
-    background: var(--bg);
+  .room {
+    grid-area: main;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--side-w);
+    grid-template-rows: minmax(0, 1fr) 84px;
+    grid-template-areas:
+      'scene side'
+      'bar   bar';
+    gap: 12px;
+    min-height: 0;
+  }
+}
+
+/* ---- A phone: the header of the site, then the video and its bar pinned at the top, then the tabs ---- */
+@media (max-width: 760px) {
+  .room {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 8px clamp(16px, 5vw, 56px) 48px;
+  }
+
+  .room__status {
+    margin-top: 8px;
   }
 }
 
@@ -76,48 +100,5 @@
   .room__title {
     order: 3;
     flex: 1 1 100%;
-  }
-}
-
-/* On a computer the whole room fits in the window: nothing to scroll to reach the like button.
-   The scene takes the height the bar leaves, the chat scrolls inside its own box.
-   On a short window the page scrolls as before, so the video never gets smaller than YouTube allows. */
-@media (min-width: 761px) and (min-height: 700px) {
-  .room-page {
-    display: flex;
-    flex-direction: column;
-    height: 100dvh;
-  }
-
-  .room-page .site-header {
-    padding-block: 8px;
-  }
-
-  .room {
-    flex: 1;
-    min-height: 0;
-    padding-top: 4px;
-    padding-bottom: 16px;
-  }
-
-  .room__layout {
-    flex: 1;
-    min-height: 0;
-    grid-template-rows: minmax(0, 1fr);
-    align-items: stretch;
-  }
-
-  .room__stage,
-  .room__side {
-    min-height: 0;
-  }
-
-  .room__stage {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .room__side {
-    gap: 12px;
   }
 }

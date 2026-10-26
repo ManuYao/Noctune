@@ -3,12 +3,30 @@ interface ReactionIconProps {
   filled?: boolean
 }
 
+// The icons of the mock-ups' bar: their heart (24 x 22), their skip and plus (18 x 18).
+const HEART =
+  'M12 21 C2 13 0 8 0 5.5 C0 2.4 2.4 0 5.5 0 C8 0 10.6 1.4 12 4 C13.4 1.4 16 0 18.5 0 C21.6 0 24 2.4 24 5.5 C24 8 22 13 12 21 Z'
+
 export default function ReactionIcon({ kind, filled = false }: ReactionIconProps) {
+  if (kind === 'heart') {
+    // Outlined until the viewer likes the track: the stroke stays inside the 20 x 18 box.
+    return (
+      <svg viewBox="-1.5 -1.5 27 25" width="20" height="18" aria-hidden="true" focusable="false">
+        <path
+          d={HEART}
+          fill={filled ? 'currentColor' : 'none'}
+          stroke="currentColor"
+          strokeWidth={filled ? 0 : 2.4}
+          strokeLinejoin="round"
+        />
+      </svg>
+    )
+  }
   return (
     <svg
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
+      viewBox="0 0 18 18"
+      width="18"
+      height="18"
       aria-hidden="true"
       focusable="false"
       fill="none"
@@ -17,17 +35,12 @@ export default function ReactionIcon({ kind, filled = false }: ReactionIconProps
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      {kind === 'heart' ? (
-        <path
-          d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"
-          fill={filled ? 'currentColor' : 'none'}
-        />
-      ) : kind === 'plus' ? (
-        <path d="M12 5v14M5 12h14" />
+      {kind === 'plus' ? (
+        <path d="M9 3 V15 M3 9 H15" />
       ) : (
         <>
-          <path d="M5 4 15 12 5 20Z" fill="currentColor" />
-          <path d="M19 5v14" />
+          <path d="M3 3 L11 9 L3 15 Z" fill="currentColor" strokeWidth="1.5" />
+          <path d="M14 3 V15" />
         </>
       )}
     </svg>

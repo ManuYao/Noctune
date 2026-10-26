@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { trackPositionSec } from '../../shared/clock'
 import { OWN_SKIP_MIN_SEC, SKIP_PROTECTED_SEC, type MyReactions, type Reactions, type Track } from '../../shared/protocol'
 import { useAccount } from '../auth/useAccount'
@@ -7,6 +7,9 @@ import { useServerNow } from '../player/useServerNow'
 import type { SendReactionResult } from '../realtime/useRoom'
 import ReactionIcon from './ReactionIcon'
 import './ReactionButtons.css'
+
+/** A refusal is in the colour of refusals; "kept in your playlist" is good news. */
+export type ReactionMessageKind = 'error' | 'info'
 
 interface ReactionButtonsProps {
   track: Track | null
@@ -20,6 +23,8 @@ interface ReactionButtonsProps {
   ownSkipHint: string | null
   onLike: (value: boolean) => Promise<SendReactionResult>
   onSkip: (value: boolean) => Promise<SendReactionResult>
+  /** Says a refusal, or what was kept, for a moment: the bar shows it above itself, in a live region. */
+  onMessage: (kind: ReactionMessageKind, text: string, forMs: number) => void
 }
 
 const MESSAGE_MS = 3000
@@ -56,16 +61,12 @@ export default function ReactionButtons({
   ownSkipHint,
   onLike,
   onSkip,
+  onMessage,
 }: ReactionButtonsProps) {
   const serverNow = useServerNow(clockOffsetMs, track !== null)
   const { account } = useAccount()
-  const [message, setMessage] = useState('')
-  // A refusal is in the colour of refusals; "kept in your playlist" is good news.
-  const [messageKind, setMessageKind] = useState<'error' | 'info'>('error')
   const [keeping, setKeeping] = useState(false)
   const [heartBurst, setHeartBurst] = useState(0)
-  const messageTimer = useRef<number | undefined>(undefined)
-  useEffect(() => () => window.clearTimeout(messageTimer.current), [])
 
   const position = track ? trackPositionSec(track, serverNow) : 0
   const opensIn = Math.max(0, Math.ceil(SKIP_PROTECTED_SEC - position))
@@ -74,18 +75,13 @@ export default function ReactionButtons({
   // a track that is dropped at once would not count as played, and could be queued again for nothing.
   const ownOpensIn = Math.max(0, Math.ceil(OWN_SKIP_MIN_SEC - position))
   const skipLocked = track === null || (onDecks ? ownOpensIn > 0 : opensIn > 0 && !mine.votedSkip)
+  // The countdown is on the button itself while the vote is shut: the wait is seen, not only read in a note.
+  const voteCountdown = track !== null && !onDecks && opensIn > 0 && !mine.votedSkip
 
   async function react(send: (value: boolean) => Promise<SendReactionResult>, value: boolean) {
     const result = await send(value)
     if (result.ok) return
-    show('error', errorMessage(result, onDecks), MESSAGE_MS)
-  }
-
-  function show(kind: 'error' | 'info', text: string, forMs: number) {
-    setMessageKind(kind)
-    setMessage(text)
-    window.clearTimeout(messageTimer.current)
-    messageTimer.current = window.setTimeout(() => setMessage(''), forMs)
+    onMessage('error', errorMessage(result, onDecks), MESSAGE_MS)
   }
 
   /** "+ Playlist": keeps the track that plays in the member's active playlist (one is made for a member who has none). */
@@ -94,9 +90,9 @@ export default function ReactionButtons({
     setKeeping(true)
     const result = await keepInPlaylist(track.videoId)
     setKeeping(false)
-    if (result.ok) show('info', `Gardé dans « ${result.playlistName} ».`, KEEP_MESSAGE_MS)
-    else if (result.error === 'already') show('info', `Déjà dans « ${result.playlistName} ».`, KEEP_MESSAGE_MS)
-    else show('error', result.message, KEEP_MESSAGE_MS)
+    if (result.ok) onMessage('info', `Gardé dans « ${result.playlistName} ».`, KEEP_MESSAGE_MS)
+    else if (result.error === 'already') onMessage('info', `Déjà dans « ${result.playlistName} ».`, KEEP_MESSAGE_MS)
+    else onMessage('error', result.message, KEEP_MESSAGE_MS)
   }
 
   function handleLike() {
@@ -119,6 +115,7 @@ export default function ReactionButtons({
           className="reactions__button reactions__like"
           aria-pressed={mine.liked}
           aria-describedby={onDecks ? 'like-note' : undefined}
+          title={onDecks ? "Pas de J'aime sur ton propre morceau." : undefined}
           disabled={track === null || onDecks}
           onClick={handleLike}
         >
@@ -138,26 +135,39 @@ export default function ReactionButtons({
             type="button"
             className="reactions__button reactions__button--own"
             aria-describedby={hint ? 'skip-hint' : undefined}
+            title={hint ?? undefined}
             disabled={skipLocked}
             onClick={() => void react(onSkip, true)}
           >
             <ReactionIcon kind="skip" />
             <span className="reactions__label">Passer mon morceau</span>
+            {ownOpensIn > 0 && track !== null && (
+              <span className="reactions__count" aria-hidden="true">
+                {ownOpensIn} s
+              </span>
+            )}
           </button>
         ) : (
           <button
             type="button"
-            className="reactions__button"
+            className="reactions__button reactions__skip"
             aria-pressed={mine.votedSkip}
             aria-describedby="skip-hint"
+            title={hint ?? undefined}
             disabled={skipLocked}
             onClick={() => void react(onSkip, !mine.votedSkip)}
           >
             <ReactionIcon kind="skip" />
             <span className="reactions__label">Passer</span>
-            <span className="reactions__count">
-              {reactions.skipVotes}/{reactions.skipRequired}
-            </span>
+            {voteCountdown ? (
+              <span className="reactions__count" aria-hidden="true">
+                {opensIn} s
+              </span>
+            ) : (
+              <span className="reactions__count">
+                {reactions.skipVotes}/{reactions.skipRequired}
+              </span>
+            )}
           </button>
         )}
         {/* Playlists are the members': a visitor has none to keep a track in. */}
@@ -175,8 +185,8 @@ export default function ReactionButtons({
           </button>
         )}
       </div>
+      {/* The rule in words, for screen readers always (the buttons point at it), on screen on a phone for the DJ. */}
       {onDecks ? (
-        // Said in words, not only in a tooltip: a touch screen has no hover.
         <div className="reactions__notes">
           <p id="like-note" className="reactions__hint">
             Pas de J'aime sur ton propre morceau.
@@ -192,9 +202,6 @@ export default function ReactionButtons({
           {hint}
         </p>
       )}
-      <p className="reactions__message" data-kind={messageKind} role="status">
-        {message}
-      </p>
     </div>
   )
 }

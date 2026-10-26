@@ -1,6 +1,7 @@
+/* The whole audience: the "Public" tab of a phone, and the window "Voir tout" of a computer. */
 .participants h2 {
   margin-bottom: 12px;
-  font-size: 1.1rem;
+  font-size: 15px;
 }
 
 .participants ul {
@@ -19,7 +20,20 @@
   min-height: var(--tap);
 }
 
+.participants li > svg {
+  flex: none;
+}
+
+.participants__name {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .participants em {
+  flex: none;
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--accent);
@@ -29,30 +43,13 @@
   font-weight: 700;
 }
 
-/* A member: an outline, so that it is not mistaken for the "toi" pill. */
 .participants .participants__more {
   margin-inline-start: auto;
 }
 
+/* A member: an outline, so that it is not mistaken for the "toi" pill. */
 .participants em.participants__member {
   border: 1px solid var(--accent-2);
   background: transparent;
-  color: var(--accent-2);
-}
-
-/* On a computer the list is a short scrolling box under the chat: the room never grows past the window.
-   It shares the column with the queue of DJs above the chat, so it gives a little of its height back. */
-@media (min-width: 761px) and (min-height: 700px) {
-  .participants {
-    display: flex;
-    flex: 0 1 auto;
-    flex-direction: column;
-    min-height: 0;
-    max-height: 22%;
-  }
-
-  .participants ul {
-    min-height: 0;
-    overflow-y: auto;
-  }
+  color: var(--accent-2-text);
 }

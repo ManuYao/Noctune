@@ -1,21 +1,34 @@
-/* Default theme "Néon nuit". Other room ambiances override these tokens via [data-theme]. */
+/* Default theme "Néon nuit". Other room ambiances override these tokens via [data-theme].
+   The four ambiances are the ones of the mock-ups, value for value (mock-up name in the comment when it differs). */
 :root {
   color-scheme: dark;
 
   --bg: #0e0b1f;
   --wall: #17123a;
-  --wall-2: #221b52;
+  --wall-2: #221b52; /* wall2 */
   --floor: #120e2e;
   --stage: #2a2260;
+  --stage-top: #3a3080; /* stageTop */
+  --screen-bg: #0a0818; /* screenBg */
+  /* The panels: a glass over the page, which lets the halo of the page show through. */
+  --glass: rgba(26, 21, 51, 0.8);
   --text: #f4f1ff;
-  --text-muted: #b4aed6;
+  --text-muted: #b4aed6; /* muted */
   --border: #2e2756;
-  --border-field: #7a70b8;
+  --border-field: #7a70b8; /* inputBorder */
   --accent: #ff3d81;
+  /* The accent as the colour of a text (a light ambiance needs it darker than the accent of a button). */
+  --accent-text: #ff3d81; /* accentText */
+  --accent-soft: rgba(255, 61, 129, 0.16); /* accentSoft */
   --accent-2: #3de0ff;
+  /* The second accent as the colour of a text on the page or a panel. Not in the mock-ups: they never write in it on a
+     light ambiance, where its pink would be too pale (see "Vinyle clair"). */
+  --accent-2-text: #3de0ff;
   /* What is not available right now (a track the room would refuse): information, not an error. */
   --warn: #ffd166;
-  --on-accent: #0e0b1f;
+  --on-accent: #0e0b1f; /* onAccent */
+  /* On the second accent the mock-ups write in the outline colour, in every ambiance. */
+  --on-accent-2: #16142b;
   --outline: #16142b;
 
   --font-title: 'Unbounded Variable', system-ui, sans-serif;
@@ -28,31 +41,80 @@
   --tap-main: 48px;
 }
 
-[data-theme='sunset'] {
-  --accent: #ff8a3d;
-  --accent-2: #ffd166;
+/* The halo of the page (mock-ups: the accent at 20 %, centred at (560, 0), a radius of 620 px at 1440 px).
+   Declared again on every element that sets an ambiance, so that it takes that ambiance's accent. */
+:root,
+[data-theme] {
+  --page-glow: radial-gradient(
+    circle max(43vw, 320px) at 38.9vw 0,
+    color-mix(in srgb, var(--accent) 20%, transparent),
+    color-mix(in srgb, var(--accent) 0%, transparent)
+  );
 }
 
-/* "Vinyle clair": the one light ambiance, so it has a whole palette of its own (text 7:1 on the page, accents 5:1). */
+[data-theme='sunset'] {
+  --bg: #1a0e12;
+  --wall: #2b1520;
+  --wall-2: #3a1d2b;
+  --floor: #1f0f16;
+  --stage: #4a2432;
+  --stage-top: #5e2f40;
+  --screen-bg: #120a0d;
+  --glass: rgba(44, 24, 32, 0.8);
+  --text: #fff3ea;
+  --text-muted: #d9b8aa;
+  --border: #4a2c37;
+  --border-field: #a36c5a;
+  --accent: #ff8a3d;
+  --accent-text: #ff8a3d;
+  --accent-soft: rgba(255, 138, 61, 0.16);
+  --accent-2: #ffd166;
+  --accent-2-text: #ffd166;
+  --on-accent: #1a0e12;
+}
+
+/* "Vinyle clair": the one light ambiance. Text 15:1 on the page, muted text 6.9:1, the accent of a text 6.7:1. */
 [data-theme='vinyl'] {
   color-scheme: light;
-  --bg: #f4f1ff;
-  --wall: #ffffff;
-  --wall-2: #ece8ff;
-  --floor: #e3ddfa;
-  --stage: #d8d0f4;
-  --text: #17123a;
-  --text-muted: #4f4a78;
-  --border: #cfc7ee;
-  --border-field: #6a60a8;
+  --bg: #eef1f9;
+  --wall: #dce3f7;
+  --wall-2: #cbd5f0;
+  --floor: #c3cce8;
+  --stage: #a9b5de;
+  --stage-top: #bcc7ea;
+  --screen-bg: #12141f;
+  --glass: rgba(255, 255, 255, 0.88);
+  --text: #12141f;
+  --text-muted: #4a5072;
+  --border: #cbd3ea;
+  --border-field: #7c86b8;
   --warn: #8a5a00;
   --accent: #3b4cff;
-  /* Darker than the #ff5c8a of the mock-up: that pink is 3:1 on white, too pale for the text it colours. */
-  --accent-2: #c8245a;
+  --accent-text: #2b3ae0;
+  --accent-soft: rgba(59, 76, 255, 0.12);
+  --accent-2: #ff5c8a;
+  /* The pink of the mock-up is 2.6:1 on this page, too pale for a text: a darker one (4.8:1) when it colours words. */
+  --accent-2-text: #c8245a;
   --on-accent: #ffffff;
 }
 
 [data-theme='jungle'] {
+  --bg: #07140f;
+  --wall: #0e2a1f;
+  --wall-2: #143a2b;
+  --floor: #081a12;
+  --stage: #1b4a37;
+  --stage-top: #246049;
+  --screen-bg: #050d09;
+  --glass: rgba(16, 38, 29, 0.8);
+  --text: #eafff3;
+  --text-muted: #a6cdb9;
+  --border: #1f4034;
+  --border-field: #5e9a7e;
   --accent: #b6ff3d;
+  --accent-text: #b6ff3d;
+  --accent-soft: rgba(182, 255, 61, 0.14);
   --accent-2: #2dd4a7;
+  --accent-2-text: #2dd4a7;
+  --on-accent: #07140f;
 }

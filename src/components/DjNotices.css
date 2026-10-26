@@ -44,7 +44,7 @@
   display: inline-flex;
   align-items: center;
   min-height: var(--tap);
-  color: var(--accent-2);
+  color: var(--accent-2-text);
   font-weight: 600;
 }
 

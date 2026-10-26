@@ -151,7 +151,7 @@
 
 .room-form__chip input:focus-visible + span,
 .room-form__theme input:focus-visible ~ span:last-child {
-  outline: 3px solid var(--accent-2);
+  outline: 3px solid var(--accent-2-text);
   outline-offset: 2px;
 }
 

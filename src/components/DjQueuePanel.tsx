@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import type { DjQueue, RoomRules, Track } from '../../shared/protocol'
+import { formatWaitShort } from '../data/duration'
 import { useServerNow } from '../player/useServerNow'
 import { djCount, estimateWaitSec, findMyPlace } from '../realtime/djQueue'
 import { turnMessage } from '../realtime/djMessages'
@@ -18,6 +19,11 @@ interface DjQueuePanelProps {
   clockOffsetMs: number
   /** How many tracks the viewer has lined up. */
   lineupSize: number
+  /**
+   * The way in ("Passer DJ", "Mes morceaux") under the list: on a phone, where the bar has no room for it. On a computer
+   * it is at the end of the bar, as in the mock-ups.
+   */
+  showCta: boolean
   onOpen: () => void
 }
 
@@ -29,6 +35,7 @@ export default function DjQueuePanel({
   nowPlaying,
   clockOffsetMs,
   lineupSize,
+  showCta,
   onOpen,
 }: DjQueuePanelProps) {
   const serverNow = useServerNow(clockOffsetMs, nowPlaying !== null)
@@ -37,6 +44,9 @@ export default function DjQueuePanel({
   const full = count >= rules.maxDjs
   // Someone who is not in the queue yet would stand behind everybody who waits.
   const waitSec = estimateWaitSec(queue, nowPlaying, serverNow, place?.position ?? queue.waiting.length)
+  // The wait of a newcomer, in the header: behind everybody who waits.
+  const newcomerWait = estimateWaitSec(queue, nowPlaying, serverNow, queue.waiting.length)
+  const selfWait = place && !place.onDecks ? formatWaitShort(waitSec) : null
 
   const noTrack = place !== null && place.entry.next === null
   // Without a track the warning replaces the sentence about the turn: it matters more, and the footer stays one row.
@@ -48,8 +58,8 @@ export default function DjQueuePanel({
         ? 'La file est complète : réessaie quand un DJ sera parti.'
         : turnMessage(place, count, waitSec)
 
-  // On a computer the list is a scroll box. Its edges fade where more rows hide, so that a cut row reads as "there is
-  // more" and not as a mistake; it takes the keyboard focus only when there is something to scroll.
+  // The list is a scroll box. Its edges fade where more rows hide, so that a cut row reads as "there is more" and not as
+  // a mistake; it takes the keyboard focus only when there is something to scroll.
   const listRef = useRef<HTMLOListElement>(null)
   const [overflow, setOverflow] = useState({ above: false, below: false })
   const updateOverflow = useCallback(() => {
@@ -90,13 +100,13 @@ export default function DjQueuePanel({
   return (
     <section className="dj-queue" aria-labelledby="dj-queue-title">
       <header className="dj-queue__header">
-        <h2 id="dj-queue-title">File des DJ</h2>
+        <h2 id="dj-queue-title">File d'attente</h2>
         <p className={full ? 'dj-queue__slots dj-queue__slots--full' : 'dj-queue__slots'}>
-          {full ? 'File complète' : 'Place DJ libre'}
-          <span>
-            {' '}
-            · {count}/{rules.maxDjs}
-          </span>
+          {full
+            ? `File complète · ${count}/${rules.maxDjs}`
+            : count === 0
+              ? `Place DJ libre · 0/${rules.maxDjs}`
+              : `Attente estimée : ${formatWaitShort(newcomerWait)}`}
         </p>
       </header>
 
@@ -114,43 +124,55 @@ export default function DjQueuePanel({
           onScroll={updateOverflow}
         >
           {queue.current && (
-            <DjQueueRow entry={queue.current} rank={null} isSelf={queue.current.participantId === selfId} />
-          )}
-          {queue.waiting.map((entry, index) => (
             <DjQueueRow
-              key={entry.id}
-              entry={entry}
-              rank={index + 1}
-              isSelf={entry.participantId !== null && entry.participantId === selfId}
+              entry={queue.current}
+              rank={null}
+              isSelf={queue.current.participantId === selfId}
+              nowPlaying={nowPlaying}
+              selfWait={null}
             />
-          ))}
+          )}
+          {queue.waiting.map((entry, index) => {
+            const isSelf = entry.participantId !== null && entry.participantId === selfId
+            return (
+              <DjQueueRow
+                key={entry.id}
+                entry={entry}
+                rank={index + 1}
+                isSelf={isSelf}
+                nowPlaying={nowPlaying}
+                selfWait={isSelf ? selfWait : null}
+              />
+            )
+          })}
         </ol>
       )}
 
-      {isMember ? (
-        <div className="dj-queue__footer">
-          <p className={noTrack ? 'dj-queue__status dj-queue__status--warn' : 'dj-queue__status'}>{status}</p>
-          <button type="button" className="dj-queue__cta" disabled={place === null && full} onClick={onOpen}>
-            {place ? `Mes morceaux (${lineupSize})` : full ? 'File complète' : 'Passer DJ'}
-          </button>
-        </div>
-      ) : (
-        <div className="dj-queue__footer dj-queue__footer--locked">
-          <button type="button" className="dj-queue__cta" disabled aria-describedby="dj-queue-locked">
-            Passer DJ · compte requis
-          </button>
-          <p id="dj-queue-locked" className="dj-queue__locked">
-            {/* New tabs: the room, and its player, keep going while the visitor signs in. */}
-            <Link to="/connexion" target="_blank" rel="noopener noreferrer">
-              Se connecter<span className="visually-hidden"> (nouvel onglet)</span>
-            </Link>
-            {' · '}
-            <Link to="/inscription" target="_blank" rel="noopener noreferrer">
-              Créer un compte<span className="visually-hidden"> (nouvel onglet)</span>
-            </Link>
-          </p>
-        </div>
-      )}
+      {showCta &&
+        (isMember ? (
+          <div className="dj-queue__footer">
+            <p className={noTrack ? 'dj-queue__status dj-queue__status--warn' : 'dj-queue__status'}>{status}</p>
+            <button type="button" className="dj-queue__cta" disabled={place === null && full} onClick={onOpen}>
+              {place ? `Mes morceaux (${lineupSize})` : full ? 'File complète' : 'Passer DJ'}
+            </button>
+          </div>
+        ) : (
+          <div className="dj-queue__footer dj-queue__footer--locked">
+            <button type="button" className="dj-queue__cta" disabled aria-describedby="dj-queue-locked">
+              Passer DJ · compte requis
+            </button>
+            <p id="dj-queue-locked" className="dj-queue__locked">
+              {/* New tabs: the room, and its player, keep going while the visitor signs in. */}
+              <Link to="/connexion" target="_blank" rel="noopener noreferrer">
+                Se connecter<span className="visually-hidden"> (nouvel onglet)</span>
+              </Link>
+              {' · '}
+              <Link to="/inscription" target="_blank" rel="noopener noreferrer">
+                Créer un compte<span className="visually-hidden"> (nouvel onglet)</span>
+              </Link>
+            </p>
+          </div>
+        ))}
     </section>
   )
 }

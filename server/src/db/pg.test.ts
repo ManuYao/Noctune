@@ -283,7 +283,7 @@ describe('migrations', () => {
   withPool('are all applied, and applying them again does nothing', async (pool) => {
     assert.deepEqual(await migrate(pool), [])
     const { rows } = await pool.query<{ name: string }>('SELECT name FROM schema_migrations ORDER BY name')
-    assert.deepEqual(rows.map((row) => row.name), ['001_accounts.sql', '002_playlists.sql', '003_rooms.sql', '004_room_name_keys.sql'])
+    assert.deepEqual(rows.map((row) => row.name), ['001_accounts.sql', '002_playlists.sql', '003_rooms.sql', '004_room_name_keys.sql', '005_team_rooms_dark.sql'])
   })
 
   it('apply in order, once each, and a failing one leaves no trace and stops the rest', async (t: TestContext) => {

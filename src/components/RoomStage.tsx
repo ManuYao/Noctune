@@ -1,5 +1,6 @@
-import { useRef } from 'react'
-import type { DjQueue, MyReactions, Participant, Reactions, Track } from '../../shared/protocol'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
+import type { ChatMessage, DjQueue, MyReactions, Participant, Reactions, Track } from '../../shared/protocol'
 import { useConsentDialog } from '../consent/consentContext'
 import { useYouTubeConsent } from '../consent/useYouTubeConsent'
 import { useVolume } from '../player/useVolume'
@@ -9,7 +10,7 @@ import { ownSkipHint } from '../realtime/djMessages'
 import { findMyPlace } from '../realtime/djQueue'
 import type { SendReactionResult } from '../realtime/useRoom'
 import NowPlayingBar from './NowPlayingBar'
-import ReactionButtons from './ReactionButtons'
+import ReactionButtons, { type ReactionMessageKind } from './ReactionButtons'
 import './RoomStage.css'
 import Scene from './Scene'
 import VideoScreen from './VideoScreen'
@@ -25,6 +26,12 @@ interface RoomStageProps {
   likePulse: number
   /** Who is on the decks and who waits. */
   queue: DjQueue
+  /** The chat, for the bubbles of the scene. */
+  messages: ChatMessage[]
+  /** A phone: the scene is the screen alone, the bar is pinned under it. */
+  compact: boolean
+  /** "Passer DJ", at the right end of the bar; null where it is elsewhere (the queue tab of a phone). */
+  djAction: ReactNode
   onLike: (value: boolean) => Promise<SendReactionResult>
   onSkip: (value: boolean) => Promise<SendReactionResult>
 }
@@ -42,6 +49,11 @@ const PLAYER_OFF = {
   text: "Tu n'entends pas la musique tant que le lecteur est désactivé. Tu peux toujours discuter, voter et passer DJ.",
 }
 
+/**
+ * The player of the room: the illustrated scene with the YouTube video on its screen, and the bar of the track under
+ * it. On a computer both are laid out by the room's grid (the wrapper adds no box of its own); on a phone they stay
+ * pinned together at the top while the chat scrolls.
+ */
 export default function RoomStage({
   track,
   participants,
@@ -51,6 +63,9 @@ export default function RoomStage({
   mine,
   likePulse,
   queue,
+  messages,
+  compact,
+  djAction,
   onLike,
   onSkip,
 }: RoomStageProps) {
@@ -79,9 +94,28 @@ export default function RoomStage({
   const othersCanPlay = queue.waiting.some((entry) => entry.participantId !== null && entry.next !== null)
   const skipHint = place?.onDecks ? ownSkipHint(othersCanPlay, place.entry.next !== null) : null
 
+  // A refusal of a reaction, or a track kept in a playlist: said for a moment over the bar.
+  const [message, setMessage] = useState<{ kind: ReactionMessageKind; text: string } | null>(null)
+  const messageTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(messageTimer.current), [])
+  const showMessage = useCallback((kind: ReactionMessageKind, text: string, forMs: number) => {
+    setMessage({ kind, text })
+    window.clearTimeout(messageTimer.current)
+    messageTimer.current = window.setTimeout(() => setMessage(null), forMs)
+  }, [])
+
   return (
-    <section aria-label="Lecteur" className="room-stage">
-      <Scene participants={participants} selfId={selfId} dj={queue.current} likePulse={likePulse}>
+    <div className="room__player">
+      <Scene
+        participants={participants}
+        selfId={selfId}
+        dj={queue.current}
+        queuePosition={place && !place.onDecks ? place.position : null}
+        likePulse={likePulse}
+        messages={messages}
+        clockOffsetMs={clockOffsetMs}
+        compact={compact}
+      >
         <VideoScreen
           hostRef={hostRef}
           boomKey={track?.startedAt}
@@ -105,6 +139,8 @@ export default function RoomStage({
         onVolumeChange={setVolume}
         onToggleMute={toggleMute}
         onEnableSound={enableSound}
+        djAction={djAction}
+        message={message}
         actions={
           <ReactionButtons
             track={track}
@@ -115,9 +151,10 @@ export default function RoomStage({
             ownSkipHint={skipHint}
             onLike={onLike}
             onSkip={onSkip}
+            onMessage={showMessage}
           />
         }
       />
-    </section>
+    </div>
   )
 }

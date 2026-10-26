@@ -71,7 +71,7 @@
   padding: 10px 16px;
   border: 1px solid var(--accent-2);
   border-radius: var(--radius-s);
-  color: var(--accent-2);
+  color: var(--accent-2-text);
 }
 
 .rooms__create {

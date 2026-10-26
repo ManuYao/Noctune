@@ -1,15 +1,26 @@
-/* The stage column. Its own width, not the window's, decides how the bar and the buttons are laid out:
-   the container queries in NowPlayingBar.css and ReactionButtons.css listen to this "stage" container. */
-.room-stage {
-  container: stage / inline-size;
+/* The scene and the bar. On a computer this wrapper adds no box: both are items of the room's grid (see RoomPage.css). */
+.room__player {
+  display: contents;
 }
 
-/* On a computer the column is as tall as the window allows: the scene gives way, the bar keeps its height. */
-@media (min-width: 761px) and (min-height: 700px) {
-  .room-stage {
+.room__player > .scene {
+  grid-area: scene;
+}
+
+.room__player > .bar {
+  grid-area: bar;
+}
+
+/* On a phone the video and its bar come first and stay in view while the chat scrolls: the player must stay visible. */
+@media (max-width: 760px) {
+  .room__player {
+    position: sticky;
+    top: 0;
+    z-index: 2;
     display: flex;
-    flex: 1;
     flex-direction: column;
-    min-height: 0;
+    gap: 8px;
+    padding-block: 8px;
+    background: var(--bg);
   }
 }

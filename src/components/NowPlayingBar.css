@@ -1,78 +1,99 @@
-/* Two rows: the track, its progress and the sound on top, what the audience can do under them.
-   Which layout applies depends on the width of the stage column, not of the window (see RoomStage.css). */
+/* The bar of the track (mock-ups 3 and 3b). Its own width decides its layout: the container queries here and in
+   ReactionButtons.css listen to this "bar" container, not to the window. */
 .bar {
-  display: grid;
-  /* The artist and the DJ are the longest texts: the info gets more width than the progress bar needs. */
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr) auto;
-  grid-template-areas:
-    'info progress sound'
-    'actions actions actions';
-  gap: 8px 24px;
+  container: bar / inline-size;
+  position: relative;
+  min-width: 0;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  background: var(--glass);
+}
+
+.bar__inner {
+  display: flex;
   align-items: center;
-  padding: 12px 4px 0;
+  gap: 28px;
+  height: 100%;
+  padding: 0 20px;
 }
 
+/* ---- The track: sleeve, title, artist, who brought it ---- */
 .bar__info {
-  grid-area: info;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 14px;
+  width: 340px;
+  min-width: 0;
 }
 
-.bar__progress {
-  grid-area: progress;
-}
-
-.bar__actions {
-  grid-area: actions;
-}
-
-.bar__sound {
-  grid-area: sound;
-}
-
-/* Two lines at most: the title of a track a DJ brought is the one YouTube gives it, often long. */
-.bar__title {
-  display: -webkit-box;
-  margin: 0;
-  overflow: hidden;
-  font-family: var(--font-title);
-  font-size: 1.1rem;
-  font-weight: 700;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.bar__artist {
-  margin: 0;
-  color: var(--text-muted);
-}
-
-.bar__artist-name {
+.bar__cover {
   display: block;
+  flex: none;
+}
+
+.bar__cover-screen { fill: var(--screen-bg); }
+.bar__cover-sun { fill: var(--accent); }
+.bar__cover-hills { fill: var(--wall-2); }
+
+.bar__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.bar__text p {
+  margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* Who brought the track: on a line of its own in a wide bar, after the artist in a narrow one (see below). */
+.bar__title {
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.bar__artist {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
 .bar__dj {
-  display: block;
-  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.bar__dj strong {
+  color: var(--text);
+}
+
+/* ---- The middle: progress, then the reactions ---- */
+.bar__middle {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
 }
 
 .bar__progress {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   color: var(--text-muted);
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 
 .bar__progress progress {
   flex: 1;
-  height: 8px;
+  min-width: 0;
+  height: 6px;
   overflow: hidden;
   border: 0;
-  border-radius: 999px;
+  border-radius: 3px;
   background: var(--border);
   appearance: none;
 }
@@ -82,29 +103,54 @@
 }
 
 .bar__progress progress::-webkit-progress-value {
+  border-radius: 3px;
   background: var(--accent);
 }
 
 .bar__progress progress::-moz-progress-bar {
+  border-radius: 3px;
   background: var(--accent);
+}
+
+/* ---- The right end: the sound, "Passer DJ" and its note under both ---- */
+.bar__right {
+  display: grid;
+  flex: none;
+  grid-template-columns: auto auto;
+  align-items: center;
+  justify-content: end;
+  gap: 4px 16px;
+  width: 330px;
 }
 
 .bar__sound {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 2px;
+  color: var(--text-muted);
 }
 
+/* The speaker of the mock-ups, on a 44 px target. */
 .bar__mute {
   display: grid;
   place-items: center;
   width: var(--tap);
   height: var(--tap);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-s);
-  background: var(--wall);
-  color: var(--text);
+  margin-left: -11px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-muted);
   cursor: pointer;
+}
+
+.bar__mute:hover {
+  color: var(--text);
+}
+
+.bar__mute[aria-pressed='true'] {
+  color: var(--accent-text);
 }
 
 /* No player, no sound to adjust. */
@@ -114,47 +160,216 @@
   cursor: not-allowed;
 }
 
-.bar__mute[aria-pressed='true'] {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
+/* A thin line in the colour of the text, as drawn, on a 44 px tall target. */
 .bar__volume {
-  width: 140px;
-  min-height: var(--tap);
-  accent-color: var(--accent);
+  width: 84px;
+  height: var(--tap);
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
 }
 
-/* Below the grid areas: they get their own row, and only when they are shown. */
-.bar__enable,
-.bar__note {
-  grid-column: 1 / -1;
+.bar__volume::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--text) var(--fill, 0%), var(--border) var(--fill, 0%));
 }
 
-.bar__enable {
-  justify-self: start;
+/* No knob as drawn, until the slider is pointed at or has the focus. */
+.bar__volume::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  margin-top: -3px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+  opacity: 0;
+  appearance: none;
+}
+
+.bar__volume:hover::-webkit-slider-thumb,
+.bar__volume:focus-visible::-webkit-slider-thumb {
+  opacity: 1;
+}
+
+.bar__volume::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.bar__volume::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--text);
+}
+
+.bar__volume::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+  opacity: 0;
+}
+
+.bar__volume:hover::-moz-range-thumb,
+.bar__volume:focus-visible::-moz-range-thumb {
+  opacity: 1;
+}
+
+/* ---- What the bar says for a moment: above it, over the floor of the scene (never over the video) ---- */
+.bar__float {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 12px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  /* As wide as the scene above, not over the column of panels. */
+  width: calc(100% - var(--side-w, 0px) - 12px);
+  padding: 0 16px;
+  pointer-events: none;
+}
+
+.bar__status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 100%;
+  padding: 8px 8px 8px 18px;
+  border: 1.5px solid var(--accent-2);
+  border-radius: 16px;
+  background: var(--glass);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  pointer-events: auto;
+  backdrop-filter: blur(6px);
 }
 
 .bar__note {
   margin: 0;
-  color: var(--text-muted);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
 }
 
-/* A narrow column (a phone): the bar stays in view under the video while the chat scrolls, so it is kept short.
-   Title, reactions and mute on one row, progress on the next. Phones have their own volume keys. */
-@container stage (max-width: 640px) {
-  .bar {
+/* A status with no button: the same padding all round. */
+.bar__status:not(:has(.bar__enable)) {
+  padding-right: 18px;
+}
+
+.bar__enable {
+  flex: none;
+  min-height: var(--tap);
+  padding: 0 18px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+}
+
+.bar__message {
+  margin: 0;
+  max-width: 100%;
+  padding: 8px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--glass);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+  color: var(--accent-text);
+  font-size: 14px;
+  font-weight: 700;
+  backdrop-filter: blur(6px);
+}
+
+.bar__message[data-kind='info'] {
+  color: var(--accent-2-text);
+}
+
+/* Empty most of the time: then it is not seen at all (it stays in the page, for screen readers). */
+.bar__message:empty {
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: none;
+}
+
+/* ---- A narrower bar (a smaller window): the track gets less room, the buttons keep theirs ---- */
+@container bar (max-width: 1180px) {
+  .bar__inner {
+    gap: 20px;
+  }
+
+  .bar__info {
+    width: 240px;
+  }
+
+  .bar__right {
+    width: auto;
+  }
+}
+
+@container bar (max-width: 960px) {
+  .bar__inner {
+    gap: 16px;
+    padding: 0 16px;
+  }
+
+  .bar__info {
+    width: 180px;
+  }
+
+  .bar__cover {
+    width: 48px;
+    height: 48px;
+  }
+
+  .bar__volume {
+    width: 60px;
+  }
+}
+
+/* ---- A phone: the bar stays in view under the video while the chat scrolls, so it is kept short.
+   Title, reactions and mute on one row, progress on the next. Phones have their own volume keys. ---- */
+@container bar (max-width: 640px) {
+  .bar__inner {
+    display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;
     grid-template-areas:
       'info actions sound'
       'progress progress progress';
     gap: 2px 8px;
-    padding-top: 8px;
+    height: auto;
+    padding: 8px 12px 6px;
+  }
+
+  /* Their children take the places above. */
+  .bar__middle,
+  .bar__right {
+    display: contents;
+  }
+
+  .bar__info {
+    grid-area: info;
+    width: auto;
+  }
+
+  .bar__progress {
+    grid-area: progress;
+  }
+
+  .bar__actions {
+    grid-area: actions;
+  }
+
+  .bar__sound {
+    grid-area: sound;
   }
 
   /* The DJ on the decks: their skip button says what it does ("Passer mon morceau") and what follows, which needs
      the width. It gets a row of its own, only while it is their turn. */
-  .bar--own {
+  .bar--own .bar__inner {
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       'info sound'
@@ -162,37 +377,61 @@
       'progress progress';
   }
 
-  .bar__info {
-    min-width: 0;
-  }
-
-  .bar__title,
-  .bar__artist {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .bar__title {
-    display: block;
-  }
-
-  /* No third line: the pinned block stays short. The queue panel says who is on the decks in full. */
-  .bar__artist-name,
-  .bar__dj {
-    display: inline;
-    font-size: inherit;
-  }
-
-  .bar__dj::before {
-    content: ' · ';
-  }
-
+  .bar__cover,
   .bar__volume {
     display: none;
   }
 
-  .bar__enable {
-    justify-self: stretch;
+  .bar__mute {
+    margin-left: 0;
+  }
+
+  /* No third line: the pinned block stays short. Artist and DJ share the second one, each cut if need be. */
+  .bar__text {
+    display: grid;
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+  }
+
+  .bar__title {
+    grid-column: 1 / -1;
+    font-size: 15px;
+  }
+
+  .bar__artist,
+  .bar__dj {
+    font-size: 13px;
+  }
+
+  .bar__dj::before {
+    content: ' · ';
+    white-space: pre;
+  }
+
+  /* Under the bar, in the page: nothing floats over the video on a phone. */
+  .bar__float {
+    position: static;
+    align-items: stretch;
+    width: auto;
+    padding: 0 12px;
+  }
+
+  .bar__float:has(.bar__status),
+  .bar__float:has(.bar__message:not(:empty)) {
+    padding-bottom: 8px;
+  }
+
+  .bar__status {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 8px 12px;
+    box-shadow: none;
+  }
+
+  .bar__message {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: none;
   }
 }

@@ -1,152 +1,179 @@
-/* The illustrated club: wall with beams and speakers, the video screen in its neon frame, a floor with the crowd.
-   Everything here is decoration. The video is never covered: hearts and avatars live on the floor, below it. */
+/* The illustrated club of the mock-ups (see Scene.tsx). Everything here is decoration. The video is never covered: it
+   lies on top of the drawing, over its screen, and nothing of the drawing reaches into that rectangle. */
 .scene {
-  /* As wide as the area above the booth allows and never taller than it, with 18px of air above and below for the
-     neon glow: the 16:9 video keeps its shape either way. The DJ at the stand reads it too, to stay clear of the video.
-     (The units are measured on the scene, the nearest container, wherever this is used.) */
-  --video-w: min(54cqw, calc((54cqh - 48px) * 16 / 9 + 12px));
+  /* The video screen and its texts read the width of the scene (VideoScreen.css). */
+  container: stage / inline-size;
   position: relative;
-  /* As tall as its width suggests, or squeezed by the height the room has left (see RoomStage.css). */
-  container-type: size;
   isolation: isolate;
-  flex: 0 1 auto;
   min-height: 0;
-  aspect-ratio: 4 / 3;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-l);
-  background: linear-gradient(var(--wall) 0%, var(--wall-2) 62%, var(--floor) 62%);
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  background: var(--bg);
 }
 
-.scene__wall {
+.scene__art {
   position: absolute;
-  inset: 0 0 38% 0;
-  overflow: hidden;
-}
-
-.scene__beam {
-  position: absolute;
-  top: -4%;
-  width: 22%;
-  height: 120%;
-  transform-origin: 50% 0;
-  background: linear-gradient(color-mix(in srgb, var(--beam) 60%, transparent), transparent 85%);
-  clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%);
-  opacity: 0.55;
-  animation: scene-sway 6s ease-in-out infinite alternate;
-}
-
-.scene__beam--a { --beam: var(--accent); left: 2%; animation-delay: -1s; }
-.scene__beam--b { --beam: var(--accent-2); left: 22%; animation-delay: -3s; }
-.scene__beam--c { --beam: var(--accent-2); left: 56%; animation-delay: -2s; }
-.scene__beam--d { --beam: var(--accent); left: 76%; animation-delay: -4s; }
-
-@keyframes scene-sway {
-  from { transform: rotate(-9deg); }
-  to { transform: rotate(9deg); }
-}
-
-.scene__speaker {
-  position: absolute;
-  top: 30%;
-  width: 11%;
-  height: 54%;
-  border: 3px solid var(--outline);
-  border-radius: 10px;
-  background:
-    radial-gradient(circle at 50% 32%, var(--outline) 0 22%, var(--stage) 23% 38%, transparent 39%),
-    radial-gradient(circle at 50% 74%, var(--outline) 0 28%, var(--stage) 29% 46%, transparent 47%),
-    var(--wall-2);
-}
-
-.scene__speaker--left { left: 4%; }
-.scene__speaker--right { right: 4%; }
-
-.scene__booth {
-  position: absolute;
-  left: 22%;
-  right: 22%;
-  bottom: 0;
-  height: 14%;
-  border: 3px solid var(--outline);
-  border-bottom: 0;
-  border-radius: 12px 12px 0 0;
-  background: var(--stage);
-  box-shadow: inset 0 -6px 0 var(--accent-2);
-}
-
-/* The DJ on the decks: in front of the booth, feet on the edge of the floor (the floor starts at 62% of the scene), on
-   top of the crowd. Its size is whatever fits between the bottom of the screen and those feet, so that the DJ never
-   covers the video however the scene is squeezed (the screen is centred in the top 54% of the scene); no room, no DJ.
-   Hearts and the names of the crowd stay above it. */
-.scene__dj {
-  --feet: 65cqh;
-  --clear: calc(var(--feet) - 27cqh - (var(--video-w) * 9 / 16 + 12px) / 2 - 4px);
-  --size: clamp(0px, var(--clear), 9cqw);
-  position: absolute;
-  z-index: 150;
-  top: calc(var(--feet) - var(--size));
-  left: 50%;
-  width: var(--size);
-  height: var(--size);
-  transform: translateX(-50%);
-}
-
-.scene__dj svg {
+  inset: 0;
   display: block;
   width: 100%;
   height: 100%;
-  animation: scene-dj-bob 0.7s ease-in-out infinite;
 }
 
-@keyframes scene-dj-bob {
-  50% { transform: translateY(-5%); }
+/* The colours of the drawing come from the ambiance of the room. */
+.sc-bg { fill: var(--bg); }
+.sc-wall { fill: var(--wall); }
+.sc-wall2 { fill: var(--wall-2); }
+.sc-floor { fill: var(--floor); }
+.sc-stage { fill: var(--stage); }
+.sc-stage-top { fill: var(--stage-top); }
+.sc-screen { fill: var(--screen-bg); }
+.sc-accent { fill: var(--accent); }
+.sc-accent2 { fill: var(--accent-2); }
+.sc-stroke-accent { stroke: var(--accent); }
+.sc-stroke-accent2 { stroke: var(--accent-2); }
+.sc-stop-accent { stop-color: var(--accent); }
+.sc-stop-accent2 { stop-color: var(--accent-2); }
+
+.scene__ring {
+  fill-opacity: 0.16;
 }
 
-/* Under the feet, on the floor: over the video it would be a name on the picture. */
-.scene__dj-name {
+/* The animations of the mock-ups: the crowd bounces, the beams sway, the neon breathes, the hearts float up. */
+@keyframes mw-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes mw-sway {
+  0%, 100% { transform: rotate(-2.5deg); }
+  50% { transform: rotate(2.5deg); }
+}
+
+@keyframes mw-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.78; }
+}
+
+@keyframes mw-float {
+  0% { transform: translateY(0); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateY(-34px); opacity: 0; }
+}
+
+.scene .mw-bob {
+  transform-box: fill-box;
+  animation: mw-bob 1.1s ease-in-out infinite;
+}
+
+.scene__beam {
+  transform-box: fill-box;
+}
+
+.scene .mw-sway {
+  animation: mw-sway 5s ease-in-out infinite;
+}
+
+.scene .mw-sway2 {
+  animation: mw-sway 6.5s ease-in-out infinite reverse;
+}
+
+.scene .mw-neon {
+  animation: mw-glow 3.2s ease-in-out infinite;
+}
+
+/* Invisible unless it floats: with animations off, no heart stays on the floor. */
+.scene__heart {
+  opacity: 0;
+  transform-box: fill-box;
+  animation: mw-float 3.4s ease-out;
+}
+
+/* The labels of the scene: the viewer's pill, the DJ's plate, the tags and the bubbles. */
+.scene__text {
+  font-family: var(--font-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.scene__text--self {
+  fill: var(--on-accent);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.scene__text--chip {
+  fill: var(--on-accent-2);
+  font-weight: 800;
+}
+
+.scene__text--plate {
+  fill: var(--accent-2);
+}
+
+.scene__text--tag {
+  fill: #ffffff;
+}
+
+.scene__text--bubble {
+  fill: #16142b;
+  font-size: 13px;
+}
+
+@keyframes scene-pop {
+  from { opacity: 0; }
+}
+
+.scene__bubble {
+  animation: scene-pop 180ms ease-out;
+}
+
+/* The video, laid over the drawing's screen (its box is placed by Scene.tsx, in pixels). */
+.scene--art .scene__screen {
   position: absolute;
-  top: 100%;
-  left: 50%;
-  max-width: 14ch;
-  margin-top: 2px;
-  padding: 1px 8px;
-  transform: translateX(-50%);
+}
+
+.scene--art .scene__screen > .screen {
+  width: 100%;
+  height: 100%;
+}
+
+/* More people than places in the drawing. */
+.scene__more {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 2px 10px;
+  border: 1.5px dashed var(--border-field);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--bg) 80%, transparent);
+  background: var(--glass);
   color: var(--text);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.5;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 800;
 }
 
-.scene__dj-name--self {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-
-/* The area above the DJ booth: the screen sits in the middle of it. */
-.scene__screen {
-  position: absolute;
-  inset: 0 0 46% 0;
+/* Narrow (see MIN_SCALE in Scene.tsx): the screen cannot sit inside the drawing without dropping under the 200 x 200 px
+   that YouTube requires, so it takes the full width, with its own neon frame, and the crowd is one short row below it. */
+.scene--narrow {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
+  gap: 14px;
+  padding: 16px;
+  background: linear-gradient(var(--wall) 0%, var(--wall-2) 62%, var(--floor) 62%);
 }
 
-.scene__screen > .screen {
-  flex: none;
-  width: var(--video-w);
+.scene--narrow .scene__screen > .screen {
+  width: auto;
 }
 
 .scene__floor {
-  --rise: 110px;
-  position: absolute;
-  inset: 62% 0 0 0;
+  --rise: 44px;
+  position: relative;
+  flex: none;
+  height: 56px;
   overflow: hidden;
+  border-radius: var(--radius-m);
   background:
     repeating-linear-gradient(90deg, color-mix(in srgb, var(--accent-2) 22%, transparent) 0 1px, transparent 1px 9%),
     repeating-linear-gradient(0deg, color-mix(in srgb, var(--accent-2) 22%, transparent) 0 1px, transparent 1px 22%),
@@ -154,169 +181,82 @@
 }
 
 .scene__crowd {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* --x, --y, --size and --z come from the slot the person stands on (see stageSlots.ts).
-   The feet are at y: the negative margin is the height of the avatar (it is square, so as wide as it is, and
-   a margin in % is measured on the width of the floor, like the width). No transform here: it would lock the
-   avatar and its name into one layer, and the names must be able to float above every avatar. */
-.scene__person {
-  position: absolute;
-  left: calc((var(--x) - var(--size) / 2) * 1%);
-  top: calc(var(--y) * 1%);
-  width: calc(var(--size) * 1%);
-  margin-top: calc(var(--size) * -1%);
-}
-
-/* Rows in front are drawn over the rows behind them. */
-.scene__person svg {
-  position: relative;
-  z-index: var(--z, auto);
-  display: block;
-  width: 100%;
-  height: auto;
-  animation: scene-bounce 0.9s ease-in-out infinite;
-  animation-delay: var(--delay, 0s);
-}
-
-@keyframes scene-bounce {
-  50% { transform: translateY(-8%); }
-}
-
-/* Above every avatar, whatever the row: a name is never hidden by someone standing in front. */
-.scene__name {
-  position: absolute;
-  z-index: 200;
-  bottom: 96%;
-  left: 50%;
-  max-width: 14ch;
-  padding: 1px 8px;
-  transform: translateX(-50%);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--bg) 80%, transparent);
-  color: var(--text);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1.5;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.scene__person--self .scene__name {
-  background: var(--accent);
-  color: var(--on-accent);
-}
-
-.scene__more {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  padding: 2px 10px;
-  border: 1px dashed var(--border-field);
-  border-radius: 999px;
-  background: var(--floor);
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.scene__hearts {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.scene__heart {
-  position: absolute;
-  bottom: 10%;
-  color: var(--accent);
-  font-size: 22px;
-  opacity: 0;
-  animation: scene-heart 2.2s ease-out;
-}
-
-@keyframes scene-heart {
-  from { opacity: 1; transform: translateY(0) scale(0.8); }
-  to { opacity: 0; transform: translateY(calc(var(--rise) * -1)) scale(1.2); }
-}
-
-/* Narrow (see NARROW_BELOW_PX in Scene.tsx): the screen cannot sit inside the scene without dropping under the
-   200 x 200 px that YouTube requires, so it takes the full width and the crowd is one short row below it.
-   The row stays low because this block is pinned at the top of a phone while the chat scrolls. */
-.scene--narrow {
-  container-type: normal;
-  display: flex;
-  flex: none;
-  flex-direction: column;
-  aspect-ratio: auto;
-  overflow: visible;
-  border: 0;
-  background: none;
-}
-
-.scene--narrow .scene__wall {
-  display: none;
-}
-
-.scene--narrow .scene__screen {
-  position: static;
-  display: block;
-}
-
-.scene--narrow .scene__screen > .screen {
-  width: auto;
-}
-
-.scene--narrow .scene__floor {
-  --rise: 44px;
-  position: relative;
-  inset: auto;
-  height: 56px;
-  margin-top: 6px;
-  border-radius: var(--radius-m);
-}
-
-.scene--narrow .scene__crowd {
   display: flex;
   align-items: flex-end;
   justify-content: center;
   gap: 12px;
+  height: 100%;
+  margin: 0;
   padding: 0 8px 4px;
+  list-style: none;
 }
 
-.scene--narrow .scene__person {
+.scene__person {
   position: relative;
-  left: auto;
-  top: auto;
   width: 36px;
-  margin-top: 0;
 }
 
-.scene--narrow .scene__name {
+.scene__person svg {
+  display: block;
+  animation: mw-bob 1.1s ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+}
+
+.scene__name {
   display: none;
 }
 
-.scene--narrow .scene__person--self .scene__name {
+/* The viewer's name, in the pink of the mock-ups. */
+.scene__person--self .scene__name {
+  position: absolute;
+  z-index: 1;
+  bottom: 96%;
+  left: 50%;
   display: block;
+  max-width: 14ch;
+  padding: 1px 8px;
+  overflow: hidden;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* On a phone the video and the bar stay pinned while the chat scrolls: there is no room left for the crowd. */
+.scene__floor .scene__more {
+  right: 8px;
+  bottom: 8px;
+  font-size: 12px;
+}
+
+/* On a phone the video and the bar stay pinned at the top while the chat scrolls (see RoomPage.css): the scene is the
+   screen alone, with no frame of its own around it and no room left for the crowd. */
 @media (max-width: 760px) {
+  .scene--narrow {
+    overflow: visible;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+  }
+
   .scene--narrow .scene__floor {
     display: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .scene__beam,
-  .scene__person svg,
-  .scene__dj svg,
-  .scene__heart {
+  .scene .mw-bob,
+  .scene .mw-sway,
+  .scene .mw-sway2,
+  .scene .mw-neon,
+  .scene__heart,
+  .scene__bubble,
+  .scene__person svg {
     animation: none;
   }
 }

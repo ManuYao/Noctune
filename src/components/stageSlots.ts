@@ -1,29 +1,50 @@
-/** Where a person can stand on the dance floor: x is the centre, y the feet (both in % of the floor), size in % of its width. */
+/**
+ * Where people stand in the illustrated room, in the coordinates of the scene (viewBox 940 x 704 of the mock-ups).
+ * x and y are the top-left corner of the avatar's 100 x 100 drawing, size its width and height; the shadow is the dark
+ * ellipse under the feet. Everything is taken from the mock-ups (screens 3 and 3b), size and shadow included.
+ */
 export interface StageSlot {
   x: number
   y: number
   size: number
+  shadow: { cx: number; cy: number; rx: number; ry: number; opacity: number }
+  /** Delay of the bounce, so that the crowd does not move as one. */
+  delay: number
+  /**
+   * On the stage beside the DJ: right under the screen, so a chat bubble goes to the side of the head (`left`: on its
+   * left), never up over the video.
+   */
+  bubbleSide?: 'left' | 'right'
 }
 
-// Back rows are higher and smaller: a cheap perspective. The spacing keeps neighbours from covering each other.
+// Two on the stage, then the back, middle and front rows of the floor. Drawn in this order: rows in front cover the
+// rows behind them.
 export const STAGE_SLOTS: StageSlot[] = [
-  { x: 8, y: 46, size: 7.5 },
-  { x: 25, y: 46, size: 7.5 },
-  { x: 42, y: 46, size: 7.5 },
-  { x: 59, y: 46, size: 7.5 },
-  { x: 76, y: 46, size: 7.5 },
-  { x: 92, y: 46, size: 7.5 },
-  { x: 16.5, y: 72, size: 9 },
-  { x: 33.5, y: 72, size: 9 },
-  { x: 50.5, y: 72, size: 9 },
-  { x: 67.5, y: 72, size: 9 },
-  { x: 84, y: 72, size: 9 },
-  { x: 8, y: 98, size: 11 },
-  { x: 29, y: 98, size: 11 },
-  { x: 50, y: 98, size: 11 },
-  { x: 71, y: 98, size: 11 },
-  { x: 92, y: 98, size: 11 },
+  { x: 260, y: 300, size: 66, shadow: { cx: 293, cy: 362, rx: 17, ry: 3.6, opacity: 0.3 }, delay: -0.4, bubbleSide: 'left' },
+  { x: 620, y: 300, size: 66, shadow: { cx: 653, cy: 362, rx: 17, ry: 3.6, opacity: 0.3 }, delay: -0.8, bubbleSide: 'right' },
+  { x: 200, y: 452, size: 66, shadow: { cx: 233, cy: 514, rx: 17, ry: 3.6, opacity: 0.35 }, delay: -0.2 },
+  { x: 700, y: 454, size: 66, shadow: { cx: 733, cy: 516, rx: 17, ry: 3.6, opacity: 0.35 }, delay: -0.7 },
+  { x: 860, y: 460, size: 62, shadow: { cx: 891, cy: 518, rx: 16, ry: 3.4, opacity: 0.35 }, delay: -0.5 },
+  { x: 300, y: 490, size: 88, shadow: { cx: 344, cy: 573, rx: 23, ry: 4.8, opacity: 0.4 }, delay: -0.35 },
+  { x: 600, y: 498, size: 90, shadow: { cx: 645, cy: 583, rx: 23, ry: 5, opacity: 0.4 }, delay: -0.6 },
+  { x: 110, y: 500, size: 92, shadow: { cx: 156, cy: 586, rx: 24, ry: 5, opacity: 0.4 }, delay: -0.9 },
+  { x: 790, y: 505, size: 94, shadow: { cx: 837, cy: 593, rx: 24, ry: 5, opacity: 0.4 }, delay: -0.15 },
+  { x: 800, y: 558, size: 130, shadow: { cx: 865, cy: 680, rx: 34, ry: 7, opacity: 0.45 }, delay: -0.55 },
+  { x: 640, y: 565, size: 126, shadow: { cx: 703, cy: 683, rx: 33, ry: 7, opacity: 0.45 }, delay: -0.3 },
+  { x: 180, y: 575, size: 126, shadow: { cx: 243, cy: 693, rx: 33, ry: 7, opacity: 0.45 }, delay: -0.75 },
 ]
+
+/** The viewer: always in front, in the middle, on a ring of the accent colour. */
+export const SELF_SLOT: StageSlot = {
+  x: 400,
+  y: 548,
+  size: 150,
+  shadow: { cx: 475, cy: 689, rx: 39, ry: 8, opacity: 0.4 },
+  delay: 0,
+}
+
+/** The DJ on the decks, behind the console (it hides their feet). */
+export const DJ_SLOT = { x: 424, y: 275, size: 92, delay: -0.1 }
 
 function hash(text: string): number {
   let value = 0
@@ -33,19 +54,18 @@ function hash(text: string): number {
 
 /**
  * Gives each person a slot from their id, so that an avatar does not move when someone else comes or goes
- * (unless two ids want the same slot, then the later one takes the next free slot).
- * Whoever comes first in `ids` is served first: the caller puts the visitor themself there.
+ * (unless two ids want the same slot, then the later one takes the next free slot). Returns slot indexes.
  * People beyond the number of slots get none: the stage shows "+N" for them.
  */
-export function assignSlots(ids: string[]): Map<string, StageSlot> {
+export function assignSlots(ids: string[]): Map<string, number> {
   const taken = new Set<number>()
-  const slots = new Map<string, StageSlot>()
+  const slots = new Map<string, number>()
   for (const id of ids) {
     if (taken.size === STAGE_SLOTS.length) break
     let index = hash(id) % STAGE_SLOTS.length
     while (taken.has(index)) index = (index + 1) % STAGE_SLOTS.length
     taken.add(index)
-    slots.set(id, STAGE_SLOTS[index])
+    slots.set(id, index)
   }
   return slots
 }

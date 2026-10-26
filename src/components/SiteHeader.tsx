@@ -37,7 +37,7 @@ export default function SiteHeader({ children }: { children?: ReactNode }) {
             <span className="site-header__account">
               {/* The pseudo and the avatar lead to the profile; on a phone, where they are hidden, the word "Profil". */}
               <Link to="/profil" className="site-header__profile" aria-label={`Mon profil (${account.pseudo})`}>
-                {avatar && <Avatar avatar={avatar} size={32} />}
+                {avatar && <Avatar avatar={avatar} size={32} framing="icon" decorative />}
                 <span className="site-header__pseudo">{account.pseudo}</span>
                 <span className="site-header__profile-short" aria-hidden="true">
                   Profil

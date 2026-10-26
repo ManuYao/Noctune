@@ -2,10 +2,11 @@ interface SpeakerIconProps {
   muted: boolean
 }
 
+// The speaker of the mock-ups' bar (22 x 22), crossed out when the sound is off.
 export default function SpeakerIcon({ muted }: SpeakerIconProps) {
   return (
     <svg
-      viewBox="0 0 24 24"
+      viewBox="0 0 22 22"
       width="22"
       height="22"
       aria-hidden="true"
@@ -16,8 +17,8 @@ export default function SpeakerIcon({ muted }: SpeakerIconProps) {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M11 5 6 9H3v6h3l5 4V5z" fill="currentColor" />
-      {muted ? <path d="m16 9 5 6m0-6-5 6" /> : <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" />}
+      <path d="M3 8 H6 L11 4 V18 L6 14 H3 Z" />
+      {muted ? <path d="M15 8.5 L20 13.5 M20 8.5 L15 13.5" /> : <path d="M15 8 C17 10 17 12 15 14" />}
     </svg>
   )
 }

@@ -81,7 +81,7 @@
 }
 
 .profile__feedback--done {
-  color: var(--accent-2);
+  color: var(--accent-2-text);
 }
 
 .profile__feedback--error {
@@ -98,7 +98,7 @@
   display: inline-flex;
   align-items: center;
   min-height: var(--tap);
-  color: var(--accent-2);
+  color: var(--accent-2-text);
   font-weight: 700;
 }
 

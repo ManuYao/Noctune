@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { CHAT_MAX_LENGTH, type ChatMessage } from '../../shared/protocol'
-import { AVATARS } from '../data/avatars'
+import { findAvatar } from '../data/avatars'
 import { formatSpan } from '../data/duration'
 import { useModeration } from '../moderation/moderationContext'
 import MoreButton from '../moderation/MoreButton'
@@ -117,11 +117,11 @@ export default function Chat({ messages, selfId, disabledReason, mutedUntil, onS
       <ol ref={listRef} className="chat__list" role="log" aria-label="Messages du chat" tabIndex={0} onScroll={handleScroll}>
         {messages.length === 0 && <li className="chat__empty">Aucun message pour l'instant. Lance la conversation !</li>}
         {messages.map((message) => {
-          const avatar = AVATARS.find((candidate) => candidate.id === message.avatarId)
+          const avatar = findAvatar(message.avatarId)
           const isSelf = message.authorId === selfId
           return (
             <li key={message.id} className={isSelf ? 'chat__message chat__message--self' : 'chat__message'}>
-              {avatar && <Avatar avatar={avatar} size={32} />}
+              {avatar && <Avatar avatar={avatar} size={30} framing="icon" decorative />}
               <p>
                 <strong className="chat__author">
                   {message.pseudo}
@@ -170,8 +170,8 @@ export default function Chat({ messages, selfId, disabledReason, mutedUntil, onS
           }}
         />
         <button type="submit" aria-label="Envoyer" disabled={sending || shutReason !== null}>
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
-            <path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" focusable="false">
+            <path d="M3 9 H14 M9.5 4.5 L14 9 L9.5 13.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
       </form>

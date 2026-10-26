@@ -1,0 +1,234 @@
+/* The header of the room (mock-ups 3 and 3b): 60 px tall, the room on the left, the viewer on the right. */
+.room-head {
+  container: room-head / inline-size;
+  grid-area: head;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  padding-left: 12px;
+}
+
+.room-head__room,
+.room-head__end {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.room-head__room {
+  flex: 0 1 auto;
+  gap: 14px;
+}
+
+.room-head__end {
+  flex: none;
+  gap: 12px;
+}
+
+.room-head__name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-head__styles {
+  display: flex;
+  flex: none;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.room-head__chip {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.room-head__online {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--glass);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* The little equaliser of the mock-ups: three bars that dance (still with animations off). */
+.room-head__eq {
+  display: inline-flex;
+  flex: none;
+  align-items: flex-end;
+  gap: 2px;
+  width: 16px;
+  height: 14px;
+}
+
+.room-head__eq i {
+  display: block;
+  flex: 1;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent-2);
+  transform-origin: 50% 100%;
+  animation: room-head-eq 0.9s ease-in-out infinite;
+}
+
+.room-head__eq i:nth-child(2) {
+  animation-delay: -0.3s;
+}
+
+.room-head__eq i:nth-child(3) {
+  animation-delay: -0.6s;
+}
+
+@keyframes room-head-eq {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+.room-head__host {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.room-head__host strong {
+  color: var(--text);
+}
+
+.room-head__status {
+  flex: none;
+  padding: 4px 12px;
+  border: 1.5px solid var(--accent-2);
+  border-radius: 999px;
+  color: var(--accent-2-text);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Who the viewer is. */
+.room-head__me {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 16px 0 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--glass);
+}
+
+.room-head__me svg {
+  display: block;
+  flex: none;
+}
+
+.room-head__me-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.room-head__me-name {
+  max-width: 16ch;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-head__me-status {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* "Se connecter", "Mon profil", and the host's buttons: outlined pills, 44 px tall. */
+.room-head__link,
+.room-head .room__settings {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: var(--tap);
+  padding: 0 22px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.room-head__link:has(svg) {
+  padding-left: 16px;
+}
+
+.room-head .room__settings {
+  padding: 0 16px;
+  font-size: 14px;
+}
+
+.room-head__link:hover,
+.room-head .room__settings:hover {
+  border-color: var(--text);
+}
+
+/* Less room: the host's name goes first, then the styles, then the pseudo of the viewer (their avatar stays). */
+@container room-head (max-width: 1240px) {
+  .room-head__host {
+    display: none;
+  }
+}
+
+@container room-head (max-width: 1060px) {
+  .room-head__styles {
+    display: none;
+  }
+}
+
+@container room-head (max-width: 880px) {
+  .room-head__me {
+    padding-right: 8px;
+  }
+
+  .room-head__me-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .room-head__link {
+    padding: 0 16px;
+  }
+}

@@ -1,0 +1,53 @@
+/* The rail of the room (mock-ups 3 and 3b): 84 px wide, the whole height of the window. */
+.room-rail {
+  grid-area: rail;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 0;
+  border-right: 1.5px solid var(--border);
+  background: var(--glass);
+}
+
+.room-rail__logo {
+  display: block;
+  margin-bottom: 18px;
+  border-radius: 12px;
+}
+
+.room-rail__logo svg {
+  display: block;
+}
+
+.room-rail__logo-tile { fill: var(--accent); }
+.room-rail__logo-bar { fill: var(--on-accent); }
+
+.room-rail__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 68px;
+  padding: 8px 0;
+  border-radius: 16px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.room-rail__item:hover {
+  color: var(--text);
+}
+
+.room-rail__item--current,
+.room-rail__item--current:hover {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.room-rail__space {
+  flex: 1;
+}

@@ -1,7 +1,10 @@
 /* The video screen: a neon frame that breathes, and rings that burst at each "boom".
-   The pulse is decoration: YouTube does not expose its audio, so it cannot follow the beat. */
+   The pulse is decoration: YouTube does not expose its audio, so it cannot follow the beat.
+   In the drawn scene (Scene.tsx) the frame is the drawing's: there this box is the video alone, see the end of the file. */
 .screen {
   --pulse-period: 2.6s;
+  /* Its texts read its own width (a screen of 200 px of height needs smaller ones). */
+  container: screen / inline-size;
   position: relative;
   padding: 6px;
   border-radius: var(--radius-m);
@@ -136,7 +139,7 @@
 }
 
 /* The shortest the player may be (200 px) with a long text: smaller type and less padding, so that it fits. */
-@container stage (max-width: 440px) {
+@container screen (max-width: 440px) {
   .screen__message {
     padding: 10px 12px;
     font-size: 0.875rem;
@@ -147,4 +150,22 @@
     margin-bottom: 4px;
     font-size: 0.95rem;
   }
+}
+
+/* In the drawn scene: the drawing has the neon frame and the dark screen, this box is exactly the video's rectangle
+   (placed by Scene.tsx). The rings of a "boom" and of a like still burst around it, outside the picture. */
+.scene--art .screen {
+  height: 100%;
+  padding: 0;
+  border-radius: var(--screen-radius, 12px);
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+}
+
+.scene--art .screen__video {
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+  border-radius: inherit;
 }

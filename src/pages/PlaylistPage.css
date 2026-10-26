@@ -51,7 +51,7 @@
 }
 
 .playlist__card h2:focus-visible {
-  outline: 3px solid var(--accent-2);
+  outline: 3px solid var(--accent-2-text);
   outline-offset: 4px;
 }
 
@@ -77,7 +77,7 @@
 }
 
 .playlist__feedback--done {
-  color: var(--accent-2);
+  color: var(--accent-2-text);
 }
 
 .playlist__items,

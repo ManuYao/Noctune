@@ -1,31 +1,37 @@
+/* The chat of the room (mock-ups 3 and 3b): a glass panel, the messages, and the field with its square send button. */
 .chat {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   height: clamp(340px, 62dvh, 580px);
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-  background: var(--wall);
+  padding: 12px 16px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  background: var(--glass);
 }
 
 .chat h2 {
-  font-size: 1.1rem;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
 }
 
 .chat__list {
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 14px;
-  margin: 0;
-  padding: 0;
+  gap: 10px;
+  /* The list reaches up into the gap under the title, which fades: a message scrolled half out does not end in a hard cut. */
+  margin: -10px 0 0;
+  padding: 10px 0 0;
   overflow-y: auto;
   list-style: none;
+  mask-image: linear-gradient(to bottom, transparent 0, #000 12px);
 }
 
 .chat__empty {
   color: var(--text-muted);
+  font-size: 14px;
 }
 
 .chat__message {
@@ -35,12 +41,15 @@
 }
 
 .chat__message svg {
+  display: block;
   flex: none;
 }
 
 .chat__message p {
   min-width: 0;
   margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
@@ -49,13 +58,20 @@
 }
 
 .chat__message--self .chat__author {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
-/* The "⋯" shows when the message is pointed at or focused; on a touch screen, where nothing is pointed at, it is always there. */
+/* The "⋯" shows over the end of the message when it is pointed at or focused, so that the text keeps the width of the
+   mock-ups; on a touch screen, where nothing is pointed at, it is always there, beside the text. */
+.chat__message {
+  position: relative;
+}
+
 .chat__message .chat__more {
-  margin-block: -6px;
-  margin-inline-start: auto;
+  position: absolute;
+  top: -4px;
+  right: 0;
+  background: var(--bg);
   opacity: 0;
 }
 
@@ -66,6 +82,10 @@
 
 @media (hover: none) {
   .chat__message .chat__more {
+    position: static;
+    margin-block: -6px;
+    margin-inline-start: auto;
+    background: transparent;
     opacity: 1;
   }
 }
@@ -73,28 +93,30 @@
 /* The ring is drawn on the whole field, so the inner input does not draw a second one. */
 .chat__form {
   display: flex;
+  flex: none;
   align-items: center;
   gap: 8px;
-  min-height: 52px;
-  padding: 4px;
-  border: 2px solid var(--border-field);
-  border-radius: 999px;
+  height: 48px;
+  padding: 0 6px 0 16px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 16px;
   background: var(--bg);
 }
 
 .chat__form:focus-within {
-  outline: 3px solid var(--accent-2);
+  outline: 3px solid var(--accent-2-text);
   outline-offset: 2px;
 }
 
 .chat__form input {
   flex: 1;
   min-width: 0;
-  min-height: var(--tap);
-  padding: 0 16px;
+  height: 40px;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--text);
+  font-size: 15px;
 }
 
 .chat__form input:focus-visible {
@@ -105,17 +127,25 @@
   color: var(--text-muted);
 }
 
+/* 36 px as drawn, 44 px to aim at: the invisible edge around it is part of the button. */
 .chat__form button {
+  position: relative;
   display: grid;
   flex: none;
   place-items: center;
-  width: var(--tap-main);
-  height: var(--tap);
+  width: 36px;
+  height: 36px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 12px;
   background: var(--accent);
   color: var(--on-accent);
   cursor: pointer;
+}
+
+.chat__form button::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
 }
 
 .chat__form button:disabled {
@@ -126,15 +156,16 @@
 .chat__feedback {
   margin: 0;
   color: var(--text-muted);
+  font-size: 14px;
 }
 
 .chat__feedback--error {
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
 }
 
 /* On a computer the chat takes the height the column has left and scrolls inside its box. */
-@media (min-width: 761px) and (min-height: 700px) {
+@media (min-width: 761px) {
   .chat {
     flex: 1 1 0;
     height: auto;

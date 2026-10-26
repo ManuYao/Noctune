@@ -1,3 +1,5 @@
+/* What the audience can do with the track: "J'aime", "Passer", "+ Playlist" (mock-ups 3 and 3b).
+   The layout depends on the width of the bar, not of the window (container "bar", see NowPlayingBar.css). */
 .reactions {
   display: grid;
   gap: 4px;
@@ -5,39 +7,56 @@
 
 .reactions__buttons {
   display: flex;
-  gap: 8px;
+  justify-content: center;
+  gap: 12px;
 }
 
+/* 38 px tall as drawn, 44 px to aim at: the invisible edge above and below is part of the button. */
 .reactions__button {
   position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: var(--tap);
-  padding: 0 16px;
-  border: 2px solid var(--border-field);
-  border-radius: 999px;
+  height: 38px;
+  padding: 0 18px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 12px;
   background: transparent;
   color: var(--text);
+  font-size: 15px;
   font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
 }
 
-.reactions__like {
-  border-color: var(--accent);
-  color: var(--accent);
+.reactions__button::before {
+  content: '';
+  position: absolute;
+  inset: -4px -1.5px;
 }
 
-.reactions__button[aria-pressed='true'] {
+.reactions__button svg {
+  flex: none;
+}
+
+/* "J'aime" is the room's main gesture: filled, as drawn. Liked, its heart fills and a halo marks it. */
+.reactions__like {
+  padding: 0 20px;
   border-color: var(--accent);
   background: var(--accent);
   color: var(--on-accent);
+  font-weight: 800;
 }
 
-/* A vote cast is shown without filling the button: only a like is a celebration. */
-.reactions__button:not(.reactions__like)[aria-pressed='true'] {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  color: var(--accent);
+.reactions__like[aria-pressed='true'] {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* A vote cast: in the soft pink, without filling the button (only a like is a celebration). */
+.reactions__skip[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 
 .reactions__button:disabled {
@@ -48,11 +67,21 @@
 /* The DJ on the decks skipping their own track: in the cyan of everything DJ, since it is not a vote. */
 .reactions__button--own {
   border-color: var(--accent-2);
-  color: var(--accent-2);
+  color: var(--accent-2-text);
 }
 
 .reactions__count {
   font-variant-numeric: tabular-nums;
+}
+
+/* "Passer · 3/8", spaced like a sentence (the gap of the button is a little wider than a space). */
+.reactions__label + .reactions__count {
+  margin-left: -4px;
+}
+
+.reactions__label + .reactions__count::before {
+  content: '·';
+  margin-right: 4px;
 }
 
 .reactions__hint {
@@ -61,22 +90,13 @@
   font-size: 0.9rem;
 }
 
-/* The DJ on the decks: two short notes (no like on your own track, what skipping leads to) side by side with the
-   buttons in a wide bar, so that the bar keeps its two rows. */
 .reactions__notes {
   display: grid;
   gap: 2px;
   min-width: 0;
 }
 
-/* "+ Playlist": an outline in the cyan of everything that is not a vote. */
-.reactions__keep {
-  border-color: var(--border-field);
-  color: var(--text);
-}
-
-/* The DJ's bar is the busiest one (two notes beside the buttons): there "+ Playlist" is its icon only. The name is read
-   out and shown as a tooltip. */
+/* The DJ's bar is the busiest one: there "+ Playlist" is its icon only. The name is read out and shown as a tooltip. */
 .reactions--own .reactions__keep .reactions__label {
   position: absolute;
   width: 1px;
@@ -89,17 +109,6 @@
 
 .reactions--own .reactions__keep {
   padding: 0 12px;
-}
-
-/* Empty most of the time, so it takes no room; it is a live region for refusals and for what was kept. */
-.reactions__message {
-  margin: 0;
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.reactions__message[data-kind='info'] {
-  color: var(--accent-2);
 }
 
 /* Hearts that rise from the button when the viewer likes. They stay around the button: nothing is
@@ -149,27 +158,43 @@
   }
 }
 
-/* Wide column: the rule is explained next to the buttons, on the same line. */
-@container stage (min-width: 641px) {
-  .reactions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 16px;
-  }
-
-  .reactions__notes {
-    flex: 1 1 14rem;
-  }
-
-  .reactions__label + .reactions__count::before {
-    content: '·';
-    margin-right: 8px;
+/* A computer: the bar has no room for sentences. The rule of the vote stays for screen readers (the buttons point at it)
+   and as the tooltip of the button; the countdown of the first seconds is on the button itself. */
+@container bar (min-width: 641px) {
+  .reactions__hint {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }
 
-/* Narrow column (a phone): the buttons keep the icon and the count, the words stay for screen readers. */
-@container stage (max-width: 640px) {
+/* A narrower bar: "+ Playlist" keeps its icon. */
+@container bar (max-width: 1180px) {
+  .reactions__keep {
+    padding: 0 12px;
+  }
+
+  .reactions__keep .reactions__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/* Narrower still, and a phone: the buttons keep the icon and the count, the words stay for screen readers. */
+@container bar (max-width: 960px) {
+  .reactions__buttons {
+    gap: 8px;
+  }
+
   .reactions__button {
     gap: 6px;
     padding: 0 12px;
@@ -185,12 +210,15 @@
     white-space: nowrap;
   }
 
-  .reactions__hint {
-    display: none;
+  .reactions__label + .reactions__count {
+    margin-left: 0;
   }
 
-  /* The DJ's own skip button must say what it does, and what follows: words and hint stay on a phone too
-     (the bar gives them a row of their own, see NowPlayingBar.css). */
+  .reactions__label + .reactions__count::before {
+    content: none;
+  }
+
+  /* The DJ's own skip button must say what it does. */
   .reactions__button--own .reactions__label {
     position: static;
     width: auto;
@@ -198,6 +226,26 @@
     margin: 0;
     overflow: visible;
     clip-path: none;
+  }
+}
+
+/* A phone (the bar is pinned under the video): 44 px tall buttons, the hints only for the DJ on the decks. */
+@container bar (max-width: 640px) {
+  .reactions__button {
+    height: var(--tap);
+    border-radius: 999px;
+  }
+
+  .reactions__button::before {
+    content: none;
+  }
+
+  .reactions__buttons {
+    justify-content: flex-start;
+  }
+
+  .reactions__hint {
+    display: none;
   }
 
   .reactions--own .reactions__hint {

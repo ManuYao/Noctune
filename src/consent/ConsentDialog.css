@@ -63,7 +63,7 @@ html:has(.consent-dialog[open]) {
 }
 
 .consent-dialog__current {
-  color: var(--accent-2);
+  color: var(--accent-2-text);
   font-weight: 700;
 }
 

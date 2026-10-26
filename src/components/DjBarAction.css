@@ -1,0 +1,87 @@
+/* "Passer DJ" in the bar (mock-ups 3 and 3b): in the cyan of everything DJ. 40 px tall as drawn, 44 px to aim at. */
+.dj-cta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent-2);
+  color: var(--on-accent-2);
+  font-size: 15px;
+  font-weight: 800;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.dj-cta::before {
+  content: '';
+  position: absolute;
+  inset: -2px 0;
+}
+
+.dj-cta svg {
+  flex: none;
+}
+
+/* Once in the queue: an outline, the way out. */
+.dj-cta--leave {
+  border: 2px solid var(--accent-2);
+  background: transparent;
+  color: var(--text);
+}
+
+.dj-cta--leave svg {
+  color: var(--accent-2);
+}
+
+.dj-cta:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Under the sound and the button, right-aligned, on one line (a long one widens the end of the bar, to the left). */
+.dj-cta__note {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.dj-cta__warn {
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+/* "Mes morceaux (n)": what the DJ lined up, in the window of "Passer DJ". A word of the note, with a taller target. */
+.dj-cta__link {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.dj-cta__link::before {
+  content: '';
+  position: absolute;
+  inset: -2px -4px -12px;
+}
+
+@container bar (max-width: 960px) {
+  .dj-cta {
+    padding: 0 14px;
+  }
+}
