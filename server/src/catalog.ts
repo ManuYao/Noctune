@@ -67,6 +67,22 @@ export const ROOM_DEFS: RoomDef[] = [
     theme: 'neon',
     rules: { maxTrackSec: 7 * MINUTE, repeatDelaySec: 2 * HOUR, maxDjs: 10 },
   },
+  {
+    id: 'afro-caraibes',
+    name: 'Afro Caraïbes',
+    description: 'Afrobeats, amapiano et rythmes des îles : de quoi danser jusqu’au matin.',
+    styles: ['afro'],
+    theme: 'neon',
+    rules: { maxTrackSec: 6 * MINUTE, repeatDelaySec: 2 * HOUR, maxDjs: 12 },
+  },
+  {
+    id: 'zouk-dancehall',
+    name: 'Zouk & Dancehall',
+    description: 'Zouk, kompa, dancehall et soca : le soleil des Caraïbes dans les enceintes.',
+    styles: ['afro'],
+    theme: 'neon',
+    rules: { maxTrackSec: 6 * MINUTE, repeatDelaySec: 2 * HOUR, maxDjs: 12 },
+  },
 ]
 
 export interface TestTrack {
