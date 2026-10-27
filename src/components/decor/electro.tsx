@@ -25,7 +25,7 @@ function Meters({ x, delay, frame }: { x: number; delay: number; frame: DecorPro
   // The speakers of the entry screen are taller than the room's once the wing is drawn smaller: lift the meters so that they
   // stand on the speaker instead of sinking behind it.
   return (
-    <g transform={frame === 'entry' ? 'translate(0 -34)' : undefined}>
+    <g transform={frame === 'entry' ? 'translate(0 -34)' : 'translate(0 30)'}>
       <rect x={x - 3} y="124" width="72" height="132" rx="6" fill={OUT} opacity="0.55" />
       {heights.map((height, index) => (
         <line
