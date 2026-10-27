@@ -83,3 +83,15 @@
   --accent: #ff6bc6;
   --accent-2: #ffd166;
 }
+
+/* The entry screen is the home of the site: its wall, floor and stage stay the violet of the mock-up (screen 1) whatever the
+   room it proposes, and only the neon accents and the objects of the genre follow the room. The lo-fi navy made the whole
+   home blue. */
+.entry-scene[data-decor] {
+  --wall: #17123a;
+  --wall-2: #221b52;
+  --floor: #120e2e;
+  --stage: #2a2260;
+  --stage-top: #3a3080;
+  --screen-bg: #0a0818;
+}

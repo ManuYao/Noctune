@@ -20,10 +20,12 @@ function Lasers({ x, y, targets, horizon, reverse }: { x: number; y: number; tar
 }
 
 /** Lit bars that rise and fall above a speaker, like the meters of a mixing desk. */
-function Meters({ x, delay }: { x: number; delay: number }) {
+function Meters({ x, delay, frame }: { x: number; delay: number; frame: DecorProps['frame'] }) {
   const heights = [62, 104, 84, 118, 72, 96]
+  // The speakers of the entry screen are taller than the room's once the wing is drawn smaller: lift the meters so that they
+  // stand on the speaker instead of sinking behind it.
   return (
-    <g>
+    <g transform={frame === 'entry' ? 'translate(0 -34)' : undefined}>
       <rect x={x - 3} y="124" width="72" height="132" rx="6" fill={OUT} opacity="0.55" />
       {heights.map((height, index) => (
         <line
@@ -99,13 +101,13 @@ const ElectroBack = memo(function ElectroBack({ frame }: DecorProps) {
         <Lasers x={170} y={10} targets={frame === 'room' ? [-50, 80, 300, 540] : [300, 440, 540]} horizon={436} />
       </Zone>
       <Zone frame={frame} at="left">
-        <Meters x={140} delay={0} />
+        <Meters x={140} delay={0} frame={frame} />
       </Zone>
       <Zone frame={frame} at="rightTop">
         <Lasers x={770} y={10} targets={[990, 860, 640, 400]} horizon={436} reverse />
       </Zone>
       <Zone frame={frame} at="right">
-        <Meters x={734} delay={-0.5} />
+        <Meters x={734} delay={-0.5} frame={frame} />
         {[0, 1, 2].map((index) => (
           <g key={index}>
             <rect x={840 + index * 32 - 5} y="34" width="10" height="200" rx="5" fill={OUT} />

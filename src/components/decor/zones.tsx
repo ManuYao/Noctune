@@ -22,9 +22,10 @@ export const HORIZON: Record<Frame, number> = { room: 436, entry: 457 }
 type ZoneName = 'left' | 'right' | 'leftTop' | 'rightTop' | 'center' | 'span'
 const WING_SCALE = 0.8
 const ENTRY_TRANSFORM: Record<ZoneName, string> = {
-  // The point (135, 436) of the room (the edge of the left wing at the horizon) lands on (440, 457), and (810, 436) on (1035, 457).
-  left: `translate(${440 - 135 * WING_SCALE} ${457 - 436 * WING_SCALE}) scale(${WING_SCALE})`,
-  right: `translate(${1035 - 810 * WING_SCALE} ${457 - 436 * WING_SCALE}) scale(${WING_SCALE})`,
+  // The middle of each speaker lands on the middle of the speaker of the entry screen (room 173 and 767, entry 475 and 985), so
+  // that what stands on a speaker is centred on it; the horizon of the room (436) on the one of the entry screen (457).
+  left: `translate(${475 - 173 * WING_SCALE} ${457 - 436 * WING_SCALE}) scale(${WING_SCALE})`,
+  right: `translate(${985 - 767 * WING_SCALE} ${457 - 436 * WING_SCALE}) scale(${WING_SCALE})`,
   leftTop: 'translate(295 0)',
   rightTop: 'translate(225 0)',
   center: 'translate(260 21)',
