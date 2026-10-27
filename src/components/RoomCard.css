@@ -1,98 +1,310 @@
+/* A card of mock-up 2: 24 px corners, the scene on top (160 px), the room under it.
+   The default layout shows everything (a phone, a tablet, the form's preview); with a mouse, the card of the list keeps
+   262 px and opens its panel on hover or focus (see the end of the file). */
 .room-card {
+  /* The cards' surface in mock-up 2 (the glass of the panels, opaque): the panel that slides over the scene must hide it. */
+  --surface: #1a1533;
+  position: relative;
+  height: 100%;
+}
+
+.room-card__frame {
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
   height: 100%;
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-  background: var(--wall);
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
   color: var(--text);
 }
 
-.room-card__name {
-  margin: 0;
-  overflow-wrap: anywhere;
-  font-family: var(--font-title);
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.room-card__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.room-card__chip {
-  padding: 3px 10px;
-  border: 1px solid var(--border-field);
-  border-radius: 999px;
-  color: var(--text-muted);
-  font-size: 0.85rem;
-}
-
-/* The styles take the accent of the room; the rule chip stays quiet. */
-.room-card__chip--style {
-  border-color: var(--accent);
-  color: var(--accent);
-  font-weight: 700;
+.room-card .room-scene {
+  flex: none;
 }
 
 .room-card p {
   margin: 0;
+}
+
+.room-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 18px;
+}
+
+.room-card__name,
+.room-card__more-name {
+  overflow: hidden;
+  font-family: var(--font-title);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-card__line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.room-card__styles {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-card__dj {
+  flex: none;
+  margin-left: auto;
   color: var(--text-muted);
 }
 
-/* Two lines of description at most: the card must stay a card, whatever was written. */
-.room-card .room-card__description {
+.room-card__dj--free {
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.room-card__playing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.room-card__track,
+.room-card__quiet {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-card__quiet {
+  color: var(--text-muted);
+}
+
+/* The equaliser of the mock-ups: second accent next to the track, white in the "En direct" pill. */
+.room-card__eq {
+  display: inline-flex;
+  flex: none;
+  align-items: flex-end;
+  gap: 2px;
+  width: 16px;
+  height: 14px;
+}
+
+.room-card__eq i {
+  display: block;
+  flex: 1;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent-2);
+  transform-origin: 50% 100%;
+  animation: room-card-eq 0.9s ease-in-out infinite;
+}
+
+.room-card__eq i:nth-child(2) {
+  animation-delay: -0.3s;
+}
+
+.room-card__eq i:nth-child(3) {
+  animation-delay: -0.6s;
+}
+
+@keyframes room-card-eq {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+/* "En direct" on the left of the scene, "N en ligne" on the right: dark pills, 28 px, 12 px from the edges. */
+.room-card__pills {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  left: 12px;
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.room-card__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--outline);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.room-card__pill .room-card__eq i {
+  background: #ffffff;
+}
+
+.room-card__pill--online {
+  margin-left: auto;
+}
+
+/* The details: the description, the host and the rule of the room, the styles, and the way in. */
+.room-card__more {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 18px 16px;
+}
+
+/* Shown in the panel over the scene only (the name is in the body otherwise). */
+.room-card__more-name {
+  display: none;
+}
+
+.room-card__description {
   display: -webkit-box;
   overflow: hidden;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  color: var(--text);
+  font-size: 14px;
+  line-height: 1.4;
 }
 
-/* What plays now, or why nothing does. Long titles wrap instead of widening the card. */
-.room-card .room-card__playing {
-  overflow-wrap: anywhere;
-  color: var(--text);
+.room-card__host-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
-/* A free place in the queue of DJs. A full queue says so too, in an outline: it is information, not an invitation. */
-.room-card__badge {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--accent-2);
-  color: var(--on-accent);
-  font-size: 0.85rem;
-  font-weight: 700;
-}
-
-.room-card__badge--full {
-  border: 1px solid var(--border-field);
-  background: transparent;
+.room-card__host {
+  min-width: 0;
+  overflow: hidden;
   color: var(--text-muted);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-card__host strong {
+  color: var(--text);
+}
+
+/* The styles as chips: in the panel over the scene only (the body already lists them). */
+.room-card__chips {
+  display: none;
+  flex: none;
+  gap: 6px;
+}
+
+.room-card__chip {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .room-card__join {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
+  gap: 10px;
   min-height: var(--tap);
   margin-top: auto;
-  padding: 0 20px;
-  border-radius: var(--radius-s);
+  border-radius: 14px;
   background: var(--accent);
   color: var(--on-accent);
+  font-family: var(--font-title);
+  font-size: 15px;
   font-weight: 700;
   text-decoration: none;
 }
 
-.room-card__join--preview {
-  opacity: 0.7;
+.room-card__join svg {
+  flex: none;
+}
+
+/* The whole card is a way into the room: the link stretches over it (it stays the one thing a keyboard reaches). */
+a.room-card__join::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+}
+
+/* ---- With a mouse: the card of mock-up 2, 262 px tall, that opens as its second card does ---- */
+@media (hover: hover) {
+  .room-card:not(.room-card--open) {
+    height: 262px;
+  }
+
+  .room-card:not(.room-card--open) .room-card__frame {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .room-card:not(.room-card--open) .room-card__more {
+    position: absolute;
+    top: 76px;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    gap: 8px;
+    padding: 16px 18px;
+    background: var(--surface);
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+
+  /* The link stretches over the whole card: from the panel, that is 76 px higher. */
+  .room-card:not(.room-card--open) a.room-card__join::after {
+    inset: -76px 0 0;
+  }
+
+  .room-card:not(.room-card--open) .room-card__more-name {
+    display: block;
+  }
+
+  .room-card:not(.room-card--open) .room-card__chips {
+    display: flex;
+  }
+
+  .room-card:not(.room-card--open) .room-card__join {
+    min-height: 40px;
+  }
+
+  .room-card:not(.room-card--open):hover,
+  .room-card:not(.room-card--open):focus-within {
+    z-index: 2;
+  }
+
+  .room-card:not(.room-card--open):hover .room-card__frame,
+  .room-card:not(.room-card--open):focus-within .room-card__frame {
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 0 5px var(--accent-soft), 0 22px 44px rgba(0, 0, 0, 0.35);
+    transform: translateY(-6px);
+  }
+
+  .room-card:not(.room-card--open):hover .room-card__more,
+  .room-card:not(.room-card--open):focus-within .room-card__more {
+    opacity: 1;
+  }
 }

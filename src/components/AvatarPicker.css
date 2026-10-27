@@ -1,7 +1,10 @@
+/* The avatar grid of the mock-ups (screen 1, "Prépare ton entrée"): four to a row, square tiles, the chosen one in the
+   accent with a check on its corner. Also on the sign-up and profile pages. */
 .avatar-picker {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
@@ -11,20 +14,52 @@
   margin-bottom: 8px;
   padding: 0;
   font-weight: 700;
+  font-size: 15px;
 }
 
 .avatar-picker button {
+  position: relative;
   display: grid;
   place-items: center;
+  min-width: 0;
   min-height: var(--tap);
+  aspect-ratio: 1 / 1;
   padding: 6px;
   border: 2px solid var(--border);
-  border-radius: var(--radius-m);
+  border-radius: 16px;
   background: var(--bg);
   cursor: pointer;
 }
 
+.avatar-picker button:hover {
+  border-color: var(--border-field);
+}
+
 .avatar-picker button[aria-pressed='true'] {
   border-color: var(--accent);
-  background: var(--wall-2);
+  background: var(--accent-soft);
+}
+
+/* The drawing takes the tile, whatever its size. */
+.avatar-picker button > svg {
+  width: 100%;
+  height: auto;
+}
+
+.avatar-picker__check {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.avatar-picker__check path {
+  stroke: var(--on-accent);
 }

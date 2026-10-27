@@ -1,0 +1,43 @@
+/* The illustration of a card: 160 px tall, the drawing cut to the width of the card (centred) rather than squeezed. */
+.room-scene {
+  display: block;
+  width: 100%;
+  height: 160px;
+}
+
+/* The dancers bounce as in the mock-ups (stopped with reduced motion: see index.css). */
+.room-scene__bob {
+  transform-box: fill-box;
+  animation: room-scene-bob 1.1s ease-in-out infinite;
+}
+
+@keyframes room-scene-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* The two beams of the stage of mock-up 2b, swaying. */
+.room-scene__sway {
+  animation: room-scene-sway 5s ease-in-out infinite;
+}
+
+.room-scene__sway-2 {
+  animation: room-scene-sway 6.5s ease-in-out infinite reverse;
+}
+
+@keyframes room-scene-sway {
+  0%, 100% { transform: rotate(-2.5deg); }
+  50% { transform: rotate(2.5deg); }
+}
+
+/* The stage of mock-up 2b takes the colours of the room's ambiance. */
+.room-scene__wall { fill: var(--wall); }
+.room-scene__wall-2 { fill: var(--wall-2); }
+.room-scene__floor { fill: var(--floor); }
+.room-scene__stage { fill: var(--stage); }
+.room-scene__stage-top { fill: var(--stage-top); }
+.room-scene__screen { fill: var(--screen-bg); }
+.room-scene__accent { fill: var(--accent); }
+.room-scene__neon { stroke: var(--accent); }
+.room-scene__stop-accent { stop-color: var(--accent); }
+.room-scene__stop-accent-2 { stop-color: var(--accent-2); }

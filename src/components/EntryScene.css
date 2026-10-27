@@ -1,0 +1,106 @@
+/* The club behind the entry screen (see EntryScene.tsx). A layer of its own under the whole page: the page's background
+   is on <body>, and the header, the page and the footer have none, so the drawing shows through them. */
+.entry-scene {
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  overflow: hidden;
+  background: var(--bg);
+  pointer-events: none;
+}
+
+/* The mock-up's 1440 x 900 as large as the window holds it, at the top, centred. What is drawn past it (the wall and the
+   floor going on) shows on the sides of a wider window and under it in a taller one. */
+.entry-scene__art {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  display: block;
+  width: min(100%, 160dvh);
+  height: auto;
+  aspect-ratio: 1440 / 900;
+  overflow: visible;
+  transform: translateX(-50%);
+}
+
+.entry-scene__stop-bg {
+  stop-color: var(--bg);
+}
+
+.entry-scene__scrim-far {
+  fill: var(--bg);
+  fill-opacity: 0.92;
+}
+
+.entry-scene__title,
+.entry-scene__artist,
+.entry-scene__live,
+.entry-scene__pill {
+  font-family: var(--font-text);
+}
+
+.entry-scene__title {
+  fill: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.entry-scene__artist {
+  fill: #d6d3ea;
+  font-size: 13px;
+}
+
+.entry-scene__live {
+  fill: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.entry-scene__pill {
+  fill: var(--on-accent);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+/* The animations of the mock-up: the crowd bounces, the beams sway, the neon breathes. */
+@keyframes entry-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+
+.entry-scene .mw-bob {
+  transform-box: fill-box;
+  animation: entry-bob 1.1s ease-in-out infinite;
+}
+
+.entry-scene .mw-sway {
+  animation: mw-sway 5s ease-in-out infinite;
+}
+
+.entry-scene .mw-sway2 {
+  animation: mw-sway 6.5s ease-in-out infinite reverse;
+}
+
+.entry-scene .mw-neon {
+  animation: mw-glow 3.2s ease-in-out infinite;
+}
+
+/* Narrow windows: the text and the form stand in front of the busiest part of the drawing (the screen and its sun). The
+   club stays, dimmed, so that every word reads. */
+@media (max-width: 959px) {
+  .entry-scene::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: color-mix(in srgb, var(--bg) 68%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .entry-scene .mw-bob,
+  .entry-scene .mw-sway,
+  .entry-scene .mw-sway2,
+  .entry-scene .mw-neon {
+    animation: none;
+  }
+}

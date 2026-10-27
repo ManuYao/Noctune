@@ -1,28 +1,37 @@
+/* The header of the pages (mock-ups 2, 2b, 5, 7), measured at 1440 x 900: logo 56 px from the left, its centre and the
+   navigation's 54 px from the top; the page's title starts at 100 px. Transparent: the page (or the entry's scene) shows
+   through. */
 .site-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding: 20px clamp(16px, 5vw, 56px);
+  min-height: 86px;
+  padding: 30px clamp(16px, 5vw, 56px) 8px;
 }
 
 .site-header__logo {
-  font-family: var(--font-title);
-  font-weight: 800;
-  font-size: 1.5rem;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--tap);
+  border-radius: 12px;
   color: var(--text);
+  font-family: var(--font-title);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   text-decoration: none;
 }
 
-.site-header__nav a {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--tap);
-  padding: 0 12px;
-  color: var(--text);
-  font-weight: 600;
-  text-decoration: none;
+.site-header__logo svg {
+  display: block;
+  flex: none;
 }
+
+.site-header__logo-tile { fill: var(--accent); }
+.site-header__logo-bar { fill: var(--on-accent); }
 
 .site-header__nav {
   display: flex;
@@ -30,103 +39,188 @@
   gap: 8px;
 }
 
+/* "Les rooms", "Règles", "Playlist": quiet words; the page the viewer is on is white, underlined in the accent. */
+.site-header__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border-bottom: 3px solid transparent;
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.site-header__link:hover {
+  color: var(--text);
+}
+
+.site-header__link[aria-current='page'] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.site-header__login {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 22px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 999px;
+  background: var(--glass);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.site-header__login:hover {
+  border-color: var(--text);
+}
+
 .site-header__account {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
-.site-header__nav .site-header__profile {
+/* The pill of mock-up 2b: the avatar, the pseudo and "Connecté". Its border lights up on the profile itself. */
+.site-header__profile {
+  display: flex;
+  align-items: center;
   gap: 10px;
-  padding: 0 8px;
+  height: 48px;
+  padding: 0 16px 0 8px;
+  border: 1.5px solid var(--border);
   border-radius: 999px;
+  background: var(--glass);
+  color: var(--text);
+  text-decoration: none;
 }
 
-.site-header__nav .site-header__profile:hover {
-  background: var(--wall);
+.site-header__profile:hover {
+  border-color: var(--border-field);
 }
 
-.site-header__profile-short {
-  display: none;
+.site-header__profile[aria-current='page'] {
+  border-color: var(--accent);
+}
+
+.site-header__profile > svg {
+  display: block;
+  flex: none;
+}
+
+.site-header__who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
 }
 
 .site-header__pseudo {
-  max-width: 14ch;
+  max-width: 16ch;
   overflow: hidden;
+  font-size: 14px;
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.site-header__account button,
-.site-header__nav .site-header__login {
-  min-height: var(--tap);
-  padding: 0 16px;
-  border: 2px solid var(--border-field);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text);
-  font-weight: 600;
+.site-header__status {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.site-header__profile-short {
+  display: none;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.site-header__logout {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  background: var(--glass);
+  color: var(--text-muted);
   cursor: pointer;
 }
 
-.site-header__nav .site-header__login {
-  display: inline-flex;
-  align-items: center;
-  text-decoration: none;
-}
-
-/* A phone: logo and navigation on one row, whatever sits between them (the room title) on the next. */
-@media (max-width: 560px) {
-  .site-header {
-    flex-wrap: wrap;
-    row-gap: 4px;
-  }
-
-  .site-header__nav {
-    order: 2;
-    margin-left: auto;
-  }
-
-  .site-header__pseudo {
-    display: none;
-  }
-
-  .site-header__profile-short {
-    display: inline;
-  }
-
-  /* With "Playlist" in the navigation the row is full. A word never breaks over two lines, the avatar (next to the
-     pseudo, which is hidden already) steps aside, and on the narrowest phones the links wrap onto a second row: the page
-     must never be wider than the screen. */
-  .site-header__nav {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 4px;
-  }
-
-  .site-header__account button {
-    padding: 0 12px;
-  }
-
-  .site-header__nav a,
-  .site-header__account button {
-    white-space: nowrap;
-  }
-
-  .site-header__nav a {
-    padding: 0 8px;
-  }
-
-  .site-header__profile > svg {
-    display: none;
-  }
+.site-header__logout:hover {
+  border-color: var(--border-field);
+  color: var(--text);
 }
 
 .site-header__error {
   flex-basis: 100%;
   order: 4;
   margin: 0;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: 600;
+}
+
+/* Less room: the pill keeps the avatar alone (the pseudo is in its label). */
+@media (max-width: 900px) {
+  .site-header__profile {
+    padding: 0 6px;
+  }
+
+  .site-header__who {
+    display: none;
+  }
+
+  /* Without an avatar to show, the pill says "Profil". */
+  .site-header__profile-short {
+    display: inline;
+  }
+
+  .site-header__profile:has(.site-header__profile-short) {
+    padding: 0 14px;
+  }
+}
+
+/* A phone or a narrow window: the navigation goes under the logo when the row is full, whatever sits between them (the
+   room's title) included. The page must never be wider than the screen. */
+@media (max-width: 760px) {
+  .site-header {
+    flex-wrap: wrap;
+    row-gap: 4px;
+    min-height: 0;
+    padding-top: 16px;
+  }
+
+  .site-header__nav {
+    order: 2;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-left: auto;
+  }
+
+  .site-header__link {
+    padding: 0 8px;
+    font-size: 14px;
+  }
+
+  .site-header__login {
+    padding: 0 16px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 560px) {
+  .site-header__logo {
+    font-size: 19px;
+  }
 }

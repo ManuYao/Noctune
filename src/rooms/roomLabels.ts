@@ -32,5 +32,17 @@ export const repeatLabel = (seconds: number | null) => (seconds === null ? 'Jama
 export const maxTrackChip = (rules: RoomRules) =>
   rules.maxTrackSec === null ? 'Sans limite de durée' : `${formatSpan(rules.maxTrackSec)} max`
 
+/**
+ * What a card of the list says about the queue of DJs (mock-up 2), and what the filter "Place DJ libre" keeps: a free
+ * place is one where a DJ who joins plays right away or next (nobody waiting); `waiting` counts those behind the one at
+ * the decks. Null for an older server, which does not count its DJs: nothing said rather than something wrong.
+ */
+export function djPlace(djs: number, maxDjs: number): { kind: 'free' | 'waiting' | 'full'; waiting: number } | null {
+  if (maxDjs <= 0) return null
+  if (djs >= maxDjs) return { kind: 'full', waiting: Math.max(0, djs - 1) }
+  const waiting = Math.max(0, djs - 1)
+  return { kind: waiting === 0 ? 'free' : 'waiting', waiting }
+}
+
 /** What lets somebody search a room by its styles: "Électro" is found by "electro". */
 export const fold = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()

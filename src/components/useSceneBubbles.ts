@@ -14,7 +14,7 @@ const BUBBLE_MS = 6000
 // More would hide the crowd: the newest ones win.
 const MAX_BUBBLES = 3
 // About as long as the bubbles of the mock-ups: the chat has the rest.
-const BUBBLE_CHARS = 28
+const BUBBLE_CHARS = 18
 
 /**
  * The bubbles of the scene: each new chat message makes one over its author, for a few seconds, one per person (their

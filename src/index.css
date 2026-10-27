@@ -4,11 +4,21 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
+/* The background of the pages of the mock-ups (2b, 5, 7, 8): the halo of the accent at the top (see tokens.css) and the
+   second accent's in the bottom right corner (20 %, centred at (1320, 900), a radius of 560 px at 1440 x 900). It stays
+   on the body, under everything: the entry lays its scene over it, the room paints its own. A page may move the halos
+   (the list of rooms does). */
 body {
+  --glow-top: var(--page-glow);
+  --glow-bottom: radial-gradient(
+    circle max(38.9vw, 280px) at calc(100% - 8.3vw) 100%,
+    color-mix(in srgb, var(--accent-2) 20%, transparent),
+    color-mix(in srgb, var(--accent-2) 0%, transparent)
+  );
   margin: 0;
   min-height: 100dvh;
   font-family: var(--font-text);
-  background: var(--page-glow) no-repeat, var(--bg);
+  background: var(--glow-bottom) no-repeat, var(--glow-top) no-repeat, var(--bg);
   color: var(--text);
 }
 

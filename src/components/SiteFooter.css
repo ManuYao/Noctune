@@ -1,21 +1,22 @@
-/* The page is at least as tall as the window and the footer sits at its bottom: a short page gets no scroll for it. */
+/* The page is at least as tall as the window and the footer sits at its bottom: a short page gets no scroll for it.
+   No background here: the page's own (on the body) or the entry's scene shows through. */
 .app-shell {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
 }
 
+/* The links of the mock-ups: 13 px, underlined, 56 px from the left, their line 28 px above the bottom of the window.
+   Each one is 44 px tall all the same, so that a finger can hit it. */
 .site-footer {
   margin-top: auto;
-  /* Slim on purpose: the entry screen fits a 900 px window with it. */
-  padding: 4px clamp(16px, 5vw, 56px) 6px;
-  border-top: 1px solid var(--border);
+  padding: 0 clamp(16px, 5vw, 56px) 6px;
 }
 
 .site-footer nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 0 24px;
+  gap: 0 20px;
 }
 
 .site-footer a,
@@ -24,7 +25,14 @@
   align-items: center;
   min-height: var(--tap);
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.site-footer a[aria-current='page'] {
+  color: var(--text);
+  font-weight: 700;
 }
 
 /* A button that reads as one of the links beside it. */
@@ -33,7 +41,6 @@
   border: 0;
   background: none;
   font-family: inherit;
-  text-decoration: underline;
   cursor: pointer;
 }
 

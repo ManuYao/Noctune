@@ -1,39 +1,230 @@
+/* The list of rooms has its own halo of the accent (mock-up 2: 24 %, centred at (160, 0), a radius of 560 px at
+   1440 x 900); the second accent's stays in the bottom right corner, where index.css puts it. */
+body:has(.rooms-page) {
+  --glow-top: radial-gradient(
+    circle max(38.9vw, 280px) at 11.1vw 0,
+    color-mix(in srgb, var(--accent) 24%, transparent),
+    color-mix(in srgb, var(--accent) 0%, transparent)
+  );
+}
+
+/* The text of the mock-ups runs at 1.5 (the other pages keep theirs until they are redone). */
+.rooms-page {
+  line-height: 1.5;
+}
+
+/* Measured on mock-up 2 at 1440 x 900: the title at 100 px from the top, the tools at 206, the styles at 270, the
+   cards at 330, 56 px from both sides. */
 .rooms {
+  --gutter: clamp(16px, 5vw, 56px);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 16px clamp(16px, 5vw, 56px) 48px;
+  padding: 14px var(--gutter) 40px;
 }
 
-.rooms__top {
+.rooms__head {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px 24px;
 }
 
-.rooms__count,
-.rooms__empty {
+.rooms__intro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 900px;
+}
+
+.rooms__intro h1 {
+  font-size: clamp(32px, 7vw, 46px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.rooms__intro p {
   margin: 0;
   color: var(--text-muted);
+  font-size: 17px;
 }
 
-.rooms__label {
-  font-weight: 700;
+/* The mock-up's sentence speaks of a mouse: a finger is told something else. */
+.rooms__hint-touch {
+  display: none;
 }
 
-.rooms input[type='search'] {
-  max-width: 420px;
+@media (hover: none) {
+  .rooms__hint-pointer {
+    display: none;
+  }
+
+  .rooms__hint-touch {
+    display: inline;
+  }
+}
+
+/* Not in the mock-up: an outlined pill, like "Se connecter" in the header. */
+.rooms__create {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
   min-height: var(--tap-main);
-  padding: 0 16px;
-  border: 2px solid var(--border-field);
-  border-radius: var(--radius-s);
-  background: var(--bg);
+  padding: 0 22px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 999px;
+  background: var(--glass);
   color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
 }
 
-/* Filters by style: chips, one at a time. */
+.rooms__create svg {
+  flex: none;
+  color: var(--accent-text);
+}
+
+.rooms__create:hover {
+  border-color: var(--text);
+}
+
+/* ---- The tools: search on the left, the free place and the order on the right ---- */
+.rooms__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-top: 22px;
+}
+
+.rooms__search {
+  position: relative;
+  flex: 0 1 460px;
+  min-width: min(100%, 280px);
+}
+
+.rooms__search svg {
+  position: absolute;
+  top: 15px;
+  left: 18px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.rooms__search input {
+  width: 100%;
+  height: 50px;
+  padding: 0 16px 0 50px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 16px;
+  background: var(--glass);
+  color: var(--text);
+  font-size: 16px;
+}
+
+.rooms__search input::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.rooms__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 14px;
+}
+
+/* "Place DJ libre": a button drawn as a switch (its state is aria-pressed). */
+.rooms__switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  height: var(--tap);
+  padding: 0 18px 0 14px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 999px;
+  background: var(--glass);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rooms__switch-track {
+  position: relative;
+  flex: none;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--border-field);
+  transition: background 0.15s ease;
+}
+
+.rooms__switch-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--bg);
+  transition: transform 0.15s ease;
+}
+
+.rooms__switch[aria-pressed='true'] {
+  border-color: var(--accent);
+}
+
+.rooms__switch[aria-pressed='true'] .rooms__switch-track {
+  background: var(--accent);
+}
+
+.rooms__switch[aria-pressed='true'] .rooms__switch-knob {
+  transform: translateX(16px);
+}
+
+/* The order: three buttons in a frame, the chosen one in the accent. 44 px each (40 in the mock-up, same frame). */
+.rooms__sort {
+  display: flex;
+  gap: 4px;
+  padding: 2px;
+  border: 1.5px solid var(--border);
+  border-radius: 18px;
+  background: var(--glass);
+}
+
+.rooms__sort button {
+  height: var(--tap);
+  padding: 0 16px;
+  border: 0;
+  border-radius: 15px;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rooms__sort button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* ---- The styles, and how many rooms are open ---- */
+.rooms__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-top: 14px;
+}
+
 .rooms__styles {
   display: flex;
   flex-wrap: wrap;
@@ -41,12 +232,16 @@
 }
 
 .rooms__styles button {
-  min-height: var(--tap);
-  padding: 0 16px;
-  border: 1px solid var(--border-field);
+  flex: none;
+  height: var(--tap);
+  padding: 0 18px;
+  border: 1.5px solid var(--border-field);
   border-radius: 999px;
-  background: transparent;
+  background: var(--glass);
   color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -54,43 +249,61 @@
   border-color: var(--accent);
   background: var(--accent);
   color: var(--on-accent);
-  font-weight: 700;
 }
 
+.rooms__count {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* ---- The cards: three columns at 1440 px, more on a wide screen, one on a phone ---- */
 .rooms__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
-  margin: 12px 0 0;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
+  gap: 22px;
+  margin: 16px 0 0;
   padding: 0;
   list-style: none;
 }
 
+.rooms__notice,
+.rooms__empty {
+  margin: 16px 0 0;
+}
+
+.rooms__empty {
+  color: var(--text-muted);
+}
+
 .rooms__notice {
-  margin: 0;
   padding: 10px 16px;
-  border: 1px solid var(--accent-2);
+  border: 1.5px solid var(--accent-2);
   border-radius: var(--radius-s);
   color: var(--accent-2-text);
 }
 
-.rooms__create {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--tap-main);
-  padding: 0 24px;
-  border-radius: var(--radius-m);
-  background: var(--accent);
-  color: var(--on-accent);
-  font-family: var(--font-title);
-  font-weight: 700;
-  text-decoration: none;
-}
+/* A phone: the styles scroll sideways in one row (as in mock-up M2) instead of piling up. */
+@media (max-width: 760px) {
+  /* `contain`: the row's width comes from the page, never from its chips (otherwise a phone's browser widens the whole
+     page to fit them, and the row has nothing to scroll). */
+  .rooms__styles {
+    contain: inline-size;
+    flex-wrap: nowrap;
+    margin: 0 calc(-1 * var(--gutter));
+    padding: 4px var(--gutter);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
 
-/* For a visitor the way to the sign-in page is an outline: it is an invitation, not the main action. */
-.rooms__create--locked {
-  border: 2px solid var(--border-field);
-  background: transparent;
-  color: var(--text);
-  font-family: var(--font-text);
+  .rooms__filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .rooms__search {
+    flex: 1 1 100%;
+  }
 }
