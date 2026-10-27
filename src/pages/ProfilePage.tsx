@@ -9,6 +9,7 @@ import { authMessage } from '../auth/authMessages'
 import { useAccount } from '../auth/useAccount'
 import AvatarPicker from '../components/AvatarPicker'
 import DeleteAccountDialog from '../components/DeleteAccountDialog'
+import FoldPanel from '../components/FoldPanel'
 import PasswordField from '../components/PasswordField'
 import ProfileBand from '../components/ProfileBand'
 import ProfileBadges from '../components/ProfileBadges'
@@ -17,6 +18,7 @@ import ProfileScene from '../components/ProfileScene'
 import ProfileVisitor from '../components/ProfileVisitor'
 import SettingSwitch from '../components/SettingSwitch'
 import SiteHeader from '../components/SiteHeader'
+import { useIsPhone } from '../components/useIsPhone'
 import { AVATARS, findAvatar } from '../data/avatars'
 import { usePlaylists } from '../playlists/usePlaylists'
 import { useProfile } from '../profile/useProfile'
@@ -71,6 +73,7 @@ function MemberProfile({ account, leaving, welcome }: { account: Account; leavin
   const activity = useProfile()
   const profile = activity.status === 'loading' ? null : activity.profile
   const badges = useMemo(() => (profile ? computeBadges(profile.stats) : null), [profile])
+  const phone = useIsPhone()
   const calmMotion = useSyncExternalStore(subscribeCalmMotion, readCalmMotion, () => false)
 
   // The avatar ("Mon avatar") and the pseudo ("Réglages du compte") are saved apart, each by its own button.
@@ -220,6 +223,18 @@ function MemberProfile({ account, leaving, welcome }: { account: Account; leavin
     return result
   }
 
+  // What cannot be undone: at the foot of the settings card on a computer, at the very end of the page on a phone.
+  const danger = (
+    <div className="profile__danger">
+      <p className="kit-hint">
+        C'est définitif : ton compte, tes playlists, tes statistiques et les rooms que tu animes sont supprimés. Il te faudra ton mot de passe.
+      </p>
+      <button type="button" className="kit-danger-link" onClick={() => setDeleteOpen(true)}>
+        Supprimer mon compte
+      </button>
+    </div>
+  )
+
   return (
     <main className="kit-page profile">
       <ProfileBand pseudo={account.pseudo} avatar={savedAvatar} activity={activity} welcome={welcome} />
@@ -304,14 +319,7 @@ function MemberProfile({ account, leaving, welcome }: { account: Account; leavin
             </div>
           </form>
 
-          <div className="profile__danger">
-            <p className="kit-hint">
-              C'est définitif : ton compte, tes playlists, tes statistiques et les rooms que tu animes sont supprimés. Il te faudra ton mot de passe.
-            </p>
-            <button type="button" className="kit-danger-link" onClick={() => setDeleteOpen(true)}>
-              Supprimer mon compte
-            </button>
-          </div>
+          {!phone && danger}
         </section>
       </div>
 
@@ -323,10 +331,7 @@ function MemberProfile({ account, leaving, welcome }: { account: Account; leavin
           Sécurité et données
         </h2>
         <div className="profile__more-grid">
-          <form className="kit-panel" onSubmit={handlePassword} noValidate aria-labelledby="profile-password">
-            <h3 className="kit-panel__title" id="profile-password">
-              Mot de passe
-            </h3>
+          <FoldPanel id="profile-password" title="Mot de passe" folded={phone} onSubmit={handlePassword}>
             <div className="kit-field">
               <label htmlFor="current-password">Mot de passe actuel</label>
               <PasswordField
@@ -365,12 +370,9 @@ function MemberProfile({ account, leaving, welcome }: { account: Account; leavin
             <button type="submit" className="kit-btn profile__push" disabled={passwordPending}>
               {passwordPending ? 'Changement…' : 'Changer le mot de passe'}
             </button>
-          </form>
+          </FoldPanel>
 
-          <section className="kit-panel" aria-labelledby="profile-devices">
-            <h3 className="kit-panel__title" id="profile-devices">
-              Mes appareils
-            </h3>
+          <FoldPanel id="profile-devices" title="Mes appareils" folded={phone}>
             <p className="kit-hint">
               Si tu as laissé ta session ouverte quelque part, tu peux la fermer partout. Celle-ci aussi : tu devras te reconnecter.
             </p>
@@ -378,20 +380,19 @@ function MemberProfile({ account, leaving, welcome }: { account: Account; leavin
             <button type="button" className="kit-btn kit-btn--ghost profile__push" disabled={devicesPending} onClick={handleSignOutEverywhere}>
               {devicesPending ? 'Déconnexion…' : 'Se déconnecter de tous les appareils'}
             </button>
-          </section>
+          </FoldPanel>
 
-          <section className="kit-panel" aria-labelledby="profile-data">
-            <h3 className="kit-panel__title" id="profile-data">
-              Mes données
-            </h3>
+          <FoldPanel id="profile-data" title="Mes données" folded={phone}>
             <p className="kit-hint">Télécharge une copie de ce que Noctune garde sur toi : ton compte, tes playlists, tes rooms et tes statistiques.</p>
             <FeedbackLine feedback={exportFeedback} />
             <button type="button" className="kit-btn kit-btn--ghost profile__push" disabled={exportPending} onClick={handleExport}>
               {exportPending ? 'Préparation…' : 'Télécharger mes données'}
             </button>
-          </section>
+          </FoldPanel>
         </div>
       </section>
+
+      {phone && danger}
 
       <DeleteAccountDialog open={deleteOpen} busy={deleting} onClose={() => setDeleteOpen(false)} onConfirm={handleDelete} />
     </main>

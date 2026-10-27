@@ -197,7 +197,7 @@
     flex-wrap: wrap;
     row-gap: 4px;
     min-height: 0;
-    padding-top: 16px;
+    padding-top: calc(16px + env(safe-area-inset-top));
   }
 
   .site-header__nav {
@@ -217,6 +217,11 @@
     padding: 0 16px;
     font-size: 14px;
   }
+
+  /* The Profil tab of the bar below is the way to the visitor's profile (here and in the room's header). */
+  .site-header__profile--visitor {
+    display: none;
+  }
 }
 
 @media (max-width: 560px) {
@@ -233,8 +238,8 @@
   .site-header:not(.site-header--with-children) {
     flex-wrap: nowrap;
     gap: 12px;
-    min-height: 56px;
-    padding: 6px 12px 6px 16px;
+    min-height: calc(56px + env(safe-area-inset-top));
+    padding: calc(6px + env(safe-area-inset-top)) 12px 6px 16px;
   }
 
   .site-header:not(.site-header--with-children) .site-header__logo {

@@ -14,8 +14,21 @@ const EMPTY_DRAFT: EntryDraft = { pseudo: '', avatarId: AVATAR_IDS[0] }
  * lose it. Storage can be missing or throw (private window, blocked site data): the draft is then just empty.
  */
 export function readEntryDraft(): EntryDraft {
+  return parseEntryDraft(entryDraftSnapshot())
+}
+
+/** The stored text itself (a string, so that it can be compared between two renders). */
+export function entryDraftSnapshot(): string {
   try {
-    const stored = JSON.parse(sessionStorage.getItem(STORAGE_KEY) ?? 'null') as Partial<EntryDraft> | null
+    return sessionStorage.getItem(STORAGE_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+export function parseEntryDraft(raw: string): EntryDraft {
+  try {
+    const stored = JSON.parse(raw || 'null') as Partial<EntryDraft> | null
     return {
       pseudo: typeof stored?.pseudo === 'string' ? stored.pseudo.slice(0, PSEUDO_MAX) : EMPTY_DRAFT.pseudo,
       avatarId: AVATAR_IDS.find((id) => id === stored?.avatarId) ?? EMPTY_DRAFT.avatarId,
@@ -31,4 +44,13 @@ export function saveEntryDraft(draft: EntryDraft) {
   } catch {
     // Not kept, nothing else to do.
   }
+  window.dispatchEvent(new Event(CHANGE_EVENT))
+}
+
+const CHANGE_EVENT = 'noctune:entry-draft'
+
+/** For `useSyncExternalStore`: a draft saved in this tab (the header shows the visitor's pseudo). */
+export function subscribeEntryDraft(onChange: () => void): () => void {
+  window.addEventListener(CHANGE_EVENT, onChange)
+  return () => window.removeEventListener(CHANGE_EVENT, onChange)
 }

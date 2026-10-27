@@ -26,3 +26,12 @@
   color: var(--accent-text);
   font-weight: 700;
 }
+
+/* A phone: the two links of the sentence get a 44 px target that takes no more room in the line than their words. */
+@media (max-width: 760px) {
+  .signup__terms a {
+    display: inline-block;
+    margin: -12px 0;
+    padding: 12px 0;
+  }
+}

@@ -1,5 +1,6 @@
 import type { BadgeKind, BadgeState } from '../../shared/badges'
 import BadgeIcon, { type BadgeTone } from './BadgeIcon'
+import { useIsPhone } from './useIsPhone'
 import '../pages/PageKit.css'
 import './ProfileBadges.css'
 
@@ -57,6 +58,8 @@ function BadgeCard({ badge }: { badge: BadgeState }) {
 
 /** The badges of mock-up 9 on the profile: every level, the ones reached coloured, the next ones greyed with a padlock. */
 export default function ProfileBadges({ badges, failed }: { badges: BadgeState[] | null; failed: boolean }) {
+  // On a phone the cards are a row that scrolls sideways: a keyboard needs a stop on it to move it.
+  const phone = useIsPhone()
   const earned = badges ? badges.filter((badge) => badge.level > 0).length : 0
   return (
     <section className="profile-badges" aria-labelledby="profile-badges-title">
@@ -74,7 +77,7 @@ export default function ProfileBadges({ badges, failed }: { badges: BadgeState[]
       </div>
       <p className="profile-badges__note">Réservés aux comptes · aucun effet sur le vote ni sur la file.</p>
       {badges && (
-        <ul className="profile-badges__grid">
+        <ul className="profile-badges__grid" tabIndex={phone ? 0 : undefined} aria-label={phone ? 'Badges (fais défiler pour tout voir)' : undefined}>
           {badges.map((badge) => (
             <BadgeCard badge={badge} key={badge.id} />
           ))}

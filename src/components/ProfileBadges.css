@@ -132,3 +132,36 @@
 .badge-card--secret {
   border-style: dashed;
 }
+
+/* A phone: 15 cards in a grid would be two screens of scrolling, so they are a row to swipe, edge to edge, one card and a
+   half in view, each stopping at the left margin. The count above says how many are won. */
+@media (max-width: 760px) {
+  .profile-badges {
+    margin-top: 0;
+    min-width: 0;
+  }
+
+  .profile-badges__grid {
+    /* The containing block of the cards' hidden texts, so that the row clips them (else the page gets wider). */
+    position: relative;
+    display: flex;
+    gap: 12px;
+    margin: 6px calc(-1 * var(--gutter)) 0;
+    padding: 4px var(--gutter) 10px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: var(--gutter);
+    scrollbar-width: none;
+  }
+
+  .profile-badges__grid::-webkit-scrollbar {
+    display: none;
+  }
+
+  .badge-card {
+    flex: none;
+    width: 228px;
+    scroll-snap-align: start;
+  }
+}

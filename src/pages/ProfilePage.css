@@ -110,3 +110,64 @@
     align-self: stretch;
   }
 }
+
+/* ---- A phone (no mock-up: drawn in the language of M1 to M4). One column, in the order of a phone: the band with its four
+   tiles, the badges as a row to swipe, then the playlists, the avatar and the settings, "Sécurité et données" folded under
+   rows of 56 px, and "Supprimer mon compte" at the very end. The tab bar below is last in the page, so nothing hides. ---- */
+@media (max-width: 760px) {
+  .profile {
+    gap: 14px;
+    padding-bottom: 12px;
+  }
+
+  .profile > .profile-band { order: 0; }
+  .profile > .profile-badges { order: 1; }
+  .profile > .profile__columns { order: 2; }
+  .profile > .profile__more { order: 3; }
+  .profile > .profile__danger { order: 4; }
+
+  .profile .kit-panel {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .profile .profile-band {
+    padding: 0;
+  }
+
+  .profile__columns {
+    gap: 14px;
+  }
+
+  .profile__avatar-scene {
+    height: 124px;
+  }
+
+  .profile__buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .profile__buttons .kit-btn {
+    flex: none;
+  }
+
+  .profile__more {
+    gap: 8px;
+    margin-top: 0;
+  }
+
+  .profile__more-title {
+    font-size: 18px;
+  }
+
+  .profile__more-grid {
+    gap: 10px;
+  }
+
+  /* The delete link ends the page: set apart by its line, with the room of a thumb above the footer. */
+  .profile > .profile__danger {
+    margin-top: 6px;
+    padding: 14px 4px 0;
+  }
+}

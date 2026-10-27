@@ -48,6 +48,20 @@
   }
 }
 
+/* A field is being typed in on a short screen (the keyboard is up): the bar leaves, it would take a fifth of what is left. */
+@media (max-width: 760px) and (max-height: 560px) {
+  .app-shell:has(input:focus) .tab-bar {
+    display: none;
+  }
+}
+
+/* What the browser scrolls into view when a field takes the focus stays clear of the bar. */
+@media (max-width: 760px) {
+  html {
+    scroll-padding-bottom: 96px;
+  }
+}
+
 /* A phone lying down: a thin bar, the icon beside its word. */
 @media (max-width: 760px) and (max-height: 480px) {
   .tab-bar {

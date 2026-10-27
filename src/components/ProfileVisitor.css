@@ -78,3 +78,46 @@
     height: 200px;
   }
 }
+
+/* A phone: smaller stage, the eight avatars as four wide tiles to a row, the card's padding of the member's profile. */
+@media (max-width: 760px) {
+  .profile-visitor {
+    gap: 16px;
+  }
+
+  .profile-visitor .kit-intro p {
+    font-size: 15px;
+  }
+
+  .profile-visitor .kit-panel {
+    padding: 16px;
+    border-radius: 20px;
+  }
+
+  .profile-visitor__scene {
+    height: 156px;
+  }
+
+  .profile-visitor__columns {
+    gap: 14px;
+  }
+
+  .profile-visitor__me .avatar-picker--row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .profile-visitor__me .avatar-picker--row button {
+    height: 64px;
+  }
+
+  .profile-visitor__save {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .profile-visitor__save .kit-hint {
+    text-align: center;
+  }
+}

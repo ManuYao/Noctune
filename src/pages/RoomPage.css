@@ -80,7 +80,9 @@
     /* The header: its bar, and the host's row of tools under it (see MobileRoomHeader). */
     --m-head-bar: 52px;
     --m-host-row: 0px;
-    --m-header-h: calc(var(--m-head-bar) + var(--m-host-row));
+    /* Under a notch (viewport-fit=cover; zero otherwise) the header starts lower, and the sheet and the notes follow. */
+    --m-safe-top: env(safe-area-inset-top, 0px);
+    --m-header-h: calc(var(--m-head-bar) + var(--m-host-row) + var(--m-safe-top));
     --m-bar-h: 64px;
     --m-scene-h: calc(14px + var(--m-video-h) + 5px + var(--m-extras));
     --m-stage-h: calc(var(--m-header-h) + var(--m-scene-h));
@@ -89,6 +91,7 @@
     flex-direction: column;
     height: 100dvh;
     min-height: 0;
+    padding: var(--m-safe-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
     overflow: hidden;
   }
 

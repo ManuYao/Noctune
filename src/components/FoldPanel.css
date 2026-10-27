@@ -1,0 +1,40 @@
+/* A panel of "Sécurité et données" folded on a phone: the title row is the 56 px target, the body unfolds under it. */
+.fold-panel {
+  gap: 0;
+  padding: 0 16px;
+}
+
+.fold-panel__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 56px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.fold-panel__summary::-webkit-details-marker {
+  display: none;
+}
+
+.fold-panel__chevron {
+  flex: none;
+  color: var(--text-muted);
+  transition: transform 0.15s;
+}
+
+.fold-panel[open] .fold-panel__chevron {
+  transform: rotate(180deg);
+}
+
+.fold-panel__body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 0 18px;
+}
+
+.fold-panel__body .kit-btn {
+  align-self: stretch;
+}

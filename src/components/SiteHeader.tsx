@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import type { ReactNode } from 'react'
-import { Link, NavLink, useNavigate } from 'react-router'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router'
 import { useAccount } from '../auth/useAccount'
 import { findAvatar } from '../data/avatars'
+import { entryDraftSnapshot, parseEntryDraft, subscribeEntryDraft } from '../data/entryDraft'
 import Avatar from './Avatar'
 import './SiteHeader.css'
 
@@ -16,6 +17,11 @@ export default function SiteHeader({ children }: { children?: ReactNode }) {
   const navigate = useNavigate()
   const [logoutFailed, setLogoutFailed] = useState(false)
   const avatar = account ? findAvatar(account.avatarId) : undefined
+  // The visitor's pill (mock-up 5) shows what they typed on the entry screen. Not on the entry itself, which asks for it.
+  const draftText = useSyncExternalStore(subscribeEntryDraft, entryDraftSnapshot, () => '')
+  const draft = useMemo(() => parseEntryDraft(draftText), [draftText])
+  const draftAvatar = findAvatar(draft.avatarId)
+  const onEntry = useLocation().pathname === '/'
 
   async function handleLogout() {
     setLogoutFailed(false)
@@ -81,9 +87,21 @@ export default function SiteHeader({ children }: { children?: ReactNode }) {
               </button>
             </span>
           ) : (
-            <Link to="/connexion" className="site-header__login">
-              Se connecter
-            </Link>
+            <>
+              {/* The phone has the Profil tab: nothing doubled there (see the CSS). */}
+              {!onEntry && (
+                <NavLink to="/profil" className="site-header__profile site-header__profile--visitor" aria-label={`Mon profil (${draft.pseudo || 'visiteur'})`}>
+                  {draftAvatar && <Avatar avatar={draftAvatar} size={34} framing="icon" decorative />}
+                  <span className="site-header__who">
+                    <span className="site-header__pseudo">{draft.pseudo.trim() || 'Mon profil'}</span>
+                    <span className="site-header__status">Visiteur</span>
+                  </span>
+                </NavLink>
+              )}
+              <Link to="/connexion" className="site-header__login">
+                Se connecter
+              </Link>
+            </>
           ))}
       </nav>
       {logoutFailed && (

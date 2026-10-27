@@ -171,3 +171,49 @@
     margin: 12px 16px 16px;
   }
 }
+
+/* A phone: the stage across the top (a banner, not a third of the screen), the name under it, the four tiles in two rows. */
+@media (max-width: 760px) {
+  .profile-band__scene {
+    width: 100%;
+    height: 156px;
+  }
+
+  .profile-band__who {
+    flex: 1 1 100%;
+    gap: 8px;
+    padding: 14px 16px 2px;
+  }
+
+  .profile-band__who h1 {
+    font-size: 26px;
+  }
+
+  .profile-band__tiles {
+    flex: 1 1 100%;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 12px 16px 16px;
+  }
+
+  .profile-band__tile {
+    min-height: 68px;
+    padding: 10px 12px;
+  }
+
+  .profile-band__tile-label {
+    font-size: 13px;
+  }
+}
+
+/* Where the band is narrower than on the mock-up the sentence wraps: the heart stays on its first line, not on its own. */
+@media (max-width: 1199px) {
+  .profile-band__rooms {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+
+  .profile-band__rooms svg {
+    margin-top: 5px;
+  }
+}
