@@ -20,7 +20,7 @@ function pairOf(seed: string): [string, string] {
 interface TrackCoverProps {
   /** The video id: the same video always gets the same colours. Null: the colours of "Ton morceau" in mock-up 3c. */
   seed: string | null
-  size?: 40 | 48
+  size?: 40 | 44 | 48
 }
 
 /** The square cover of a track in "Passer DJ", with its note. Decoration only. */

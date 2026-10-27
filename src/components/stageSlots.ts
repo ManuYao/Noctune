@@ -55,15 +55,15 @@ function hash(text: string): number {
 /**
  * Gives each person a slot from their id, so that an avatar does not move when someone else comes or goes
  * (unless two ids want the same slot, then the later one takes the next free slot). Returns slot indexes.
- * People beyond the number of slots get none: the stage shows "+N" for them.
+ * People beyond the number of slots (`count`, all of STAGE_SLOTS by default) get none: the stage shows "+N" for them.
  */
-export function assignSlots(ids: string[]): Map<string, number> {
+export function assignSlots(ids: string[], count: number = STAGE_SLOTS.length): Map<string, number> {
   const taken = new Set<number>()
   const slots = new Map<string, number>()
   for (const id of ids) {
-    if (taken.size === STAGE_SLOTS.length) break
-    let index = hash(id) % STAGE_SLOTS.length
-    while (taken.has(index)) index = (index + 1) % STAGE_SLOTS.length
+    if (taken.size === count) break
+    let index = hash(id) % count
+    while (taken.has(index)) index = (index + 1) % count
     taken.add(index)
     slots.set(id, index)
   }

@@ -1,5 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { CSSProperties, ReactNode, RefObject } from 'react'
+import { useMemo, useRef } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type { ChatMessage, DjQueueEntry, Participant } from '../../shared/protocol'
 import { findAvatar, type AvatarDef } from '../data/avatars'
 import Avatar from './Avatar'
@@ -11,6 +11,8 @@ import SceneBubble from './SceneBubble'
 import SceneConsole from './SceneConsole'
 import { approxTextWidth, cutText } from './sceneText'
 import { DJ_SLOT, SELF_SLOT, STAGE_SLOTS, assignSlots, type StageSlot } from './stageSlots'
+import { useBoxSize } from './useBoxSize'
+import { useHearts } from './useHearts'
 import { useSceneBubbles } from './useSceneBubbles'
 import './Scene.css'
 
@@ -27,8 +29,6 @@ interface SceneProps {
   messages: ChatMessage[]
   /** Milliseconds to add to the local clock to get the server clock. */
   clockOffsetMs: number
-  /** A phone: the screen takes the whole width and the scene is reduced to it. */
-  compact: boolean
   /** The genre of the room: the decor and the colours of the scene. Null: the generic club in the room's ambiance. */
   decor: DecorKind | null
   /** The video screen: it covers the scene's screen exactly, nothing is ever drawn over it. */
@@ -51,53 +51,6 @@ const HEART_SPOTS = [
   { x: 736, y: 428, width: 24 },
   { x: 560, y: 456, width: 20 },
 ]
-const HEART_MS = 3400
-const MAX_HEARTS = 6
-
-function useBoxSize(ref: RefObject<HTMLElement | null>): { width: number; height: number } | null {
-  const [size, setSize] = useState<{ width: number; height: number } | null>(null)
-  useLayoutEffect(() => {
-    const element = ref.current
-    if (!element) return
-    const update = () =>
-      setSize((previous) =>
-        previous?.width === element.clientWidth && previous.height === element.clientHeight
-          ? previous
-          : { width: element.clientWidth, height: element.clientHeight },
-      )
-    update()
-    const observer = new ResizeObserver(update)
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [ref])
-  return size
-}
-
-/** A heart that rises from the floor at each like: one per batch of likes from the server, never over the video. */
-function useHearts(likePulse: number) {
-  const [hearts, setHearts] = useState<{ id: number; spot: number }[]>([])
-  const lastPulse = useRef(likePulse)
-  const timers = useRef(new Set<number>())
-  useEffect(() => {
-    if (likePulse === lastPulse.current) return
-    lastPulse.current = likePulse
-    const id = likePulse
-    setHearts((current) => [...current.slice(-(MAX_HEARTS - 1)), { id, spot: Math.floor(Math.random() * HEART_SPOTS.length) }])
-    const timer = window.setTimeout(() => {
-      timers.current.delete(timer)
-      setHearts((current) => current.filter((heart) => heart.id !== id))
-    }, HEART_MS)
-    timers.current.add(timer)
-  }, [likePulse])
-  useEffect(() => {
-    const pending = timers.current
-    return () => {
-      for (const timer of pending) window.clearTimeout(timer)
-      pending.clear()
-    }
-  }, [])
-  return hearts
-}
 
 /** Somebody of the crowd in their slot: their shadow on the floor, and the avatar that bounces. */
 function renderPerson(key: string, avatar: AvatarDef, slot: Pick<StageSlot, 'x' | 'y' | 'size' | 'delay'> & { shadow?: StageSlot['shadow'] }) {
@@ -139,14 +92,13 @@ export default function Scene({
   likePulse,
   messages,
   clockOffsetMs,
-  compact,
   decor,
   children,
 }: SceneProps) {
   const sceneRef = useRef<HTMLDivElement>(null)
   const size = useBoxSize(sceneRef)
   const scale = size ? Math.min(size.width / VIEW_W, size.height / VIEW_H) : 1
-  const narrow = compact || (size !== null && scale < MIN_SCALE)
+  const narrow = size !== null && scale < MIN_SCALE
 
   // The DJ on the decks stands behind the console, and so is not on the floor as well. A narrow scene has no console:
   // there they stay in the row with everybody. A DJ who is away (their track plays on) is not drawn at all.
@@ -160,7 +112,7 @@ export default function Scene({
   )
   const slots = useMemo(() => assignSlots(others.map((participant) => participant.id)), [others])
 
-  const hearts = useHearts(likePulse)
+  const hearts = useHearts(likePulse, HEART_SPOTS.length)
   const bubbles = useSceneBubbles(messages, clockOffsetMs)
 
   const selfAtDecks = atDecks && self !== undefined && self.id === deckPerson?.id

@@ -43,7 +43,7 @@ interface DjDialogContentProps {
 }
 
 type Busy = 'add' | 'remove' | 'leave'
-type Tab = 'playlist' | 'link'
+type Tab = 'playlist' | 'link' | 'file'
 /** Where "Ton morceau" comes from: a row of the playlist, or the link being typed. */
 type Source = 'playlist' | 'link'
 
@@ -55,7 +55,7 @@ const touchScreen = () => window.matchMedia('(pointer: coarse)').matches
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'playlist', label: 'Ma playlist' },
-  { id: 'link', label: 'Lien YouTube' },
+  { id: 'link', label: 'Lien' },
 ]
 
 /** The sentence under the title (mock-up 3c: "Choisis le morceau que tu lances à ton tour · 3 DJ avant toi, environ 12 min."). */
@@ -70,6 +70,19 @@ function turnLine(place: MyPlace | null, queue: DjQueue, maxDjs: number, waitSec
   if (djs >= maxDjs) return 'La file est complète : réessaie quand un DJ sera parti.'
   if (djs === 0) return 'Choisis le morceau que tu lances · la file est vide, il démarre tout de suite.'
   return `Choisis le morceau que tu lances à ton tour · ${djs} DJ avant toi, ${formatWait(waitSec)}.`
+}
+
+/** The same, short, for the sheet of a phone (mock-up M4: "3 DJ avant toi · environ 12 min"). */
+function turnLineShort(place: MyPlace | null, queue: DjQueue, maxDjs: number, waitSec: number): string {
+  if (place) {
+    if (place.onDecks) return 'Tu es à la console.'
+    const ahead = (place.position ?? 0) + (queue.current ? 1 : 0)
+    return ahead === 0 ? 'Tu es le prochain.' : `${ahead} DJ avant toi · ${formatWait(waitSec)}`
+  }
+  const djs = djCount(queue)
+  if (djs >= maxDjs) return 'La file est complète : réessaie plus tard.'
+  if (djs === 0) return 'La file est vide · ton morceau démarre tout de suite.'
+  return `${djs} DJ avant toi · ${formatWait(waitSec)}`
 }
 
 /** A link as it reads best on one line: without its scheme nor "www.". */
@@ -258,17 +271,21 @@ export default function DjDialogContent({
     }
   }
 
+  // On a phone: once in the queue, a third tab holds the viewer's own tracks (a computer shows them in the right column).
+  const tabs = place ? [...TABS, { id: 'file' as const, label: `Ma file · ${lineup.length}` }] : TABS
+  const shownTab: Tab = tabs.some((candidate) => candidate.id === tab) ? tab : 'playlist'
+
   function handleTabKeys(event: KeyboardEvent<HTMLDivElement>) {
-    const index = TABS.findIndex((candidate) => candidate.id === tab)
+    const index = tabs.findIndex((candidate) => candidate.id === shownTab)
     let target: number
-    if (event.key === 'ArrowRight') target = (index + 1) % TABS.length
-    else if (event.key === 'ArrowLeft') target = (index + TABS.length - 1) % TABS.length
+    if (event.key === 'ArrowRight') target = (index + 1) % tabs.length
+    else if (event.key === 'ArrowLeft') target = (index + tabs.length - 1) % tabs.length
     else if (event.key === 'Home') target = 0
-    else if (event.key === 'End') target = TABS.length - 1
+    else if (event.key === 'End') target = tabs.length - 1
     else return
     event.preventDefault()
-    setTab(TABS[target].id)
-    document.getElementById(`dj-tab-${TABS[target].id}`)?.focus()
+    setTab(tabs[target].id)
+    document.getElementById(`dj-tab-${tabs[target].id}`)?.focus()
   }
 
   // Leaving throws away the tracks lined up, and cuts the one that plays when it is the viewer's own.
@@ -277,6 +294,10 @@ export default function DjDialogContent({
     : lineup.length > 0
       ? 'Quitter la file efface tes morceaux en attente.'
       : null
+
+  // What the big button of a phone says it will join the queue with.
+  const choiceTitle = choice === 'playlist' && picked ? (picked.title ?? 'Titre à actualiser') : choice === 'link' ? shortLink(link) : null
+  const goVerb = place ? 'Ajouter à ma file' : 'Rejoindre la file'
 
   const ruleChips = [
     maxTrackChip(rules),
@@ -287,11 +308,12 @@ export default function DjDialogContent({
 
   return (
     <div className="dj-dialog__sheet dj-sheet">
+      {phone && <span className="dj-handle" aria-hidden="true" />}
       <header className="dj-dialog__header dj-head">
         <div className="dj-head__titles">
           <h2 id="dj-dialog-title">{place ? 'Ma file de DJ' : 'Passer DJ'}</h2>
           <p id="dj-dialog-sub" className="dj-head__sub">
-            {turnLine(place, queue, rules.maxDjs, waitSec)}
+            {phone ? turnLineShort(place, queue, rules.maxDjs, waitSec) : turnLine(place, queue, rules.maxDjs, waitSec)}
           </p>
         </div>
         <div className="dj-head__rules">
@@ -313,7 +335,7 @@ export default function DjDialogContent({
 
       {phone && (
         <div className="dj-tabs" role="tablist" aria-label="Où choisir ton morceau" onKeyDown={handleTabKeys}>
-          {TABS.map((candidate) => (
+          {tabs.map((candidate) => (
             <button
               key={candidate.id}
               type="button"
@@ -321,10 +343,10 @@ export default function DjDialogContent({
               id={`dj-tab-${candidate.id}`}
               className="dj-tabs__tab"
               // The dialog puts the focus here when it opens on a narrow screen with a mouse or a keyboard.
-              data-autofocus={tab === candidate.id ? '' : undefined}
-              aria-selected={tab === candidate.id}
+              data-autofocus={shownTab === candidate.id ? '' : undefined}
+              aria-selected={shownTab === candidate.id}
               aria-controls={`dj-panel-${candidate.id}`}
-              tabIndex={tab === candidate.id ? 0 : -1}
+              tabIndex={shownTab === candidate.id ? 0 : -1}
               onClick={() => setTab(candidate.id)}
             >
               {candidate.label}
@@ -340,7 +362,7 @@ export default function DjDialogContent({
           id="dj-panel-playlist"
           role={phone ? 'tabpanel' : undefined}
           aria-labelledby={phone ? 'dj-tab-playlist' : 'dj-playlist-title'}
-          hidden={phone && tab !== 'playlist'}
+          hidden={phone && shownTab !== 'playlist'}
         >
           <DjPlaylistTab
             playlist={playlist}
@@ -361,13 +383,13 @@ export default function DjDialogContent({
           />
         </section>
 
-        <div className="dj-panel dj-panel--side">
+        <div className="dj-panel dj-panel--side" hidden={phone && shownTab === 'playlist'}>
           <div
             className="dj-link"
             id="dj-panel-link"
             role={phone ? 'tabpanel' : undefined}
             aria-labelledby={phone ? 'dj-tab-link' : undefined}
-            hidden={phone && tab !== 'link'}
+            hidden={phone && shownTab !== 'link'}
           >
             <form
               className="dj-link__form"
@@ -412,7 +434,7 @@ export default function DjDialogContent({
                 />
               </div>
               <p id="dj-link-help" className="dj-link__help">
-                La vidéo doit pouvoir être lue en dehors de YouTube. Elle devient « Ton morceau » en bas.
+                La vidéo doit pouvoir être lue en dehors de YouTube.{!phone && ' Elle devient « Ton morceau » en bas.'}
               </p>
             </form>
             {lastAdded && (
@@ -438,7 +460,13 @@ export default function DjDialogContent({
             )}
           </div>
 
-          <section className="dj-lineup" aria-labelledby="dj-lineup-title">
+          <section
+            className="dj-lineup"
+            id="dj-panel-file"
+            aria-labelledby={phone ? 'dj-tab-file' : 'dj-lineup-title'}
+            role={phone ? 'tabpanel' : undefined}
+            hidden={phone && shownTab !== 'file'}
+          >
             <h3 id="dj-lineup-title">
               Mes morceaux{' '}
               <span>
@@ -521,7 +549,7 @@ export default function DjDialogContent({
         {done}
       </p>
 
-      <div className="dj-band">
+      <div className="dj-band" hidden={phone && shownTab === 'file'}>
         <TrackCover seed={choice === 'playlist' && picked ? picked.videoId : null} />
         <div className="dj-band__what" id="dj-band-what">
           <span className="dj-band__text">
@@ -562,7 +590,9 @@ export default function DjDialogContent({
             onClick={() => void (choice === 'link' ? handleAddLink() : handleAddPicked())}
           >
             <Plus />
-            {busy === 'add' ? 'Vérification…' : place ? 'Ajouter à ma file' : 'Rejoindre la file'}
+            <span className="dj-band__go-label">
+              {busy === 'add' ? 'Vérification…' : phone && choiceTitle ? `${goVerb} avec « ${choiceTitle} »` : goVerb}
+            </span>
           </button>
         </div>
       </div>

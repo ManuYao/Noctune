@@ -4,12 +4,12 @@ import type { ChatMessage, DjQueue, MyReactions, Participant, Reactions, Track }
 import type { DecorKind } from './decor/decorKind'
 import { useConsentDialog } from '../consent/consentContext'
 import { useYouTubeConsent } from '../consent/useYouTubeConsent'
-import { useVolume } from '../player/useVolume'
 import { UNAVAILABLE_TEXT } from '../player/unavailable'
 import { useYouTubePlayer, type PlayerStatus } from '../player/useYouTubePlayer'
 import { ownSkipHint } from '../realtime/djMessages'
 import { findMyPlace } from '../realtime/djQueue'
 import type { SendReactionResult } from '../realtime/useRoom'
+import MobileScene from './MobileScene'
 import NowPlayingBar from './NowPlayingBar'
 import ReactionButtons, { type ReactionMessageKind } from './ReactionButtons'
 import './RoomStage.css'
@@ -29,14 +29,24 @@ interface RoomStageProps {
   queue: DjQueue
   /** The chat, for the bubbles of the scene. */
   messages: ChatMessage[]
-  /** A phone: the scene is the screen alone, the bar is pinned under it. */
+  /** A phone: the scene of mock-up M3 with a bar of its own under it. */
   compact: boolean
   /** The genre of the room, for the decor and the colours of the scene. */
   decor: DecorKind | null
   /** "Passer DJ", at the right end of the bar; null where it is elsewhere (the queue tab of a phone). */
   djAction: ReactNode
+  /** The listening volume: kept by the room page, whose phone header has the mute button. */
+  sound: Sound
   onLike: (value: boolean) => Promise<SendReactionResult>
   onSkip: (value: boolean) => Promise<SendReactionResult>
+}
+
+/** The listening volume and its mute switch (see useVolume). */
+export interface Sound {
+  volume: number
+  muted: boolean
+  setVolume: (volume: number) => void
+  toggleMute: () => void
 }
 
 // Only for states where there is no video to look at: a message never covers a video that plays.
@@ -70,11 +80,12 @@ export default function RoomStage({
   compact,
   decor,
   djAction,
+  sound,
   onLike,
   onSkip,
 }: RoomStageProps) {
   const hostRef = useRef<HTMLDivElement>(null)
-  const { volume, muted, setVolume, toggleMute } = useVolume()
+  const { volume, muted, setVolume, toggleMute } = sound
   // Nothing is requested from YouTube until the viewer accepted its player (the choice is asked on the entry screen).
   const { choice } = useYouTubeConsent()
   const { ask } = useConsentDialog()
@@ -108,30 +119,39 @@ export default function RoomStage({
     messageTimer.current = window.setTimeout(() => setMessage(null), forMs)
   }, [])
 
+  const video = (
+    <VideoScreen
+      hostRef={hostRef}
+      boomKey={track?.startedAt}
+      pulseKey={likePulse}
+      message={playerOff ? PLAYER_OFF.text : unavailable ? unavailable.text : (SCREEN_MESSAGES[status] ?? null)}
+      messageTitle={playerOff ? PLAYER_OFF.title : unavailable?.title}
+      announce={unavailable !== null || playerOff}
+      interactive={status === 'tap-needed'}
+      action={playerOff ? { label: 'Activer le lecteur', onClick: () => ask({ intent: 'enable' }) } : null}
+    />
+  )
+
   return (
     <div className="room__player">
-      <Scene
-        participants={participants}
-        selfId={selfId}
-        dj={queue.current}
-        queuePosition={place && !place.onDecks ? place.position : null}
-        likePulse={likePulse}
-        messages={messages}
-        clockOffsetMs={clockOffsetMs}
-        compact={compact}
-        decor={decor}
-      >
-        <VideoScreen
-          hostRef={hostRef}
-          boomKey={track?.startedAt}
-          pulseKey={likePulse}
-          message={playerOff ? PLAYER_OFF.text : unavailable ? unavailable.text : (SCREEN_MESSAGES[status] ?? null)}
-          messageTitle={playerOff ? PLAYER_OFF.title : unavailable?.title}
-          announce={unavailable !== null || playerOff}
-          interactive={status === 'tap-needed'}
-          action={playerOff ? { label: 'Activer le lecteur', onClick: () => ask({ intent: 'enable' }) } : null}
-        />
-      </Scene>
+      {compact ? (
+        <MobileScene participants={participants} selfId={selfId} dj={queue.current} likePulse={likePulse} decor={decor}>
+          {video}
+        </MobileScene>
+      ) : (
+        <Scene
+          participants={participants}
+          selfId={selfId}
+          dj={queue.current}
+          queuePosition={place && !place.onDecks ? place.position : null}
+          likePulse={likePulse}
+          messages={messages}
+          clockOffsetMs={clockOffsetMs}
+          decor={decor}
+        >
+          {video}
+        </Scene>
+      )}
       <NowPlayingBar
         track={track}
         dj={queue.current}
@@ -145,6 +165,7 @@ export default function RoomStage({
         onToggleMute={toggleMute}
         onEnableSound={enableSound}
         djAction={djAction}
+        compact={compact}
         message={message}
         actions={
           <ReactionButtons
@@ -153,6 +174,7 @@ export default function RoomStage({
             mine={mine}
             clockOffsetMs={clockOffsetMs}
             onDecks={onDecks}
+            compact={compact}
             ownSkipHint={skipHint}
             onLike={onLike}
             onSkip={onSkip}

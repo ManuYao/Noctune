@@ -3,7 +3,9 @@ import { Link } from 'react-router'
 import { ROOM_STYLES, type RoomStyle, type RoomSummary } from '../../shared/protocol'
 import { useAccount } from '../auth/useAccount'
 import RoomCard from '../components/RoomCard'
+import RoomCardPhone from '../components/RoomCardPhone'
 import SiteHeader from '../components/SiteHeader'
+import { useIsPhone } from '../components/useIsPhone'
 import { useRooms } from '../realtime/useRooms'
 import { STYLE_LABELS, djPlace, fold } from '../rooms/roomLabels'
 import './RoomsPage.css'
@@ -52,8 +54,12 @@ function emptyMessage(query: string, style: RoomStyle | null, freeOnly: boolean)
 const openRooms = (count: number) =>
   count === 0 ? 'Aucune room ouverte' : count === 1 ? '1 room ouverte' : `${count} rooms ouvertes`
 
-/** The list of rooms (mock-up 2): search, a free place for a DJ, the order, the styles, then a card per room. */
+/**
+ * The list of rooms (mock-up 2): search, a free place for a DJ, the order, the styles, then a card per room. On a phone
+ * (mock-up M2) the free place and the order sit at the end of the row of styles, as chips, and the cards are vertical.
+ */
 export default function RoomsPage() {
+  const phone = useIsPhone()
   const { rooms, status } = useRooms()
   const { account, status: accountStatus } = useAccount()
   const [query, setQuery] = useState('')
@@ -107,50 +113,71 @@ export default function RoomsPage() {
               id="room-search"
               type="search"
               aria-label="Rechercher une room"
-              placeholder="Cherche une room, un genre, un titre…"
+              placeholder={phone ? 'Une room, un genre, un titre…' : 'Cherche une room, un genre, un titre…'}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
             />
           </div>
-          <div className="rooms__tools">
-            <button type="button" className="rooms__switch" aria-pressed={freeOnly} onClick={() => setFreeOnly(!freeOnly)}>
-              <span className="rooms__switch-track" aria-hidden="true">
-                <span className="rooms__switch-knob" />
-              </span>
-              Place DJ libre
-            </button>
-            <div className="rooms__sort" role="group" aria-label="Trier les rooms">
-              {SORTS.map((sort) => (
-                <button key={sort.id} type="button" aria-pressed={order === sort.id} onClick={() => setOrder(sort.id)}>
-                  {sort.spoken ? (
-                    <>
-                      <span aria-hidden="true">{sort.label}</span>
-                      <span className="visually-hidden">{sort.spoken}</span>
-                    </>
-                  ) : (
-                    sort.label
-                  )}
-                </button>
-              ))}
+          {!phone && (
+            <div className="rooms__tools">
+              <button type="button" className="rooms__switch" aria-pressed={freeOnly} onClick={() => setFreeOnly(!freeOnly)}>
+                <span className="rooms__switch-track" aria-hidden="true">
+                  <span className="rooms__switch-knob" />
+                </span>
+                Place DJ libre
+              </button>
+              <div className="rooms__sort" role="group" aria-label="Trier les rooms">
+                {SORTS.map((sort) => (
+                  <button key={sort.id} type="button" aria-pressed={order === sort.id} onClick={() => setOrder(sort.id)}>
+                    {sort.spoken ? (
+                      <>
+                        <span aria-hidden="true">{sort.label}</span>
+                        <span className="visually-hidden">{sort.spoken}</span>
+                      </>
+                    ) : (
+                      sort.label
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="rooms__filters">
-          <div className="rooms__styles" role="group" aria-label="Filtrer par genre">
-            <button type="button" aria-pressed={style === null} onClick={() => setStyle(null)}>
-              Tous
-            </button>
-            {ROOM_STYLES.map((candidate) => (
-              <button
-                key={candidate}
-                type="button"
-                aria-pressed={style === candidate}
-                onClick={() => setStyle(style === candidate ? null : candidate)}
-              >
-                {STYLE_LABELS[candidate]}
+          <div className="rooms__scroll">
+            <div className="rooms__styles" role="group" aria-label="Filtrer par genre">
+              <button type="button" aria-pressed={style === null} onClick={() => setStyle(null)}>
+                Tous
               </button>
-            ))}
+              {ROOM_STYLES.map((candidate) => (
+                <button
+                  key={candidate}
+                  type="button"
+                  aria-pressed={style === candidate}
+                  onClick={() => setStyle(style === candidate ? null : candidate)}
+                >
+                  {STYLE_LABELS[candidate]}
+                </button>
+              ))}
+            </div>
+            {phone && (
+              <div className="rooms__extras" role="group" aria-label="Affiner la liste">
+                <button type="button" className="rooms__free" aria-pressed={freeOnly} onClick={() => setFreeOnly(!freeOnly)}>
+                  Place DJ libre
+                </button>
+                <label className="rooms__order">
+                  <span className="visually-hidden">Trier les rooms</span>
+                  <select value={order} onChange={(event) => setOrder(event.target.value as SortOrder)}>
+                    {SORTS.map((sort) => (
+                      <option key={sort.id} value={sort.id}>
+                        {sort.spoken ?? sort.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
           </div>
           <p className="rooms__count">{rooms ? openRooms(rooms.length) : ' '}</p>
         </div>
@@ -175,7 +202,7 @@ export default function RoomsPage() {
           <ul className="rooms__grid">
             {visible.map((room) => (
               <li key={room.id}>
-                <RoomCard room={room} />
+                {phone ? <RoomCardPhone room={room} /> : <RoomCard room={room} />}
               </li>
             ))}
           </ul>

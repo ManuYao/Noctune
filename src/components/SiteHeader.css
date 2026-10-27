@@ -224,3 +224,62 @@
     font-size: 19px;
   }
 }
+
+/* ---- A phone, without a title between the logo and the navigation (mock-ups M1 and M2) ----
+   The logo on the left (30 px tile, 20 px name); on the right "Se connecter" (a 44 px pill) or the round 44 px pill of
+   the member's avatar. The rooms, the playlist and the rules are in the tab bar, the profile and the footer; signing out
+   is on the profile. */
+@media (max-width: 760px) {
+  .site-header:not(.site-header--with-children) {
+    flex-wrap: nowrap;
+    gap: 12px;
+    min-height: 56px;
+    padding: 6px 12px 6px 16px;
+  }
+
+  .site-header:not(.site-header--with-children) .site-header__logo {
+    gap: 8px;
+    font-size: 20px;
+  }
+
+  .site-header:not(.site-header--with-children) .site-header__logo svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .site-header:not(.site-header--with-children) .site-header__nav {
+    order: 0;
+    flex-wrap: nowrap;
+    gap: 0;
+  }
+
+  .site-header:not(.site-header--with-children) .site-header__link,
+  .site-header:not(.site-header--with-children) .site-header__logout {
+    display: none;
+  }
+
+  .site-header:not(.site-header--with-children) .site-header__login {
+    padding: 0 16px;
+    font-size: 14px;
+  }
+
+  .site-header:not(.site-header--with-children) .site-header__profile {
+    justify-content: center;
+    width: var(--tap);
+    height: var(--tap);
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .site-header:not(.site-header--with-children) .site-header__profile > svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  /* No avatar to show (an id the page does not know): the word, in a pill. */
+  .site-header:not(.site-header--with-children) .site-header__profile:has(.site-header__profile-short) {
+    width: auto;
+    padding: 0 14px;
+    border-radius: 999px;
+  }
+}

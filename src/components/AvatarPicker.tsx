@@ -15,10 +15,12 @@ interface AvatarPickerProps {
    * `compact`: four to a row, 64 px tall (the narrower "Mon avatar" of mock-up 5b).
    */
   variant?: 'grid' | 'row' | 'compact'
+  /** `icon`: the avatars framed tight, as the phone entry (mock-up M1) draws them; `full` (default): the whole character. */
+  framing?: 'full' | 'icon'
 }
 
 /** The eight starting avatars, as a group of toggle buttons: one is pressed, with a check on its corner (mock-up 1). */
-export default function AvatarPicker({ value, onChange, legend = 'Avatar', variant = 'grid' }: AvatarPickerProps) {
+export default function AvatarPicker({ value, onChange, legend = 'Avatar', variant = 'grid', framing = 'full' }: AvatarPickerProps) {
   return (
     <fieldset className={variant === 'grid' ? 'avatar-picker' : `avatar-picker avatar-picker--${variant}`}>
       <legend>{legend}</legend>
@@ -31,7 +33,7 @@ export default function AvatarPicker({ value, onChange, legend = 'Avatar', varia
           onClick={() => onChange(avatar.id)}
         >
           {/* The button says the name already. */}
-          <Avatar avatar={avatar} size={56} decorative />
+          <Avatar avatar={avatar} size={56} framing={framing} decorative />
           {avatar.id === value && (
             <span className="avatar-picker__check" aria-hidden="true">
               <svg width="12" height="12" viewBox="0 0 12 12" focusable="false">

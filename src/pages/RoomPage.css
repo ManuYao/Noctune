@@ -23,14 +23,6 @@
   text-decoration: none;
 }
 
-.room__status {
-  margin: 0;
-  padding: 10px 16px;
-  border: 1.5px solid var(--accent-2);
-  border-radius: var(--radius-s);
-  color: var(--accent-2-text);
-}
-
 /* The screens that say the room is over for the viewer (closed, excluded, could not join). */
 .room-message {
   display: flex;
@@ -72,33 +64,92 @@
   }
 }
 
-/* ---- A phone: the header of the site, then the video and its bar pinned at the top, then the tabs ---- */
+/* ---- A phone (mock-ups M3, M3b, M4): the room is the height of the screen, like an app. From the top: the header (52 px),
+   the scene with the video (never under 200 x 200 px), the bar of the track (64 px), the tabs, and the tab's content, which
+   scrolls inside itself, down to the field of the chat or the way into "Passer DJ" at the foot of the screen.
+   The sizes are variables, because the sheet of "Passer DJ" and the notes read them too: the sheet stops where the video
+   ends, so that the video is never covered. ---- */
 @media (max-width: 760px) {
-  .room {
+  .room-page {
+    /* The screen of the scene: 22 px from each side, as wide as the phone allows, 16:9 but never under 200 px tall (nor
+       more than half the screen on a tall tablet). */
+    --m-screen-x: 22px;
+    --m-video-h: clamp(200px, calc((100vw - 2 * var(--m-screen-x)) * 0.5625), max(200px, 46dvh));
+    /* What is drawn under the screen (the stage, the floor, the crowd): what the height of the screen leaves, within reason. */
+    --m-extras: clamp(64px, calc(100dvh - 690px), 96px);
+    /* The header: its bar, and the host's row of tools under it (see MobileRoomHeader). */
+    --m-head-bar: 52px;
+    --m-host-row: 0px;
+    --m-header-h: calc(var(--m-head-bar) + var(--m-host-row));
+    --m-bar-h: 64px;
+    --m-scene-h: calc(14px + var(--m-video-h) + 5px + var(--m-extras));
+    --m-stage-h: calc(var(--m-header-h) + var(--m-scene-h));
+    --m-pin-h: calc(var(--m-stage-h) + var(--m-bar-h));
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 8px clamp(16px, 5vw, 56px) 48px;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
   }
 
-  .room__status {
-    margin-top: 8px;
+  .room-page--host {
+    --m-host-row: 52px;
+  }
+
+  .room {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
   }
 }
 
-.room__title {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  font-size: clamp(1.1rem, 2.2vw, 1.7rem);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* A short phone (a keyboard is up, or a small screen): less of the stage is drawn, and the crowd leaves it. */
+@media (max-width: 760px) and (max-height: 659px) {
+  .room-page {
+    --m-extras: 28px;
+  }
 }
 
-/* On a phone the header wraps (see SiteHeader.css): the title gets a row of its own, under the logo. */
-@media (max-width: 560px) {
-  .room__title {
-    order: 3;
-    flex: 1 1 100%;
+/* Shorter still, in portrait (the keyboard is up): no header, see MobileRoomHeader.css. */
+@media (max-width: 760px) and (max-height: 559px) and (orientation: portrait) {
+  .room-page,
+  .room-page--host {
+    --m-head-bar: 0px;
+    --m-host-row: 0px;
+  }
+}
+
+/* A phone on its side (mock-ups M3, M3b, M4 are portrait only): two columns. At the left the header, the scene and the bar,
+   which stay whole (the video is never under 200 x 200 px); at the right the tabs and their content, down to the field of
+   the chat. The sheet of "Passer DJ" becomes a panel over the right column, so that the video stays in view. */
+@media (max-width: 760px) and (orientation: landscape) and (max-height: 520px) {
+  .room-page {
+    --m-head-bar: 44px;
+    --m-extras: 24px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      'head side'
+      'stage side';
+  }
+
+  .room {
+    display: contents;
+  }
+
+  .mroom-head {
+    grid-area: head;
+  }
+
+  .room__player {
+    grid-area: stage;
+    overflow-y: auto;
+  }
+
+  .room__side {
+    grid-area: side;
+    border-left: 1.5px solid var(--border);
   }
 }

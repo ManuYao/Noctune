@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { KeyboardEvent } from 'react'
-import type { ChatMessage, DjQueue, Participant, RoomRules, Track } from '../../shared/protocol'
+import type { ChatMessage, DjQueue, Participant, QueuedTrack, RoomRules, Track } from '../../shared/protocol'
 import { djCount, findMyPlace } from '../realtime/djQueue'
-import type { SendChatResult } from '../realtime/useRoom'
+import type { SendChatResult, SendDjResult } from '../realtime/useRoom'
 import Chat from './Chat'
+import DjDock from './DjDock'
 import DjQueuePanel from './DjQueuePanel'
 import ParticipantList from './ParticipantList'
 import RoomPeople from './RoomPeople'
@@ -26,13 +27,16 @@ interface RoomSideProps {
   /** Null on a server that has no DJs: the queue then stays out of sight. */
   rules: RoomRules | null
   queue: DjQueue
-  /** How many tracks the viewer has lined up. */
-  lineupSize: number
+  /** The viewer's own tracks, in the order they will play. */
+  lineup: QueuedTrack[]
   nowPlaying: Track | null
   /** Milliseconds to add to the local clock to get the server clock. */
   clockOffsetMs: number
   /** Opens "Passer DJ". */
   onOpenDj: () => void
+  /** "Quitter la file" of a phone, and the note in the corner when it did not work. */
+  onLeaveQueue: () => Promise<SendDjResult>
+  onNote: (text: string) => void
 }
 
 /**
@@ -51,10 +55,12 @@ export default function RoomSide({
   onSendChat,
   rules,
   queue,
-  lineupSize,
+  lineup,
   nowPlaying,
   clockOffsetMs,
   onOpenDj,
+  onLeaveQueue,
+  onNote,
 }: RoomSideProps) {
   const [tab, setTab] = useState<TabId>('chat')
 
@@ -93,6 +99,22 @@ export default function RoomSide({
     document.getElementById(`room-tab-${tabs[target].id}`)?.focus()
   }
 
+  // The way into "Passer DJ" of a phone: a pill above the chat field, a bar at the foot of the queue.
+  const dock = (variant: 'pill' | 'bar') =>
+    rules && (
+      <DjDock
+        variant={variant}
+        rules={rules}
+        queue={queue}
+        selfId={selfId}
+        isMember={isMember}
+        lineup={lineup}
+        onOpen={onOpenDj}
+        onLeave={onLeaveQueue}
+        onNote={onNote}
+      />
+    )
+
   /** On a phone each panel is a tab panel, shown or not; on a computer it is just there. */
   function panelProps(id: TabId) {
     if (!phone) return { className: `room-panel room-panel--${id}` }
@@ -125,7 +147,12 @@ export default function RoomSide({
               onClick={() => setTab(candidate.id)}
             >
               {candidate.label}
-              {candidate.count !== undefined && <span className="room-tabs__count">{candidate.count}</span>}
+              {candidate.count !== undefined && (
+                <span className="room-tabs__count">
+                  {' · '}
+                  {candidate.count}
+                </span>
+              )}
               {candidate.id === 'chat' && unread && (
                 <>
                   <span className="room-tabs__dot" aria-hidden="true" />
@@ -146,8 +173,9 @@ export default function RoomSide({
             isMember={isMember}
             nowPlaying={nowPlaying}
             clockOffsetMs={clockOffsetMs}
-            lineupSize={lineupSize}
+            lineup={lineup}
             showCta={phone}
+            dock={phone ? dock('bar') : undefined}
             onOpen={onOpenDj}
           />
         </div>
@@ -155,7 +183,14 @@ export default function RoomSide({
       {/* A computer: the faces and "Voir tout", above the chat. A phone: the whole list, in its tab. */}
       {!phone && <RoomPeople participants={participants} selfId={selfId} djId={queue.current?.participantId ?? null} />}
       <div {...panelProps('chat')}>
-        <Chat messages={messages} selfId={selfId} disabledReason={chatDisabledReason} mutedUntil={mutedUntil} onSend={onSendChat} />
+        <Chat
+          messages={messages}
+          selfId={selfId}
+          disabledReason={chatDisabledReason}
+          mutedUntil={mutedUntil}
+          onSend={onSendChat}
+          aboveForm={phone ? dock('pill') : undefined}
+        />
       </div>
       {phone && (
         <div {...panelProps('public')}>

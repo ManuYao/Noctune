@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router'
-import type { DjQueue, RoomRules, Track } from '../../shared/protocol'
+import type { DjQueue, QueuedTrack, RoomRules, Track } from '../../shared/protocol'
 import { formatWaitShort } from '../data/duration'
 import { useServerNow } from '../player/useServerNow'
 import { djCount, estimateWaitSec, findMyPlace } from '../realtime/djQueue'
 import { turnMessage } from '../realtime/djMessages'
 import DjQueueRow from './DjQueueRow'
+import TrackCover from './TrackCover'
 import './DjQueuePanel.css'
 
 interface DjQueuePanelProps {
@@ -17,13 +19,14 @@ interface DjQueuePanelProps {
   nowPlaying: Track | null
   /** Milliseconds to add to the local clock to get the server clock. */
   clockOffsetMs: number
-  /** How many tracks the viewer has lined up. */
-  lineupSize: number
+  /** The viewer's own tracks, in the order they will play. */
+  lineup: QueuedTrack[]
   /**
-   * The way in ("Passer DJ", "Mes morceaux") under the list: on a phone, where the bar has no room for it. On a computer
-   * it is at the end of the bar, as in the mock-ups.
+   * A phone: the panel is the whole tab (mock-up M3b). The list scrolls above `dock`, the way in ("Passer DJ", "Quitter
+   * la file") at its foot, where the bar has no room for it. On a computer it is at the end of the bar, as in the mock-ups.
    */
   showCta: boolean
+  dock?: ReactNode
   onOpen: () => void
 }
 
@@ -34,8 +37,9 @@ export default function DjQueuePanel({
   isMember,
   nowPlaying,
   clockOffsetMs,
-  lineupSize,
+  lineup,
   showCta,
+  dock,
   onOpen,
 }: DjQueuePanelProps) {
   const serverNow = useServerNow(clockOffsetMs, nowPlaying !== null)
@@ -97,8 +101,37 @@ export default function DjQueuePanel({
   const placeKey = place ? `${place.onDecks}-${place.position}` : ''
   useEffect(keepSelfInView, [placeKey, keepSelfInView])
 
-  return (
-    <section className="dj-queue" aria-labelledby="dj-queue-title">
+  // A phone: the rows and "Ton morceau" scroll as one. The viewer's own row and their next track are brought into view when
+  // their place changes, and when the tab is shown (a hidden tab has no size, so that cannot be done while it is hidden).
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const revealOwn = useCallback(() => {
+    const scroll = scrollRef.current
+    const target = scroll?.querySelector<HTMLElement>('.dj-queue__mine') ?? scroll?.querySelector<HTMLElement>('.dj-row--self')
+    if (!scroll || !target) return
+    const box = scroll.getBoundingClientRect()
+    const row = target.getBoundingClientRect()
+    if (row.bottom > box.bottom) scroll.scrollTop += row.bottom - box.bottom + 8
+    else if (row.top < box.top) scroll.scrollTop -= box.top - row.top + 8
+  }, [])
+  useEffect(() => {
+    if (showCta) revealOwn()
+  }, [showCta, placeKey, lineup.length, revealOwn])
+  useEffect(() => {
+    const scroll = scrollRef.current
+    if (!showCta || !scroll) return
+    let shown = scroll.clientHeight > 0
+    const observer = new ResizeObserver(() => {
+      const nowShown = scroll.clientHeight > 0
+      if (nowShown && !shown) revealOwn()
+      shown = nowShown
+    })
+    observer.observe(scroll)
+    return () => observer.disconnect()
+  }, [showCta, revealOwn])
+
+  const next = lineup[0]
+  const body = (
+    <>
       <header className="dj-queue__header">
         <h2 id="dj-queue-title">File d'attente</h2>
         <p className={full ? 'dj-queue__slots dj-queue__slots--full' : 'dj-queue__slots'}>
@@ -106,7 +139,9 @@ export default function DjQueuePanel({
             ? `File complète · ${count}/${rules.maxDjs}`
             : count === 0
               ? `Place DJ libre · 0/${rules.maxDjs}`
-              : `Attente estimée : ${formatWaitShort(newcomerWait)}`}
+              : showCta && selfWait
+                ? `Ton tour dans ${selfWait}`
+                : `Attente estimée : ${formatWaitShort(newcomerWait)}`}
         </p>
       </header>
 
@@ -148,31 +183,51 @@ export default function DjQueuePanel({
         </ol>
       )}
 
-      {showCta &&
-        (isMember ? (
-          <div className="dj-queue__footer">
-            <p className={noTrack ? 'dj-queue__status dj-queue__status--warn' : 'dj-queue__status'}>{status}</p>
-            <button type="button" className="dj-queue__cta" disabled={place === null && full} onClick={onOpen}>
-              {place ? `Mes morceaux (${lineupSize})` : full ? 'File complète' : 'Passer DJ'}
-            </button>
-          </div>
-        ) : (
-          <div className="dj-queue__footer dj-queue__footer--locked">
-            <button type="button" className="dj-queue__cta" disabled aria-describedby="dj-queue-locked">
-              Passer DJ · compte requis
-            </button>
-            <p id="dj-queue-locked" className="dj-queue__locked">
-              {/* New tabs: the room, and its player, keep going while the visitor signs in. */}
-              <Link to="/connexion" target="_blank" rel="noopener noreferrer">
-                Se connecter<span className="visually-hidden"> (nouvel onglet)</span>
-              </Link>
-              {' · '}
-              <Link to="/inscription" target="_blank" rel="noopener noreferrer">
-                Créer un compte<span className="visually-hidden"> (nouvel onglet)</span>
-              </Link>
-            </p>
-          </div>
-        ))}
+      {/* A phone: the viewer's next track is the way to all of theirs; what is wrong with their turn is said under it. */}
+      {showCta && isMember && place && next && (
+        <button type="button" className="dj-queue__mine" aria-haspopup="dialog" onClick={onOpen}>
+          <TrackCover seed={next.videoId} size={44} />
+          <span className="dj-queue__mine-text">
+            <span className="dj-queue__mine-label">Ton morceau</span>
+            <span className="dj-queue__mine-track">
+              <strong>{next.title}</strong> · {next.artist}
+            </span>
+          </span>
+          <span className="visually-hidden">Mes morceaux ({lineup.length})</span>
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 3 L11 8 L6 13" />
+          </svg>
+        </button>
+      )}
+      {showCta && isMember && status && (
+        <p className={noTrack ? 'dj-queue__status dj-queue__status--warn' : 'dj-queue__status'}>{status}</p>
+      )}
+      {showCta && !isMember && (
+        <p id="dj-queue-locked" className="dj-queue__locked">
+          {/* New tabs: the room, and its player, keep going while the visitor signs in. */}
+          <Link to="/connexion" target="_blank" rel="noopener noreferrer">
+            Se connecter<span className="visually-hidden"> (nouvel onglet)</span>
+          </Link>
+          {' · '}
+          <Link to="/inscription" target="_blank" rel="noopener noreferrer">
+            Créer un compte<span className="visually-hidden"> (nouvel onglet)</span>
+          </Link>
+        </p>
+      )}
+    </>
+  )
+
+  if (showCta) {
+    return (
+      <section className="dj-queue dj-queue--phone" aria-labelledby="dj-queue-title">
+        <div ref={scrollRef} className="dj-queue__scroll">{body}</div>
+        <div className="dj-queue__dock">{dock}</div>
+      </section>
+    )
+  }
+  return (
+    <section className="dj-queue" aria-labelledby="dj-queue-title">
+      {body}
     </section>
   )
 }

@@ -62,9 +62,13 @@
   cursor: pointer;
 }
 
+/* A phone: just under the tabs (the room page says where they end), so that neither the field of the chat nor the way into
+   "Passer DJ" is covered, and never the video. */
 @media (max-width: 760px) {
   .dj-notices {
+    top: calc(var(--m-pin-h, 0px) + 48px + 8px);
     right: 16px;
+    bottom: auto;
     left: 16px;
     width: auto;
   }

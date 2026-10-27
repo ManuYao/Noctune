@@ -1,0 +1,50 @@
+/* The small club of the entry screen on a phone (mock-up M1, see EntrySceneMobile.tsx). It reuses the classes and the
+   palette of the big one (`.entry-scene`, and `data-decor` for the colours of the genre), but it lies in the page, under
+   the header, instead of filling the window behind it. */
+.entry-scene.entry-scene--phone {
+  position: relative;
+  z-index: auto;
+  inset: auto;
+  /* 390 x 206 at the mock-up's width; it grows with a bigger phone, up to 227 px (430 wide), then stops. */
+  height: clamp(190px, 52.82vw, 227px);
+  /* The header is 56 px tall (its tabs and pills are centred in it); the mock-up's club starts at 52. */
+  margin-top: -4px;
+}
+
+/* The drawing at its own size, centred: what the wall and the floor draw past it shows on a wider window. */
+.entry-scene.entry-scene--phone .entry-scene__phone-art {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  display: block;
+  height: 100%;
+  width: auto;
+  aspect-ratio: 390 / 206;
+  overflow: visible;
+  transform: translateX(-50%);
+}
+
+/* The big scene's dimming (narrow windows) does not apply: here nothing stands over the drawing. */
+.entry-scene.entry-scene--phone::after {
+  display: none;
+}
+
+.entry-scene-phone__title,
+.entry-scene-phone__live {
+  fill: #ffffff;
+  font-family: var(--font-text);
+  font-weight: 700;
+}
+
+.entry-scene-phone__title {
+  font-size: 10px;
+}
+
+.entry-scene-phone__artist {
+  fill: #d6d3ea;
+  font-weight: 400;
+}
+
+.entry-scene-phone__live {
+  font-size: 9px;
+}

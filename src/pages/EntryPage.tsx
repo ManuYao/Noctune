@@ -4,8 +4,10 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import Avatar from '../components/Avatar'
 import AvatarPicker from '../components/AvatarPicker'
 import EntryScene from '../components/EntryScene'
+import EntrySceneMobile from '../components/EntrySceneMobile'
 import { decorKind } from '../components/decor/decorKind'
 import SiteHeader from '../components/SiteHeader'
+import { useIsPhone } from '../components/useIsPhone'
 import { AVATARS, findAvatar } from '../data/avatars'
 import { readEntryDraft, saveEntryDraft } from '../data/entryDraft'
 import { useAccount } from '../auth/useAccount'
@@ -20,6 +22,8 @@ const plural = (count: number, one: string, many: string) => `${count} ${count =
 
 export default function EntryPage() {
   const navigate = useNavigate()
+  // A phone has its own entry screen (mock-up M1): a small club under the header, and the card under the title.
+  const phone = useIsPhone()
   const [searchParams] = useSearchParams()
   // A short message from the page that sent us here ("Ton compte a été supprimé.").
   const notice = (useLocation().state as { notice?: unknown } | null)?.notice
@@ -71,8 +75,11 @@ export default function EntryPage() {
 
   return (
     <div className="entry">
-      <EntryScene avatar={sceneAvatar} pseudo={scenePseudo} nowPlaying={suggested?.nowPlaying ?? null} decor={suggested ? decorKind(suggested) : null} />
+      {!phone && (
+        <EntryScene avatar={sceneAvatar} pseudo={scenePseudo} nowPlaying={suggested?.nowPlaying ?? null} decor={suggested ? decorKind(suggested) : null} />
+      )}
       <SiteHeader />
+      {phone && <EntrySceneMobile avatar={sceneAvatar} nowPlaying={suggested?.nowPlaying ?? null} decor={suggested ? decorKind(suggested) : null} />}
       <main className="entry__main">
         <section className="entry__hero">
           {typeof notice === 'string' && (
@@ -83,7 +90,7 @@ export default function EntryPage() {
           <h1>
             Écoute
             <br />
-            ensemble.
+            <span className="entry__hero-accent">ensemble.</span>
           </h1>
           <p className="entry__tagline">Partage ta musique.</p>
           <p className="entry__pitch">
@@ -121,13 +128,14 @@ export default function EntryPage() {
             </>
           ) : (
             <>
-              <div className="entry__heading">
+              {/* On a phone the heading is only for screen readers (mock-up M1 starts with the pseudo). */}
+              <div className="entry__heading entry__heading--prepare">
                 <h2 id="entry-card-title">Prépare ton entrée</h2>
                 <p>Un pseudo, un avatar, et tu entres.</p>
               </div>
 
               <div className="entry__field">
-                <label htmlFor="pseudo">Pseudo</label>
+                <label htmlFor="pseudo">{phone ? 'Ton pseudo' : 'Pseudo'}</label>
                 <input
                   id="pseudo"
                   type="text"
@@ -148,7 +156,18 @@ export default function EntryPage() {
                 )}
               </div>
 
-              <AvatarPicker value={avatarId} onChange={setAvatarId} />
+              <AvatarPicker
+                value={avatarId}
+                onChange={setAvatarId}
+                framing={phone ? 'icon' : 'full'}
+                legend={
+                  phone ? (
+                    <>
+                      Choisis ton avatar · <span className="entry__avatar-name">{(findAvatar(avatarId) ?? AVATARS[0]).name}</span>
+                    </>
+                  ) : undefined
+                }
+              />
             </>
           )}
 
@@ -157,6 +176,12 @@ export default function EntryPage() {
               Room
             </span>
             <div className="entry__room" role="group" aria-labelledby="entry-room-label">
+              {/* The phone's line (mock-up M1) has the little equaliser instead of the record. */}
+              <span className="entry__eq entry__eq--room" aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
               <svg className="entry__vinyl" width="36" height="36" viewBox="0 0 56 56" aria-hidden="true" focusable="false">
                 <circle cx="28" cy="28" r="27" fill="#16142B" />
                 <circle cx="28" cy="28" r="20" fill="none" stroke="#3A3562" strokeWidth="1.5" />
@@ -167,7 +192,7 @@ export default function EntryPage() {
                 {suggested ? (
                   <>
                     <strong>{suggested.name}</strong>
-                    <span>{suggested.online === 0 ? "Vide pour l'instant" : `${suggested.online} en ligne`}</span>
+                    <span>{suggested.online === 0 ? (phone ? 'Vide' : "Vide pour l'instant") : `${suggested.online} en ligne`}</span>
                   </>
                 ) : (
                   <>

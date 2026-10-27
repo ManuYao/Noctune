@@ -233,22 +233,6 @@
   font-size: 12px;
 }
 
-/* On a phone the video and the bar stay pinned at the top while the chat scrolls (see RoomPage.css): the scene is the
-   screen alone, with no frame of its own around it and no room left for the crowd. */
-@media (max-width: 760px) {
-  .scene--narrow {
-    overflow: visible;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: none;
-  }
-
-  .scene--narrow .scene__floor {
-    display: none;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .scene .mw-bob,
   .scene .mw-sway,

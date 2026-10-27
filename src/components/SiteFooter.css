@@ -49,6 +49,18 @@
   color: var(--text);
 }
 
+/* A phone (mock-up M1): the links centred, 12 px, 20 px apart. */
+@media (max-width: 760px) {
+  .site-footer nav {
+    justify-content: center;
+  }
+
+  .site-footer a,
+  .site-footer button {
+    font-size: 12px;
+  }
+}
+
 @media print {
   .site-footer {
     display: none;

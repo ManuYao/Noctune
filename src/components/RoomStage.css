@@ -11,16 +11,14 @@
   grid-area: bar;
 }
 
-/* On a phone the video and its bar come first and stay in view while the chat scrolls: the player must stay visible. */
+/* On a phone the scene and its bar come first, above the tabs, and do not move: the player must stay visible. Their height
+   is what the room page says (see RoomPage.css). Above the tabs below it, so that the notes of the bar can lie over them. */
 @media (max-width: 760px) {
   .room__player {
-    position: sticky;
-    top: 0;
-    z-index: 2;
+    position: relative;
+    z-index: 3;
     display: flex;
+    flex: none;
     flex-direction: column;
-    gap: 8px;
-    padding-block: 8px;
-    background: var(--bg);
   }
 }

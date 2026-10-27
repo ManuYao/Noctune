@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useLocation, useParams } from 'react-router'
 import { useAccount } from '../auth/useAccount'
+import { useYouTubeConsent } from '../consent/useYouTubeConsent'
+import { useVolume } from '../player/useVolume'
 import type { JoinError } from '../../shared/protocol'
 import DjBarAction from '../components/DjBarAction'
 import { decorKind } from '../components/decor/decorKind'
 import DjDialog from '../components/DjDialog'
 import DjNotices from '../components/DjNotices'
 import ModerationProvider from '../moderation/ModerationProvider'
-import ReportsButton from '../moderation/ReportsButton'
+import MobileRoomHeader from '../components/MobileRoomHeader'
 import RoomHeader from '../components/RoomHeader'
 import RoomRail from '../components/RoomRail'
 import RoomSide from '../components/RoomSide'
@@ -90,6 +92,9 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
   } = useRoom({ roomId, pseudo, avatarId })
   const { account } = useAccount()
   const phone = useMediaQuery(PHONE_QUERY)
+  // The volume is the page's: the bar of a computer has its slider, the header of a phone its mute button.
+  const sound = useVolume()
+  const { choice: playerChoice } = useYouTubeConsent()
   // Who the viewer is in the room, as the server sees this connection: member or visitor can differ for a moment from
   // the account of the page (signed in from another tab: the connection reopens a moment later).
   const self = participants.find((participant) => participant.id === snapshot?.selfId)
@@ -149,7 +154,7 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
   return (
     // The ambiance is the room's alone: the attribute stays on this page, the others keep the default look. The windows
     // of moderation are inside it, so that they take the ambiance too.
-    <div className="room-page" data-theme={themeAttribute(info?.theme ?? 'neon')}>
+    <div className={info?.isHost ? 'room-page room-page--host' : 'room-page'} data-theme={themeAttribute(info?.theme ?? 'neon')}>
       <ModerationProvider
         isHost={info?.isHost ?? false}
         hasHost={(info?.host ?? null) !== null}
@@ -165,20 +170,21 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
         dismissReport={dismissReport}
         note={note}
       >
-        {/* A computer: the rail and the header of mock-ups 3 and 3b. A phone keeps the header of the site, the room's
-            title under it (its own layout is still to come). */}
+        {/* A computer: the rail and the header of mock-ups 3 and 3b. A phone: the header of mock-up M3, with the room's name. */}
         {!phone && <RoomRail />}
         {phone ? (
-          <SiteHeader>
-            <h1 className="room__title">{name}</h1>
-            {/* The host's inbox of reports, and the settings: the latter opens in a new tab, so that the room and its player keep going. */}
-            <ReportsButton />
-            {info?.isHost && (
-              <Link to={`/rooms/${encodeURIComponent(roomId)}/edit`} target="_blank" rel="noopener noreferrer" className="room__settings">
-                Réglages<span className="visually-hidden"> de la room (nouvel onglet)</span>
-              </Link>
-            )}
-          </SiteHeader>
+          <MobileRoomHeader
+            roomId={roomId}
+            name={name}
+            online={participants.length}
+            host={info?.host ?? null}
+            isHost={info?.isHost ?? false}
+            connecting={status === 'connecting'}
+            muted={sound.muted}
+            silent={sound.muted || sound.volume === 0}
+            noPlayer={playerChoice !== 'accepted'}
+            onToggleMute={sound.toggleMute}
+          />
         ) : (
           <RoomHeader
             roomId={roomId}
@@ -192,11 +198,6 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
           />
         )}
         <main className="room">
-          {phone && status === 'connecting' && (
-            <p className="room__status" role="status">
-              Connexion à la room en cours…
-            </p>
-          )}
           <RoomStage
             track={nowPlaying}
             participants={participants}
@@ -209,6 +210,7 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
             messages={messages}
             compact={phone}
             decor={decorKind({ id: roomId, styles: info?.styles ?? [] })}
+            sound={sound}
             djAction={
               !phone && rules ? (
                 <DjBarAction
@@ -239,10 +241,12 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
             onSendChat={sendChat}
             rules={rules}
             queue={queue}
-            lineupSize={lineup.length}
+            lineup={lineup}
             nowPlaying={nowPlaying}
             clockOffsetMs={clockOffsetMs}
             onOpenDj={() => setDjOpen(true)}
+            onLeaveQueue={leaveQueue}
+            onNote={note}
           />
         </main>
         <DjNotices notices={notices} onDismiss={dismissNotice} />

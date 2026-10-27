@@ -26,7 +26,9 @@ export default function SiteHeader({ children }: { children?: ReactNode }) {
   }
 
   return (
-    <header className="site-header">
+    // With children (the room's title on a phone) the header keeps its own phone layout; without, it wears the phone one of
+    // mock-ups M1 and M2 (the logo and a round profile pill; the rest is in the tab bar and the footer).
+    <header className={children ? 'site-header site-header--with-children' : 'site-header'}>
       <Link to="/" className="site-header__logo">
         <svg viewBox="0 0 38 38" width="38" height="38" aria-hidden="true" focusable="false">
           <rect width="38" height="38" rx="12" className="site-header__logo-tile" />

@@ -31,6 +31,8 @@ interface NowPlayingBarProps {
   djAction?: ReactNode
   /** A refusal, or what was kept, said for a moment over the bar. */
   message: { kind: ReactionMessageKind; text: string } | null
+  /** A phone: the one-row bar of mock-up M3 (sleeve, title, like, skip and a thin progress line), without volume. */
+  compact?: boolean
 }
 
 const STATUS_NOTES: Partial<Record<PlayerStatus, string>> = {
@@ -73,6 +75,7 @@ export default function NowPlayingBar({
   actions,
   djAction = null,
   message,
+  compact = false,
 }: NowPlayingBarProps) {
   const serverNow = useServerNow(clockOffsetMs, track !== null)
   const position = track ? Math.min(track.durationSec, trackPositionSec(track, serverNow)) : 0
@@ -82,6 +85,63 @@ export default function NowPlayingBar({
   const note = unavailable ? UNAVAILABLE_TEXT[unavailableReason ?? 'other'].note : STATUS_NOTES[status]
   const needsTap = status === 'sound-blocked' || status === 'tap-needed'
   const shownVolume = muted ? 0 : Math.round(volume * 100)
+
+  // What the bar has to say for a moment: the same on a computer (over the floor of the scene) and on a phone (over the
+  // top of the tab under the bar, never over the video).
+  const floating = (
+    <div className="bar__float">
+      {(note || needsTap) && (
+        <div className="bar__status">
+          {note && (
+            // The video screen announces the unavailable track in full: the bar only repeats it, shorter, for the eye.
+            <p className="bar__note" role={unavailable || noPlayer ? undefined : 'status'}>
+              {note}
+            </p>
+          )}
+          {needsTap && (
+            <button type="button" className="btn-primary bar__enable" onClick={onEnableSound}>
+              {status === 'tap-needed' ? 'Lancer la lecture' : 'Activer le son'}
+            </button>
+          )}
+        </div>
+      )}
+      {/* Always in the page, empty most of the time: a screen reader only hears a live region it already knew. */}
+      <p className="bar__message" data-kind={message?.kind ?? 'info'} role="status">
+        {message?.text ?? ''}
+      </p>
+    </div>
+  )
+
+  if (compact) {
+    return (
+      <section className={ownTurn ? 'bar bar--phone bar--own' : 'bar bar--phone'} aria-label="Morceau en cours">
+        <div className="bar__row">
+          {renderCover()}
+          {/* A DJ's track brings its YouTube title, which can be long: one line, cut (the full text is in the tooltip). */}
+          <div className="bar__text">
+            <p className="bar__title" title={track?.title}>
+              {track ? track.title : 'Aucun morceau'}
+            </p>
+            {track && (
+              <p className="bar__artist">
+                <span className="bar__artist-name" title={track.artist}>
+                  {track.artist}
+                </span>
+                <span className="bar__time">
+                  {' · '}
+                  {formatClock(position)} / {formatClock(track.durationSec)}
+                </span>
+                <span className="visually-hidden">{dj ? `. Ajouté par ${dj.pseudo}` : '. Sélection de la room'}</span>
+              </p>
+            )}
+          </div>
+          {actions}
+        </div>
+        {track && <progress className="bar__line" max={track.durationSec} value={position} aria-label="Progression du morceau" />}
+        {floating}
+      </section>
+    )
+  }
 
   return (
     <section className={ownTurn ? 'bar bar--own' : 'bar'} aria-label="Morceau en cours">
@@ -152,27 +212,7 @@ export default function NowPlayingBar({
         </div>
       </div>
 
-      <div className="bar__float">
-        {(note || needsTap) && (
-          <div className="bar__status">
-            {note && (
-              // The video screen announces the unavailable track in full: the bar only repeats it, shorter, for the eye.
-              <p className="bar__note" role={unavailable || noPlayer ? undefined : 'status'}>
-                {note}
-              </p>
-            )}
-            {needsTap && (
-              <button type="button" className="btn-primary bar__enable" onClick={onEnableSound}>
-                {status === 'tap-needed' ? 'Lancer la lecture' : 'Activer le son'}
-              </button>
-            )}
-          </div>
-        )}
-        {/* Always in the page, empty most of the time: a screen reader only hears a live region it already knew. */}
-        <p className="bar__message" data-kind={message?.kind ?? 'info'} role="status">
-          {message?.text ?? ''}
-        </p>
-      </div>
+      {floating}
     </section>
   )
 }

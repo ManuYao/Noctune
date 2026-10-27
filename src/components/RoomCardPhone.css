@@ -1,0 +1,172 @@
+/* A card of the list on a phone (mock-up M2, see RoomCardPhone.tsx): 24 px corners, the scene 112 px tall on top, the room
+   under it. Measured on the mock-up at 390 px: the pills 10 px from the top and 12 from the sides (26 px tall), the body
+   padded 12 / 14 with the name, the styles (24 px chips) and the track on the left, "Rejoindre" (44 px) at the bottom right. */
+.room-card-phone {
+  position: relative;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  background: var(--glass);
+  color: var(--text);
+}
+
+.room-card-phone p {
+  margin: 0;
+}
+
+/* The scene is cut to the card (see RoomCardScene): 112 px at the mock-up's 358 px, instead of the big card's 160, and
+   always that shape, so that a wider card (a big phone) shows the same picture, larger. */
+.room-card-phone .room-scene {
+  height: auto;
+  aspect-ratio: 358 / 112;
+}
+
+.room-card-phone__pills {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  left: 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.room-card-phone__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--outline);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* "Place DJ libre" lights up in the second accent (the one of everything DJ); the others are dark pills. */
+.room-card-phone__pill--free {
+  background: var(--accent-2);
+  color: var(--on-accent-2);
+  font-weight: 800;
+}
+
+.room-card-phone__eq {
+  display: inline-flex;
+  flex: none;
+  align-items: flex-end;
+  gap: 2px;
+  width: 16px;
+  height: 14px;
+}
+
+.room-card-phone__eq i {
+  display: block;
+  flex: 1;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent-2);
+  transform-origin: 50% 100%;
+  animation: room-card-phone-eq 0.9s ease-in-out infinite;
+}
+
+.room-card-phone__eq i:nth-child(2) {
+  animation-delay: -0.3s;
+}
+
+.room-card-phone__eq i:nth-child(3) {
+  animation-delay: -0.6s;
+}
+
+@keyframes room-card-phone-eq {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+.room-card-phone__body {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 12px 14px;
+}
+
+.room-card-phone__info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.room-card-phone__name {
+  overflow: hidden;
+  font-family: var(--font-title);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-card-phone__styles {
+  display: flex;
+  gap: 6px;
+  overflow: hidden;
+}
+
+.room-card-phone__chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.room-card-phone__playing {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-card-phone__join {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  height: var(--tap);
+  padding: 0 20px;
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+/* The whole card is a way into the room: the link stretches over it (it stays the one thing a keyboard reaches). */
+.room-card-phone__join::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.room-card-phone:focus-within {
+  border-color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .room-card-phone__eq i {
+    animation: none;
+  }
+}

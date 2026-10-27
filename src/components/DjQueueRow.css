@@ -127,3 +127,32 @@
     transform: none;
   }
 }
+
+/* ---- A phone (mock-up M3b): 52 px rows with a border of their own, the DJ on the decks with a note in a cyan disc. ---- */
+@media (max-width: 760px) {
+  .dj-row {
+    min-height: 52px;
+    margin: 0;
+    padding: 0 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    background: var(--glass);
+  }
+
+  .dj-row--self {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .dj-row--decks .dj-row__badge {
+    color: var(--on-accent-2);
+  }
+
+  .dj-row--decks .dj-row__badge::before {
+    content: '';
+    width: 13px;
+    height: 13px;
+    background: currentColor;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 15V4L16 2.5V13'/%3E%3Ccircle cx='5.8' cy='15' r='2.4' fill='black'/%3E%3Ccircle cx='13.8' cy='13' r='2.4' fill='black'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+}

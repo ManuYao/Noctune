@@ -44,58 +44,87 @@
   }
 }
 
-/* The whole audience in its tab, on a phone. */
-.room-panel--tab > .participants {
-  padding: 16px;
-  border: 1.5px solid var(--border);
-  border-radius: 24px;
-  background: var(--glass);
-}
+/* ---- A phone (mock-ups M3 and M3b): three tabs under the bar, the content of the one shown filling the rest of the screen.
+   The room keeps the height of the window (see RoomPage.css): what is in a tab scrolls inside it. ---- */
+@media (max-width: 760px) {
+  .room__side {
+    flex: 1;
+    gap: 0;
+    min-height: 0;
+  }
 
-.room-tabs {
-  display: flex;
-  gap: 4px;
-  padding: 4px;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius-m);
-  background: var(--glass);
-}
+  .room-panel--tab {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
 
-.room-tabs__tab {
-  display: inline-flex;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: var(--tap-main);
-  border: 0;
-  border-radius: var(--radius-s);
-  background: transparent;
-  color: var(--text-muted);
-  font-weight: 700;
-  cursor: pointer;
-}
+  .room-panel[hidden] {
+    display: none;
+  }
 
-.room-tabs__tab[aria-selected='true'] {
-  background: var(--accent-soft);
-  box-shadow: inset 0 -3px 0 var(--accent);
-  color: var(--text);
-}
+  /* The audience, in its tab: the same rows as the chat's, no panel. */
+  .room-panel--tab > .participants {
+    flex: 1;
+    min-height: 0;
+    padding: 14px 16px;
+    overflow-y: auto;
+  }
 
-.room-tabs__count {
-  min-width: 1.6em;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--border);
-  color: var(--text);
-  font-size: 0.8rem;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.6;
-}
+  .participants h2 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
 
-.room-tabs__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--accent);
+  .room-tabs {
+    display: flex;
+    flex: none;
+    border-bottom: 1.5px solid var(--border);
+  }
+
+  .room-tabs__tab {
+    display: inline-flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--tap-main);
+    padding: 0;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .room-tabs__tab[aria-selected='true'] {
+    border-bottom-color: var(--accent);
+    color: var(--text);
+  }
+
+  /* "File · 4", "Public · 14": the number is part of the label, in the same colour, not a badge. */
+  .room-tabs__count {
+    min-width: 0;
+    padding: 0;
+    background: none;
+    color: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    white-space: pre;
+  }
+
+  .room-tabs__dot {
+    width: 8px;
+    height: 8px;
+    margin-left: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
 }

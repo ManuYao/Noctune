@@ -1,0 +1,23 @@
+/* The scene of a phone (mock-up M3, see MobileScene.tsx): full width, no frame, the screen laid out by CSS (so that the video
+   is never under 200 x 200 px) and the drawing around it laid out from where the screen is. The sizes come from the room
+   page (RoomPage.css): --m-screen-x, --m-video-h and --m-scene-h. */
+.scene--phone {
+  height: var(--m-scene-h);
+  border: 0;
+  border-radius: 0;
+}
+
+.scene--phone .scene__screen {
+  position: absolute;
+  top: 14px;
+  right: var(--m-screen-x);
+  left: var(--m-screen-x);
+  height: var(--m-video-h);
+}
+
+/* The viewer's ring is a filled ellipse (Scene.css gives it its translucency). */
+.scene--phone .scene__more {
+  right: 10px;
+  bottom: 6px;
+  font-size: 12px;
+}

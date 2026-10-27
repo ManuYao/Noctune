@@ -229,26 +229,119 @@
   }
 }
 
-/* A phone (the bar is pinned under the video): 44 px tall buttons, the hints only for the DJ on the decks. */
-@container bar (max-width: 640px) {
-  .reactions__button {
-    height: var(--tap);
-    border-radius: 999px;
-  }
+/* ---- A phone (mock-up M3): the buttons are items of the bar's row (see NowPlayingBar.css), 64 x 44 px: "J'aime" filled
+   with its count, "Passer" outlined with the votes (or the seconds before the vote opens). "+ Playlist" is the track's
+   sleeve, with a badge. The DJ on the decks has their skip button on a row of its own, with what it leads to. ---- */
+.reactions--phone,
+.reactions--phone .reactions__buttons {
+  display: contents;
+}
 
-  .reactions__button::before {
-    content: none;
-  }
+.reactions--phone .reactions__button {
+  justify-content: center;
+  width: 64px;
+  height: var(--tap);
+  padding: 0;
+  border-radius: 14px;
+  font-size: 13px;
+}
 
-  .reactions__buttons {
-    justify-content: flex-start;
-  }
+.reactions--phone .reactions__button::before {
+  content: none;
+}
 
-  .reactions__hint {
-    display: none;
-  }
+.reactions--phone .reactions__like {
+  grid-column: 3;
+  grid-row: 1;
+  border-color: var(--accent);
+  font-size: 14px;
+}
 
-  .reactions--own .reactions__hint {
-    display: block;
-  }
+.reactions--phone .reactions__skip {
+  grid-column: 4;
+  grid-row: 1;
+}
+
+/* The sleeve itself: nothing of its own to draw but the badge. */
+.reactions--phone .reactions__keep {
+  grid-column: 1;
+  grid-row: 1;
+  width: var(--tap);
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+}
+
+.reactions--phone .reactions__keep > svg {
+  display: none;
+}
+
+.reactions__badge {
+  display: none;
+}
+
+.reactions--phone .reactions__badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  background: var(--accent-2);
+  color: var(--on-accent-2);
+}
+
+/* The rule of the vote in words stays for screen readers (the buttons point at it); the DJ on the decks reads theirs. */
+.reactions--phone .reactions__hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.reactions--phone.reactions--own .reactions__button--own {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  width: auto;
+  border-width: 1.5px;
+}
+
+.reactions--phone.reactions--own .reactions__notes {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  gap: 0;
+  margin-top: -4px;
+}
+
+.reactions--phone.reactions--own .reactions__hint {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip-path: none;
+  font-size: 13px;
+  white-space: normal;
+}
+
+/* "Pas de J'aime sur ton propre morceau" is clear from the heart that does not answer: read, not shown. */
+.reactions--phone.reactions--own #like-note {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The DJ's own bar has no "+ Playlist" label to hide on its sleeve: same as the others. */
+.reactions--phone.reactions--own .reactions__keep {
+  padding: 0;
 }

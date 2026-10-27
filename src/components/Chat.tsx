@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { FormEvent } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import { CHAT_MAX_LENGTH, type ChatMessage } from '../../shared/protocol'
 import { findAvatar } from '../data/avatars'
 import { formatSpan } from '../data/duration'
@@ -17,6 +17,8 @@ interface ChatProps {
   /** When the viewer can write again (local clock, ms) after the host muted them; null when they are not muted. */
   mutedUntil: number | null
   onSend: (text: string) => Promise<SendChatResult>
+  /** Something to keep just above the field (on a phone: the way into "Passer DJ"). */
+  aboveForm?: ReactNode
 }
 
 // Distance from the bottom under which the list keeps following new messages.
@@ -41,7 +43,7 @@ function errorMessage(result: Exclude<SendChatResult, { ok: true }>): string {
   }
 }
 
-export default function Chat({ messages, selfId, disabledReason, mutedUntil, onSend }: ChatProps) {
+export default function Chat({ messages, selfId, disabledReason, mutedUntil, onSend, aboveForm }: ChatProps) {
   const moderation = useModeration()
   const [text, setText] = useState('')
   const [error, setError] = useState('')
@@ -149,6 +151,8 @@ export default function Chat({ messages, selfId, disabledReason, mutedUntil, onS
           )
         })}
       </ol>
+
+      {aboveForm && <div className="chat__above">{aboveForm}</div>}
 
       <form className="chat__form" onSubmit={handleSubmit} noValidate>
         <label htmlFor="chat-input" className="visually-hidden">

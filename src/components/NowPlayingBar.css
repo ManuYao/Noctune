@@ -330,108 +330,99 @@
   }
 }
 
-/* ---- A phone: the bar stays in view under the video while the chat scrolls, so it is kept short.
-   Title, reactions and mute on one row, progress on the next. Phones have their own volume keys. ---- */
-@container bar (max-width: 640px) {
-  .bar__inner {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    grid-template-areas:
-      'info actions sound'
-      'progress progress progress';
-    gap: 2px 8px;
-    height: auto;
-    padding: 8px 12px 6px;
-  }
+/* ---- A phone (mock-up M3): one row under the scene. The sleeve, the title with the artist and the time, the two buttons
+   of the audience; a thin line of progress on its lower edge. Phones have their own volume keys, and the mute button is in
+   the header of the room. The DJ on the decks gets a second row for their skip button, which says what it does. ---- */
+.bar--phone {
+  border-width: 0 0 1.5px;
+  border-radius: 0;
+}
 
-  /* Their children take the places above. */
-  .bar__middle,
-  .bar__right {
-    display: contents;
-  }
+.bar--phone .bar__row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px 10px;
+  min-height: 64px;
+  padding: 9px 10px 8px 12px;
+}
 
-  .bar__info {
-    grid-area: info;
-    width: auto;
-  }
+.bar--phone .bar__cover {
+  grid-column: 1;
+  grid-row: 1;
+  width: 44px;
+  height: 44px;
+}
 
-  .bar__progress {
-    grid-area: progress;
-  }
+.bar--phone .bar__text {
+  grid-column: 2;
+  grid-row: 1;
+}
 
-  .bar__actions {
-    grid-area: actions;
-  }
+.bar--phone .bar__title {
+  font-size: 15px;
+}
 
-  .bar__sound {
-    grid-area: sound;
-  }
+/* The artist is cut first; the time stays whole. */
+.bar--phone .bar__artist {
+  display: flex;
+  min-width: 0;
+  font-size: 13px;
+}
 
-  /* The DJ on the decks: their skip button says what it does ("Passer mon morceau") and what follows, which needs
-     the width. It gets a row of its own, only while it is their turn. */
-  .bar--own .bar__inner {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      'info sound'
-      'actions actions'
-      'progress progress';
-  }
+.bar__artist-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-  .bar__cover,
-  .bar__volume {
-    display: none;
-  }
+.bar__time {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  white-space: pre;
+}
 
-  .bar__mute {
-    margin-left: 0;
-  }
+.bar__line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  overflow: hidden;
+  border: 0;
+  appearance: none;
+  background: transparent;
+}
 
-  /* No third line: the pinned block stays short. Artist and DJ share the second one, each cut if need be. */
-  .bar__text {
-    display: grid;
-    grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
-  }
+.bar__line::-webkit-progress-bar {
+  background: transparent;
+}
 
-  .bar__title {
-    grid-column: 1 / -1;
-    font-size: 15px;
-  }
+.bar__line::-webkit-progress-value {
+  background: var(--accent);
+}
 
-  .bar__artist,
-  .bar__dj {
-    font-size: 13px;
-  }
+.bar__line::-moz-progress-bar {
+  background: var(--accent);
+}
 
-  .bar__dj::before {
-    content: ' · ';
-    white-space: pre;
-  }
+/* What the bar says for a moment: over the top of the tab under it (below the 48 px of the tabs), never over the video. */
+.bar--phone .bar__float {
+  top: calc(100% + 48px + 8px);
+  right: 12px;
+  bottom: auto;
+  left: 12px;
+  align-items: stretch;
+  width: auto;
+  padding: 0;
+}
 
-  /* Under the bar, in the page: nothing floats over the video on a phone. */
-  .bar__float {
-    position: static;
-    align-items: stretch;
-    width: auto;
-    padding: 0 12px;
-  }
+.bar--phone .bar__status {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 10px 12px;
+}
 
-  .bar__float:has(.bar__status),
-  .bar__float:has(.bar__message:not(:empty)) {
-    padding-bottom: 8px;
-  }
-
-  .bar__status {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 8px 12px;
-    box-shadow: none;
-  }
-
-  .bar__message {
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
-    background: none;
-  }
+.bar--phone .bar__message {
+  text-align: center;
 }

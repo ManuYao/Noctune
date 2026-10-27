@@ -1,0 +1,71 @@
+/* The way into "Passer DJ" on a phone (mock-ups M3, M3b, M4). A pill above the chat field, or a bar the whole width. */
+.dj-dock {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
+  border: 0;
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.dj-dock svg {
+  flex: none;
+}
+
+/* Above the chat field: 44 px tall, at the right (the thumb), the cyan of everything DJ. */
+.dj-dock--pill {
+  min-height: var(--tap);
+  padding: 0 20px;
+}
+
+/* At the foot of the queue tab: the whole width, 52 px, as drawn. */
+.dj-dock--bar {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 20px;
+  font-size: 16px;
+}
+
+.dj-dock--add {
+  background: var(--accent-2);
+  color: var(--on-accent-2);
+}
+
+/* A visitor: dashed, like something not available yet (it leads to signing in). */
+.dj-dock--locked {
+  border: 1.5px dashed var(--border-field);
+  background: var(--bg);
+}
+
+.dj-dock--bar.dj-dock--locked {
+  border-width: 2px;
+}
+
+/* In the queue: an outline, the way out; the place in the queue above the chat field. */
+.dj-dock--leave,
+.dj-dock--mine {
+  border: 2px solid var(--accent-2);
+  background: transparent;
+}
+
+.dj-dock--leave svg {
+  color: var(--accent-2);
+}
+
+.dj-dock--mine {
+  font-size: 14px;
+}
+
+.dj-dock:disabled {
+  border: 2px solid var(--border-field);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: not-allowed;
+}

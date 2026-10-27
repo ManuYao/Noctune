@@ -82,6 +82,11 @@
   animation: entry-eq 0.9s ease-in-out infinite;
 }
 
+/* The one of the room line is the phone's (it takes the record's place there, see the end of the file). */
+.entry__eq--room {
+  display: none;
+}
+
 .entry__eq i:nth-child(2) {
   animation-delay: -0.3s;
 }
@@ -329,6 +334,200 @@
 
   .entry__card {
     padding: 18px;
+  }
+}
+
+/* ---- A phone (mock-up M1, 390 x 844): header, the small club (EntrySceneMobile), the title on two lines, the card, the
+   legal links. The pitch, the figures and the lines of the card that the mock-up does not have are not shown. ---- */
+@media (max-width: 760px) {
+  /* Plain page, no halos: the club is in the page, not behind it. */
+  body:has(.entry) {
+    --glow-top: none;
+    --glow-bottom: none;
+  }
+
+  /* A phone's width; on a wider window (a big phone, a small tablet) the column stays centred at the mock-up's size. */
+  .entry__main {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    width: 100%;
+    max-width: 480px;
+    margin-inline: auto;
+    padding: 6px 16px 8px;
+  }
+
+  .entry__hero {
+    gap: 10px;
+    margin: 0 0 9px;
+    padding: 0 4px;
+  }
+
+  .entry__hero h1 {
+    font-size: 30px;
+    line-height: 1.05;
+  }
+
+  .entry__hero-accent {
+    color: var(--accent-text);
+  }
+
+  .entry__tagline,
+  .entry__pitch,
+  .entry__stats,
+  .entry__legal,
+  .entry__account {
+    display: none;
+  }
+
+  /* The card. */
+  .entry__card {
+    gap: 12px;
+    padding: 16px;
+    border-radius: 24px;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  /* "Prépare ton entrée" names the form for screen readers; the mock-up starts with the pseudo. */
+  .entry__heading--prepare,
+  .entry__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .entry__heading h2 {
+    font-size: 18px;
+  }
+
+  .entry__heading p {
+    font-size: 14px;
+  }
+
+  .entry__field {
+    gap: 6px;
+  }
+
+  .entry__field label {
+    font-size: 14px;
+  }
+
+  .entry__card input {
+    height: var(--tap-main);
+    border-color: var(--border-field);
+    border-radius: 16px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .entry__card input[aria-invalid='true'] {
+    border-color: var(--accent);
+  }
+
+  /* "Choisis ton avatar · Pulse", then the eight in two rows of four, 62 px tall. */
+  .entry .avatar-picker legend {
+    font-size: 14px;
+  }
+
+  .entry__avatar-name {
+    color: var(--accent-text);
+  }
+
+  .entry .avatar-picker button {
+    aspect-ratio: auto;
+    height: 62px;
+    padding: 0;
+  }
+
+  .entry .avatar-picker button > svg {
+    width: 42px;
+    height: 42px;
+  }
+
+  .entry .avatar-picker__check {
+    top: -6px;
+    right: -6px;
+    width: 20px;
+    height: 20px;
+  }
+
+  /* The room: one line of 44 px, the equaliser, "Lo-fi du soir · 14 en ligne", and "Changer" at the right. */
+  .entry__room,
+  .entry__member {
+    gap: 10px;
+    min-height: var(--tap);
+    padding: 0 14px;
+    border-radius: 14px;
+  }
+
+  .entry__member {
+    min-height: 56px;
+    padding: 4px 14px 4px 10px;
+  }
+
+  .entry__vinyl {
+    display: none;
+  }
+
+  .entry__eq--room {
+    display: inline-flex;
+  }
+
+  .entry__room-text {
+    flex-flow: row wrap;
+    align-items: baseline;
+    column-gap: 4px;
+    line-height: 1.5;
+  }
+
+  .entry__room-text strong {
+    max-width: 100%;
+    font-size: 14px;
+  }
+
+  /* The dot ends the name, so that if the detail goes under it the dot stays on the first line. */
+  .entry__room-text strong::after {
+    content: ' ·';
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  .entry__room-text span {
+    font-size: 14px;
+  }
+
+  /* A 44 px target on a 44 px line: it reaches over the line's border. */
+  .entry__change {
+    text-decoration: none;
+    margin-block: -1.5px;
+    margin-right: -8px;
+    padding-inline: 8px;
+  }
+
+  /* The button that enters: a pill of 52 px, and what is said under it. */
+  .entry__go {
+    gap: 12px;
+  }
+
+  .entry__enter {
+    height: 52px;
+    border-radius: 999px;
+    font-family: var(--font-text);
+    font-weight: 800;
+  }
+
+  .entry__enter svg {
+    display: none;
+  }
+
+  .entry__note {
+    font-size: 12px;
   }
 }
 

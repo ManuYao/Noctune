@@ -38,15 +38,36 @@
   gap: 18px;
 }
 
-/* A sheet on a phone, but only as tall as what it holds. */
+/* A sheet on a phone, but only as tall as what it holds. (`fit-content`, not `auto`: a modal dialog is placed from both
+   its top and its bottom, and with `auto` it would stretch between them.) */
 @media (max-width: 760px) {
   .dj-dialog.mod-dialog {
     width: 100%;
   }
 
+  /* Under the video, as the sheet of "Passer DJ" (the room page says where it ends): the video stays in view, undimmed. */
   .dj-dialog.mod-dialog[open] {
-    height: auto;
-    max-height: calc(100dvh - 24px);
+    height: fit-content;
+    max-height: calc(100dvh - var(--m-stage-h, 24px));
+  }
+
+  .dj-dialog.mod-dialog::backdrop,
+  [data-theme='vinyl'] .dj-dialog.mod-dialog::backdrop {
+    background: transparent;
+  }
+}
+
+/* A phone on its side: a panel over the right half, as the sheet of "Passer DJ". */
+@media (max-width: 760px) and (orientation: landscape) and (max-height: 520px) {
+  .dj-dialog.mod-dialog {
+    width: 50%;
+    margin: 0 0 0 auto;
+    border-bottom: 1.5px solid var(--accent);
+    border-radius: var(--radius-l) 0 0 var(--radius-l);
+  }
+
+  .dj-dialog.mod-dialog[open] {
+    max-height: 100dvh;
   }
 }
 

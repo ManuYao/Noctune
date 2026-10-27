@@ -21,6 +21,8 @@ interface ReactionButtonsProps {
   onDecks: boolean
   /** What follows when the DJ on the decks skips ("Le DJ suivant prend la main."). Null when the viewer is not that DJ. */
   ownSkipHint: string | null
+  /** A phone: the buttons are laid out by the bar's own row (mock-up M3), "+ Playlist" sits on the track's sleeve. */
+  compact?: boolean
   onLike: (value: boolean) => Promise<SendReactionResult>
   onSkip: (value: boolean) => Promise<SendReactionResult>
   /** Says a refusal, or what was kept, for a moment: the bar shows it above itself, in a live region. */
@@ -59,6 +61,7 @@ export default function ReactionButtons({
   clockOffsetMs,
   onDecks,
   ownSkipHint,
+  compact = false,
   onLike,
   onSkip,
   onMessage,
@@ -108,7 +111,7 @@ export default function ReactionButtons({
       : `${reactions.skipVotes} vote${reactions.skipVotes > 1 ? 's' : ''} sur ${reactions.skipRequired} nécessaires pour passer ce morceau.`
 
   return (
-    <div className={onDecks ? 'reactions reactions--own' : 'reactions'}>
+    <div className={`reactions${onDecks ? ' reactions--own' : ''}${compact ? ' reactions--phone' : ''}`}>
       <div className="reactions__buttons">
         <button
           type="button"
@@ -182,6 +185,12 @@ export default function ReactionButtons({
           >
             <ReactionIcon kind="plus" />
             <span className="reactions__label">Playlist</span>
+            {/* On a phone it is the sleeve of the bar that is the button: this badge says so. */}
+            <span className="reactions__badge" aria-hidden="true">
+              <svg viewBox="0 0 12 12" width="10" height="10" focusable="false" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                <path d="M6 2 V10 M2 6 H10" />
+              </svg>
+            </span>
           </button>
         )}
       </div>

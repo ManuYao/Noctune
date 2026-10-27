@@ -63,47 +63,6 @@
   font-weight: 600;
 }
 
-/* What the viewer has to know about their turn on the left, the one button on the right (a phone: see below). */
-.dj-queue__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.dj-queue__footer .dj-queue__status {
-  flex: 1;
-  min-width: 0;
-}
-
-/* A visitor: the locked button, and under it the way to get what it asks for. */
-.dj-queue__footer--locked {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-.dj-queue__cta {
-  flex: none;
-  min-height: var(--tap);
-  padding: 0 18px;
-  border: 0;
-  border-radius: var(--radius-s);
-  background: var(--accent-2);
-  color: var(--on-accent-2);
-  font-weight: 800;
-  cursor: pointer;
-}
-
-/* Locked (a visitor, or a full queue): an outline, so that it does not look like something that can be pressed. */
-.dj-queue__cta:disabled {
-  border: 2px solid var(--border-field);
-  background: transparent;
-  color: var(--text-muted);
-  cursor: not-allowed;
-}
-
 /* On a computer the room fits in the window (see RoomPage.css): the rows scroll inside the panel. */
 @media (min-width: 761px) {
   .dj-queue {
@@ -134,25 +93,116 @@
     mask-image: linear-gradient(to bottom, transparent, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent);
   }
 
-  .dj-queue__header,
-  .dj-queue__footer {
+  .dj-queue__header {
     flex: none;
   }
 }
 
-/* A phone: the panel is a tab of its own, and its button is a full-width, 48 px target under the notes. */
+/* ---- A phone (mock-up M3b): the whole tab. The rows, "Ton morceau" and the notes scroll; the way in ("Passer DJ", "Quitter
+   la file") stays at the foot, on the page's colour, above the edge of the screen. ---- */
 @media (max-width: 760px) {
-  .dj-queue {
-    padding: 16px;
+  .dj-queue--phone {
+    flex: 1;
+    min-height: 0;
+    gap: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
   }
 
-  .dj-queue__footer {
+  .dj-queue__scroll {
+    display: flex;
+    flex: 1;
     flex-direction: column;
-    align-items: stretch;
+    gap: 8px;
+    min-height: 0;
+    padding: 14px 16px;
+    overflow-y: auto;
   }
 
-  .dj-queue__cta {
-    min-height: var(--tap-main);
+  .dj-queue--phone .dj-queue__header {
+    flex-wrap: nowrap;
+    align-items: baseline;
+  }
+
+  /* "File d'attente" is a plain bold line here, not the title font. */
+  .dj-queue--phone h2 {
+    font-family: var(--font-text);
+    font-size: 15px;
+    font-weight: 800;
+  }
+
+  .dj-queue--phone .dj-queue__slots {
+    text-align: right;
+  }
+
+  .dj-queue--phone .dj-queue__list {
+    gap: 8px;
+    padding: 0;
+  }
+
+  .dj-queue__dock {
+    display: flex;
+    flex: none;
+    align-items: center;
+    min-height: 68px;
+    padding: 0 16px calc(8px + env(safe-area-inset-bottom));
+    border-top: 1.5px solid var(--border);
+    background: var(--bg);
+  }
+
+  /* "Ton morceau": the viewer's next track, and the way to all of theirs. */
+  .dj-queue__mine {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin-top: 6px;
+    padding: 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 16px;
+    background: var(--glass);
+    color: var(--text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .dj-queue__mine svg {
+    flex: none;
+    color: var(--text-muted);
+  }
+
+  .dj-queue__mine-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.3;
+  }
+
+  .dj-queue__mine-label {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .dj-queue__mine-track {
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 15px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .dj-queue__mine-track strong {
+    color: var(--text);
+    font-weight: 800;
   }
 
   /* The two links of a visitor are touch targets too: 44 px tall. */

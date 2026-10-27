@@ -86,36 +86,38 @@ export default function DjPlaylistTab({ playlist, rules, pickedId, onPick, onSel
 
   return (
     <>
-      <div className="dj-playlist__top">
-        {heading}
-        <span className="dj-playlist__menu">
-          <select id="dj-playlist-select" value={lists.activeId ?? ''} onChange={(event) => onSelectPlaylist(event.target.value)}>
-            {lists.playlists.map((candidate) => (
-              <option key={candidate.id} value={candidate.id}>
-                {candidate.name}
-              </option>
-            ))}
-          </select>
-          <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2.5 4.5 L6 8 L9.5 4.5" />
-          </svg>
-        </span>
-      </div>
+      <div className="dj-playlist__tools">
+        <div className="dj-playlist__top">
+          {heading}
+          <span className="dj-playlist__menu">
+            <select id="dj-playlist-select" value={lists.activeId ?? ''} onChange={(event) => onSelectPlaylist(event.target.value)}>
+              {lists.playlists.map((candidate) => (
+                <option key={candidate.id} value={candidate.id}>
+                  {candidate.name}
+                </option>
+              ))}
+            </select>
+            <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2.5 4.5 L6 8 L9.5 4.5" />
+            </svg>
+          </span>
+        </div>
 
-      <div className="dj-search">
-        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-          <circle cx="8.5" cy="8.5" r="5.5" />
-          <path d="M13 13 L17 17" />
-        </svg>
-        <input
-          type="search"
-          aria-label="Filtrer ma playlist"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="Filtrer ma playlist…"
-          value={filter}
-          onChange={(event) => setFilter(event.target.value)}
-        />
+        <div className="dj-search">
+          <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="8.5" cy="8.5" r="5.5" />
+            <path d="M13 13 L17 17" />
+          </svg>
+          <input
+            type="search"
+            aria-label="Filtrer ma playlist"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="Filtrer ma playlist…"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+          />
+        </div>
       </div>
 
       {tracks.status === 'loading' && (
@@ -184,8 +186,17 @@ export default function DjPlaylistTab({ playlist, rules, pickedId, onPick, onSel
 
       {onShowLink && (
         <button type="button" className="dj-playlist__elsewhere" onClick={onShowLink}>
-          <strong>Pas dans ta playlist ?</strong>
-          <span>Colle un lien YouTube</span>
+          <svg viewBox="0 0 18 18" width="24" height="24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+            <path d="M7.5 10.5 A3 3 0 0 0 11.7 10.8 L14.2 8.3 A3 3 0 0 0 10 4.1 L9 5.1" />
+            <path d="M10.5 7.5 A3 3 0 0 0 6.3 7.2 L3.8 9.7 A3 3 0 0 0 8 13.9 L9 12.9" />
+          </svg>
+          <span className="dj-playlist__elsewhere-text">
+            <strong>Pas dans ta playlist ?</strong>
+            <span>Colle un lien YouTube</span>
+          </span>
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 3 L11 8 L6 13" />
+          </svg>
         </button>
       )}
     </>

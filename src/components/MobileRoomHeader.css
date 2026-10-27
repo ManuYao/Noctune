@@ -1,0 +1,81 @@
+/* The header of the room on a phone (mock-up M3): 52 px, glass, the room's name in the title font. */
+.mroom-head {
+  flex: none;
+  background: var(--glass);
+  border-bottom: 1.5px solid var(--border);
+}
+
+.mroom-head__bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--m-head-bar, 52px);
+  padding: 0 4px;
+}
+
+.mroom-head__button {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.mroom-head__button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Muted: in the colour of the accent, so that it is seen at a glance. */
+.mroom-head__button[aria-pressed='true'] {
+  color: var(--accent-text);
+}
+
+.mroom-head__titles {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.mroom-head__name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mroom-head__sub {
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The host's tools, on a row of their own: only for them. */
+.mroom-head__host {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 12px 8px;
+}
+
+/* A short portrait window (the keyboard is up): the video, the bar, the tabs and the field are what is left. The header
+   comes back with the full height. */
+@media (max-width: 760px) and (max-height: 559px) and (orientation: portrait) {
+  .mroom-head {
+    display: none;
+  }
+}

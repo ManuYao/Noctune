@@ -285,25 +285,184 @@ body:has(.rooms-page) {
   color: var(--accent-2-text);
 }
 
-/* A phone: the styles scroll sideways in one row (as in mock-up M2) instead of piling up. */
+/* The row of the styles (and, on a phone, of the extra controls): on a big window it is only a wrapper. */
+.rooms__scroll {
+  display: contents;
+}
+
+/* ---- A phone (mock-up M2, 390 x 844): the title, the search, the styles that scroll sideways in one row, then vertical
+   cards (RoomCardPhone). The sentence under the title, the "Créer une room" pill (the tab bar has "Créer"), the count and the
+   big window's tools are not shown; the free place and the order are chips at the end of the row of styles. ---- */
 @media (max-width: 760px) {
-  /* `contain`: the row's width comes from the page, never from its chips (otherwise a phone's browser widens the whole
-     page to fit them, and the row has nothing to scroll). */
-  .rooms__styles {
-    contain: inline-size;
-    flex-wrap: nowrap;
-    margin: 0 calc(-1 * var(--gutter));
-    padding: 4px var(--gutter);
-    overflow-x: auto;
-    scrollbar-width: none;
+  /* The halo of the mock-up: the accent at 22 %, centred at (60, 0), a radius of 300 px; no second one at the bottom. */
+  body:has(.rooms-page) {
+    --glow-top: radial-gradient(
+      circle 300px at 60px 0,
+      color-mix(in srgb, var(--accent) 22%, transparent),
+      color-mix(in srgb, var(--accent) 0%, transparent)
+    );
+    --glow-bottom: none;
+  }
+
+  /* The mock-up's margin: 16 px on both sides, whatever the width of the phone. */
+  .rooms {
+    --gutter: 16px;
+    padding: 6px var(--gutter) 24px;
+  }
+
+  .rooms__head {
+    gap: 0;
+  }
+
+  .rooms__intro {
+    gap: 0;
+  }
+
+  .rooms__intro h1 {
+    font-size: 24px;
+    line-height: 1.15;
+  }
+
+  .rooms__intro p,
+  .rooms__create {
+    display: none;
+  }
+
+  .rooms__toolbar {
+    margin-top: 18px;
+  }
+
+  .rooms__search {
+    flex: 1 1 100%;
+  }
+
+  .rooms__search svg {
+    top: 14px;
+    left: 16px;
+  }
+
+  .rooms__search input {
+    height: var(--tap-main);
+    padding: 0 16px 0 46px;
   }
 
   .rooms__filters {
     flex-direction: column;
     align-items: stretch;
+    margin-top: 6px;
   }
 
-  .rooms__search {
-    flex: 1 1 100%;
+  /* `contain`: the row's width comes from the page, never from its chips (otherwise a phone's browser widens the whole
+     page to fit them, and the row has nothing to scroll). */
+  .rooms__scroll {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin: 0 calc(-1 * var(--gutter));
+    padding: 6px var(--gutter);
+    overflow-x: auto;
+    contain: inline-size;
+    scrollbar-width: none;
+  }
+
+  .rooms__styles {
+    flex: none;
+    flex-wrap: nowrap;
+  }
+
+  .rooms__styles button,
+  .rooms__free,
+  .rooms__order select {
+    height: var(--tap);
+    padding: 0 18px;
+    border: 1.5px solid var(--border-field);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--text);
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .rooms__free {
+    flex: none;
+    cursor: pointer;
+  }
+
+  .rooms__styles button[aria-pressed='true'] {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  /* Set apart from the styles by a thin line; lit in the second accent (the colour of "Place DJ libre" on the cards). */
+  .rooms__extras {
+    position: relative;
+    display: flex;
+    flex: none;
+    gap: 8px;
+    margin-left: 4px;
+    padding-left: 13px;
+  }
+
+  .rooms__extras::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    left: 0;
+    width: 1.5px;
+    background: var(--border);
+  }
+
+  .rooms__free[aria-pressed='true'] {
+    border-color: var(--accent-2);
+    background: var(--accent-2);
+    color: var(--on-accent-2);
+  }
+
+  /* The order is a real select, dressed as a chip. */
+  .rooms__order {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+  }
+
+  .rooms__order select {
+    padding-right: 40px;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+  }
+
+  .rooms__order::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 18px;
+    width: 7px;
+    height: 7px;
+    border: solid var(--text);
+    border-width: 0 2px 2px 0;
+    transform: translateY(-70%) rotate(45deg);
+    pointer-events: none;
+  }
+
+  /* Said to screen readers, not shown (the cards make the count plain). */
+  .rooms__count {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* One column on a phone; two on a big one (700 px) where a single card would be too wide for its small scene. */
+  .rooms__grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+    gap: 12px;
+    margin-top: 6px;
   }
 }

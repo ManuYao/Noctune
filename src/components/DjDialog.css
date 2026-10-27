@@ -289,7 +289,9 @@ html:has(.dj-dialog[open]) {
   gap: 8px;
 }
 
-.dj-link[hidden] {
+.dj-link[hidden],
+.dj-lineup[hidden],
+.dj-band[hidden] {
   display: none;
 }
 
@@ -645,8 +647,9 @@ html:has(.dj-dialog[open]) {
   }
 }
 
-/* A phone: a sheet that rises from the bottom and almost fills the screen; one column that scrolls, under its tabs, and
-   "Ton morceau" kept at the bottom. */
+/* A phone (mock-up M4): a sheet that rises from the bottom, under the video: it stops where the pinned header and scene end
+   (the room page says where, --m-stage-h), so that the video stays in view and playing. The handle, the title, the rules of the room
+   in a row of chips, the tabs, then the rows that scroll, and the big button at the foot. */
 @media (max-width: 760px) {
   .dj-dialog {
     width: 100%;
@@ -661,42 +664,117 @@ html:has(.dj-dialog[open]) {
     height: calc(100dvh - 24px);
   }
 
+  .dj-dialog--dj[open] {
+    max-height: none;
+    height: calc(100dvh - var(--m-stage-h, 112px));
+    box-shadow: 0 -8px 40px rgb(0 0 0 / 0.5);
+  }
+
+  /* Nothing dims the video: the sheet stands under it, and the sheet's own shadow is enough (also in the light ambiance,
+     whose own scrim above is more specific). */
+  .dj-dialog--dj::backdrop,
+  [data-theme='vinyl'] .dj-dialog--dj::backdrop {
+    background: transparent;
+  }
+
   .dj-dialog__sheet {
-    gap: 12px;
-    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    gap: 10px;
+    padding: 10px 16px calc(14px + env(safe-area-inset-bottom));
+  }
+
+  .dj-handle {
+    flex: none;
+    align-self: center;
+    width: 40px;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--border-field);
   }
 
   .dj-dialog__header h2 {
-    font-size: 1.35rem;
+    font-size: 1.5rem;
   }
 
   .dj-head {
+    flex: none;
+    gap: 6px 8px;
     grid-template-areas:
       'titles close'
       'rules rules';
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
+  .dj-head__titles {
+    gap: 0;
+  }
+
+  .dj-head__sub {
+    font-size: 13px;
+  }
+
+  /* The room's rules in one row of chips, scrolling sideways when there are more than fit. */
   .dj-head__rules {
+    flex-wrap: nowrap;
     justify-content: flex-start;
     max-width: none;
     padding-top: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .dj-head__rules::-webkit-scrollbar {
+    display: none;
+  }
+
+  .dj-head__rules ul {
+    display: flex;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .dj-head__rules > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .dj-chip {
+    height: 24px;
   }
 
   .dj-head__close {
     margin-left: 0;
   }
 
+  .dj-tabs__tab {
+    border-radius: 12px;
+    font-size: 14px;
+  }
+
+  /* The rows scroll between the tabs and the big button; what they hold has no panel of its own. */
   .dj-cols {
     display: flex;
+    flex: 1;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
+    min-height: 0;
     overflow-y: auto;
   }
 
   .dj-panel {
     flex: none;
-    padding: 12px;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+
+  .dj-panel--side {
+    gap: 12px;
   }
 
   .dj-lineup__list {
@@ -708,33 +786,68 @@ html:has(.dj-dialog[open]) {
   }
 
   .dj-feedback:empty {
-    margin: 0 0 -12px;
+    margin: 0 0 -10px;
   }
 
+  /* The band of a computer ("Ton morceau", "Annuler", the chosen track) is the big button alone here: the row that is
+     chosen is lit and ticked, and the button says what it joins with. */
   .dj-band {
-    flex-wrap: wrap;
-    gap: 10px 12px;
-    padding: 10px 12px;
+    padding: 0;
+    border: 0;
+    background: none;
+    min-height: 0;
   }
 
-  .dj-band__what {
-    flex-basis: calc(100% - 60px);
-    flex-wrap: wrap;
-    gap: 4px 12px;
+  .dj-band__what,
+  .dj-band > .track-cover,
+  .dj-band__cancel {
+    display: none;
   }
 
   .dj-band__actions {
     width: 100%;
-    gap: 10px;
-  }
-
-  .dj-band__cancel {
-    padding: 0 18px;
   }
 
   .dj-band__go {
     flex: 1;
-    padding: 0 16px;
+    min-width: 0;
+    min-height: 52px;
+    padding: 0 20px;
+    font-size: 16px;
+  }
+
+  .dj-band__go-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+/* A phone on its side: the sheet is a panel over the right half (the video, at the left, stays in view). */
+@media (max-width: 760px) and (orientation: landscape) and (max-height: 520px) {
+  .dj-dialog--dj {
+    width: 50%;
+    margin: 0 0 0 auto;
+    border-bottom: 1.5px solid var(--accent);
+    border-radius: var(--radius-l) 0 0 var(--radius-l);
+    animation-name: dj-panel-slide;
+  }
+
+  .dj-dialog--dj[open] {
+    height: 100dvh;
+  }
+}
+
+@keyframes dj-panel-slide {
+  from {
+    opacity: 0.6;
+    transform: translateX(30%);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 

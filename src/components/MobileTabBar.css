@@ -1,0 +1,65 @@
+/* The tab bar of a phone (mock-up M2, 390 px): 80 px tall with its border, 8 px of padding above the tabs, the tabs 100 px
+   wide and 56 px tall (icon 24, label 12 px), the active one in a soft accent rounded rectangle. Not on a wider window. */
+.tab-bar {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  /* Sticky, last in the page: in the window's bottom while the page is longer than the window, at its end otherwise. It
+     takes its own room, so nothing hides under it. The bottom padding keeps the tabs clear of a phone's home indicator. */
+  .tab-bar {
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-around;
+    padding: 8px 0 max(16px, env(safe-area-inset-bottom));
+    border-top: 1.5px solid var(--border);
+    background: var(--bg);
+    line-height: 1.5;
+  }
+
+  .tab-bar__tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: min(100px, 30%);
+    min-height: 56px;
+    padding: 6px 0;
+    border-radius: 16px;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .tab-bar__tab svg {
+    display: block;
+    flex: none;
+  }
+
+  .tab-bar__tab[aria-current='page'] {
+    background: var(--accent-soft);
+    color: var(--accent-text);
+    font-weight: 700;
+  }
+}
+
+/* A phone lying down: a thin bar, the icon beside its word. */
+@media (max-width: 760px) and (max-height: 480px) {
+  .tab-bar {
+    align-items: center;
+    padding-block: 4px max(4px, env(safe-area-inset-bottom));
+  }
+
+  .tab-bar__tab {
+    flex-direction: row;
+    gap: 8px;
+    width: auto;
+    min-height: var(--tap);
+    padding: 0 22px;
+  }
+}
