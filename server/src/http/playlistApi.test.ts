@@ -27,6 +27,7 @@ async function start(options: StartOptions = {}, knows: Record<string, VideoInfo
     [idOf('gone')]: 'not-found',
     [idOf('locked')]: 'not-embeddable',
     [idOf('live')]: 'unavailable',
+    [idOf('noise')]: 'not-music',
     [idOf('down')]: 'service-unavailable',
     ...knows,
   })
@@ -322,6 +323,7 @@ describe('a member’s playlists', () => {
     await expect(idOf('gone'), 422, 'not-found')
     await expect(idOf('locked'), 422, 'not-embeddable')
     await expect(idOf('live'), 422, 'unavailable')
+    await expect(idOf('noise'), 422, 'not-music')
     await expect(idOf('down'), 503, 'service-unavailable')
     await expect(5, 400, 'bad-request')
     await expect('', 400, 'bad-request')

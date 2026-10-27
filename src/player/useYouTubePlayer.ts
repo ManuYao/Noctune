@@ -15,6 +15,16 @@ export type PlayerStatus =
   | 'player-failed' // the player itself could not load (offline, blocked script)
   | 'consent-needed' // the visitor has not accepted the YouTube player: nothing is requested from YouTube
 
+/** Subtitles off, whatever the viewer's Google account or YouTube's automatic captions ask for. */
+function hideCaptions(player: YouTubePlayer) {
+  try {
+    player.unloadModule?.('captions')
+    player.setOption?.('captions', 'track', {})
+  } catch {
+    // Undocumented calls: a player that does not know them keeps its captions.
+  }
+}
+
 interface PlayerOptions {
   /** The visitor accepted the YouTube player. Without it the script and the player are not loaded at all. */
   enabled: boolean
@@ -98,6 +108,7 @@ export function useYouTubePlayer(hostRef: RefObject<HTMLDivElement | null>, opti
       const { track: playing, clockOffsetMs } = latest.current
 
       if (state === PLAYER_STATE.PLAYING) {
+        hideCaptions(current)
         window.clearTimeout(timer.current)
         resumeAttempts.current = 0
         setStatus(soundBlocked.current ? 'sound-blocked' : 'playing')
@@ -128,12 +139,13 @@ export function useYouTubePlayer(hostRef: RefObject<HTMLDivElement | null>, opti
           // Privacy-enhanced mode: no tracking cookie before the visitor plays something.
           host: 'https://www.youtube-nocookie.com',
           // No controls: everyone hears the same thing at the same time, nobody seeks or pauses.
-          playerVars: { controls: 0, disablekb: 1, fs: 0, rel: 0, playsinline: 1, origin: window.location.origin },
+          playerVars: { controls: 0, disablekb: 1, fs: 0, rel: 0, playsinline: 1, cc_load_policy: 0, origin: window.location.origin },
           events: {
             onReady: () => {
               if (cancelled) return
               window.clearTimeout(loadTimeout)
               playerRef.current = player ?? null
+              if (player) hideCaptions(player)
               setReady(true)
             },
             onStateChange: (event) => onStateChange(event.data),
@@ -191,6 +203,7 @@ export function useYouTubePlayer(hostRef: RefObject<HTMLDivElement | null>, opti
 
     setStatus('loading')
     player.loadVideoById({ videoId: track.videoId, startSeconds: trackPositionSec(track, serverNow) })
+    hideCaptions(player)
 
     // Browsers refuse to start a video with sound before the visitor has interacted with the page, and
     // phones are stricter. Muted playback is always allowed: keep the video moving, ask for one tap.

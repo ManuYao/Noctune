@@ -183,7 +183,7 @@ describe('adding a track', () => {
   })
 
   it('passes on why a video cannot be kept', async () => {
-    const reasons: ResolveError[] = ['not-found', 'not-embeddable', 'unavailable', 'service-unavailable']
+    const reasons: ResolveError[] = ['not-found', 'not-embeddable', 'unavailable', 'not-music', 'service-unavailable']
     const resolver = new FakeResolver(Object.fromEntries(reasons.map((reason) => [idOf(reason), reason])))
     setup({ resolver })
     const id = await playlist()
@@ -388,6 +388,15 @@ describe('what YouTube said, and how long it is kept', () => {
     assert.deepEqual(read.tracks.map((track) => track.unavailable), [true, true])
   })
 
+  it('flags a kept video that a refresh finds is not music', async () => {
+    const id = await aged(8, 'a1')
+    fake = new FakeResolver({ [idOf('a1')]: 'not-music' })
+    service = new PlaylistService(store, fake, budget, { now: () => clock })
+    const read = worked(await service.getPlaylist(ann, id)).playlist
+    assert.equal(read.tracks[0].unavailable, true)
+    assert.equal((await service.tracksOf(ann, id))?.[0].notMusic, true)
+  })
+
   it('does not take YouTube being out of reach for the video being gone', async () => {
     const id = await aged(8, 'a1')
     fake = new FakeResolver({ [idOf('a1')]: 'service-unavailable' })
@@ -489,6 +498,13 @@ describe('lining up a track of a playlist', () => {
     assert.deepEqual(await service.videoForDj(ann, tracks[0].id), { ok: false, error: 'unavailable' })
   })
 
+  it('refuses a video that turned out not to be music, whether it was learned by a refresh or flagged before', async () => {
+    const { id, tracks } = await kept('a1')
+    await store.applyRefresh([{ videoId: idOf('a1'), video: null, notMusic: true, at: new Date(clock) }])
+    assert.deepEqual(await service.videoForDj(ann, tracks[0].id), { ok: false, error: 'not-music' })
+    assert.equal((await service.tracksOf(ann, id))?.[0].notMusic, true)
+  })
+
   it('reads a video that is getting old again first, and gives what it says now', async () => {
     const { tracks } = await kept('a1')
     clock += 8 * DAY
@@ -531,7 +547,7 @@ describe('judging a playlist against a room', () => {
   it('gives each track with its length and its flag, and nobody else’s playlist', async () => {
     const id = await playlist()
     const first = worked(await service.addTrack(ann, id, { input: idOf('a1') })).track
-    assert.deepEqual(await service.tracksOf(ann, id), [{ id: first.id, videoId: idOf('a1'), durationSec: 200, unavailable: false }])
+    assert.deepEqual(await service.tracksOf(ann, id), [{ id: first.id, videoId: idOf('a1'), durationSec: 200, unavailable: false, notMusic: false }])
     assert.equal(await service.tracksOf(ben, id), null)
     assert.equal(await service.tracksOf(ann, 'nope'), null)
     assert.equal(await service.tracksOf(ann, 'a0000000-0000-4000-8000-0000000000ff'), null)

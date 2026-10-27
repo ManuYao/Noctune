@@ -193,6 +193,8 @@ export type DjError =
   | 'not-embeddable'
   /** A live stream, an age-restricted video, or otherwise not playable here. */
   | 'unavailable'
+  /** Not in YouTube's "Music" category: Noctune plays music only. */
+  | 'not-music'
   /** A DJ of this room already lined it up. */
   | 'already-queued'
   /** The queue holds as many DJs as the room allows, and this member is not one of them. */
@@ -227,6 +229,8 @@ export type TrackStatus =
   | { state: 'queued' }
   /** It could no longer be played at the last refresh (removed, private, no longer embeddable). */
   | { state: 'unavailable' }
+  /** It was found not to be music at the last refresh. */
+  | { state: 'not-music' }
 
 /** Keyed by playlist track id. */
 export type PlaylistStatusResult = { ok: true; statuses: Record<string, TrackStatus> } | DjFailure
@@ -346,6 +350,7 @@ export type PlaylistError =
   | 'not-found'
   | 'not-embeddable'
   | 'unavailable'
+  | 'not-music'
   | 'service-unavailable'
   | 'server-error'
 

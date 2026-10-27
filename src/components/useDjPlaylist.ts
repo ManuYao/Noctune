@@ -30,6 +30,8 @@ export function trackVerdict(track: PlaylistTrack, status: TrackStatus | undefin
       const agoMin = Math.max(1, Math.round((rules.repeatDelaySec - status.retryAfterSec) / 60))
       return { short: `Joué il y a ${formatSpan(agoMin * 60)}`, full }
     }
+    case 'not-music':
+      return { short: 'Pas de la musique', full: djErrorMessage({ ok: false, error: 'not-music' }) }
     case 'queued':
       return { short: 'Déjà dans la file', full: djErrorMessage({ ok: false, error: 'already-queued' }) }
   }

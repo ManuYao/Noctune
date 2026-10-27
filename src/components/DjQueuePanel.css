@@ -44,8 +44,7 @@
 }
 
 .dj-queue__empty,
-.dj-queue__status,
-.dj-queue__locked {
+.dj-queue__status {
   margin: 0;
   color: var(--text-muted);
 }
@@ -205,15 +204,14 @@
     font-weight: 800;
   }
 
-  /* The two links of a visitor are touch targets too: 44 px tall. */
+  /* A visitor's two ways in: real buttons, full width, the account first. */
   .dj-queue__locked {
-    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 
-  .dj-queue__locked a {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--tap);
-    padding: 0 8px;
+  .dj-queue__locked .kit-btn {
+    width: 100%;
   }
 }

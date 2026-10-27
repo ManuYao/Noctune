@@ -597,7 +597,9 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
             const statuses: Record<string, TrackStatus> = {}
             for (const track of tracks) {
               statuses[track.id] =
-                track.unavailable
+                track.notMusic
+                  ? { state: 'not-music' }
+                  : track.unavailable
                   ? { state: 'unavailable' }
                   // A length too old to rely on is not judged: the room looks again when the track is lined up.
                   : track.durationSec === null

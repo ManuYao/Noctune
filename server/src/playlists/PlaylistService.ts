@@ -56,11 +56,12 @@ export interface TrackToJudge {
   videoId: string
   durationSec: number | null
   unavailable: boolean
+  notMusic: boolean
 }
 
 export type VideoForDj =
   | { ok: true; video: VideoInfo }
-  | { ok: false; error: 'no-such-track' | 'unavailable' | 'service-unavailable' }
+  | { ok: false; error: 'no-such-track' | 'unavailable' | 'not-music' | 'service-unavailable' }
   | { ok: false; error: 'rate-limited'; retryAfterMs: number }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -272,6 +273,7 @@ export class PlaylistService {
       row = await this.store.findTrack(accountId, trackId)
       if (!row) return { ok: false, error: 'no-such-track' }
     }
+    if (row.notMusic) return { ok: false, error: 'not-music' }
     if (row.unavailable) return { ok: false, error: 'unavailable' }
     // Too old to rely on, and it could not be read again: the room cannot check its rules against it.
     if (this.now() - row.fetchedAt.getTime() >= this.maxAgeMs) return { ok: false, error: 'service-unavailable' }
@@ -292,6 +294,7 @@ export class PlaylistService {
       videoId: row.videoId,
       durationSec: now - row.fetchedAt.getTime() < this.maxAgeMs ? row.durationSec : null,
       unavailable: row.unavailable,
+      notMusic: row.notMusic,
     }))
   }
 
@@ -333,6 +336,7 @@ export class PlaylistService {
         if (!answer) continue
         if (answer.ok) refreshes.push({ videoId: id, video: answer.video, at })
         // The video is gone, private, not embeddable any more, a live: it is kept, flagged, and looked at again in a week.
+        else if (answer.error === 'not-music') refreshes.push({ videoId: id, video: null, notMusic: true, at })
         else if (answer.error === 'not-found' || answer.error === 'not-embeddable' || answer.error === 'unavailable') {
           refreshes.push({ videoId: id, video: null, at })
         }

@@ -88,6 +88,7 @@ export class MemoryPlaylistStore implements PlaylistStore {
       artist: video.artist,
       durationSec: video.durationSec,
       unavailable: false,
+      notMusic: false,
       fetchedAt: at,
       checkedAt: at,
     }
@@ -134,9 +135,11 @@ export class MemoryPlaylistStore implements PlaylistStore {
             track.artist = refresh.video.artist
             track.durationSec = refresh.video.durationSec
             track.unavailable = false
+            track.notMusic = false
             track.fetchedAt = refresh.at
           } else {
             track.unavailable = true
+            track.notMusic = refresh.notMusic === true
           }
         }
       }

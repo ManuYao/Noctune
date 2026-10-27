@@ -43,7 +43,7 @@ let server: Started
 let fake: FakeResolver
 
 async function start(options: StartOptions = {}) {
-  fake = new FakeResolver({ ...VIDEOS, nfnfnfnfnf1: 'not-found', nenenenene1: 'not-embeddable', ununununun1: 'unavailable' })
+  fake = new FakeResolver({ ...VIDEOS, nfnfnfnfnf1: 'not-found', nenenenene1: 'not-embeddable', ununununun1: 'unavailable', nmnmnmnmnm1: 'not-music' })
   server = await startServer({ resolver: fake, ...options })
 }
 
@@ -313,6 +313,7 @@ describe('lining a video up', () => {
       ['nfnfnfnfnf1', 'not-found'],
       ['nenenenene1', 'not-embeddable'],
       ['ununununun1', 'unavailable'],
+      ['nmnmnmnmnm1', 'not-music'],
       ['this is not a link', 'invalid-link'],
       ['zzzzzzzzzz1', 'not-found'],
     ]

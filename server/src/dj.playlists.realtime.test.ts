@@ -229,6 +229,19 @@ describe('lining up a track of one’s own playlist', () => {
     assert.equal(ann.pushes.lineups.length, 0)
   })
 
+  it('refuses a track that is not music and says so in the statuses', async () => {
+    await start()
+    const ann = await memberIn('Ann')
+    const { id, tracks } = await playlistOf(ann, 'Chill', 'p1')
+    fake.calls.length = 0
+    fake.manyCalls.length = 0
+    await server.playlistStore?.applyRefresh([{ videoId: idOf('p1'), video: null, notMusic: true, at: new Date(clock) }])
+    assert.deepEqual(await fromPlaylist(ann.socket, tracks.p1), { ok: false, error: 'not-music' })
+    const result = await statuses(ann.socket, id)
+    assert.ok(result.ok && result.statuses[tracks.p1].state === 'not-music', JSON.stringify(result))
+    assert.deepEqual([fake.calls, fake.manyCalls], [[], []], 'not a word to YouTube')
+  })
+
   it('reads a track that is getting old again first: what it says now is what the room judges', async () => {
     await start()
     const ann = await memberIn('Ann')

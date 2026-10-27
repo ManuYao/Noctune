@@ -244,3 +244,13 @@
     animation: none;
   }
 }
+
+/* The drawing is decoration (aria-hidden, nothing in it takes the keyboard): the global focus ring must never be
+   drawn round one of its shapes, such as the tail of a chat bubble. */
+.scene__art,
+.scene__art * {
+  outline: none;
+  pointer-events: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}

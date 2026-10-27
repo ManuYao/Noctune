@@ -10,7 +10,7 @@ import { boxesMeet, layoutBubble, type BubbleAnchor, type BubbleLayout, type Box
 import SceneBubble from './SceneBubble'
 import SceneConsole from './SceneConsole'
 import { approxTextWidth, cutText } from './sceneText'
-import { DJ_SLOT, SELF_SLOT, STAGE_SLOTS, assignSlots, type StageSlot } from './stageSlots'
+import { CENTER_FIRST, DJ_SLOT, SELF_SLOT, STAGE_SLOTS, assignSlots, type StageSlot } from './stageSlots'
 import { useBoxSize } from './useBoxSize'
 import { useHearts } from './useHearts'
 import { useSceneBubbles } from './useSceneBubbles'
@@ -110,7 +110,7 @@ export default function Scene({
     () => participants.filter((p) => p.id !== selfId && !(atDecks && p.id === deckPerson?.id)),
     [participants, selfId, atDecks, deckPerson?.id],
   )
-  const slots = useMemo(() => assignSlots(others.map((participant) => participant.id)), [others])
+  const slots = useMemo(() => assignSlots(others.map((participant) => participant.id), STAGE_SLOTS.length, CENTER_FIRST), [others])
 
   const hearts = useHearts(likePulse, HEART_SPOTS.length)
   const bubbles = useSceneBubbles(messages, clockOffsetMs)

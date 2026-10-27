@@ -23,6 +23,7 @@ const STATUS: Record<PlaylistError, number> = {
   'not-found': 422,
   'not-embeddable': 422,
   unavailable: 422,
+  'not-music': 422,
   'service-unavailable': 503,
   'server-error': 500,
 }

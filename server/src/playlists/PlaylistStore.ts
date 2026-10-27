@@ -18,6 +18,8 @@ export interface StoredTrack {
   durationSec: number
   /** At the last look the video could no longer be played (removed, private, no longer embeddable). */
   unavailable: boolean
+  /** At the last look the video was not music (it is then also `unavailable`). */
+  notMusic: boolean
   /** When the title, the artist and the length were last read from YouTube. */
   fetchedAt: Date
   /** When the video was last looked at, whatever the answer. */
@@ -28,6 +30,8 @@ export interface StoredTrack {
 export interface VideoRefresh {
   videoId: string
   video: VideoInfo | null
+  /** True when the video was read and found not to be music. */
+  notMusic?: boolean
   at: Date
 }
 

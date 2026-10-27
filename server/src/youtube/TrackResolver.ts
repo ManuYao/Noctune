@@ -3,7 +3,7 @@ import type { DjError, VideoInfo } from '../../../shared/protocol'
 /** Why a link could not become a track that can play. */
 export type ResolveError = Extract<
   DjError,
-  'invalid-link' | 'not-found' | 'not-embeddable' | 'unavailable' | 'service-unavailable'
+  'invalid-link' | 'not-found' | 'not-embeddable' | 'unavailable' | 'not-music' | 'service-unavailable'
 >
 
 export type ResolveResult = { ok: true; video: VideoInfo } | { ok: false; error: ResolveError }

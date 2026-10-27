@@ -156,6 +156,7 @@ export function describePlaylistStoreContract(name: string, open: () => Promise<
           artist: 'Artist a1',
           durationSec: 187,
           unavailable: false,
+          notMusic: false,
           fetchedAt: AT,
           checkedAt: AT,
         },

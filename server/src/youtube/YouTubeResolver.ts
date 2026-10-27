@@ -8,7 +8,7 @@ import type { ResolveError, ResolveResult, TrackResolver } from './TrackResolver
 const API_URL = 'https://www.googleapis.com/youtube/v3/videos'
 // Only what is read below: a small answer, and no description to carry around.
 const FIELDS =
-  'kind,items(id,snippet(title,channelTitle,liveBroadcastContent),contentDetails(duration,regionRestriction,contentRating),status(embeddable,privacyStatus,uploadStatus))'
+  'kind,items(id,snippet(title,channelTitle,liveBroadcastContent,categoryId),contentDetails(duration,regionRestriction,contentRating),status(embeddable,privacyStatus,uploadStatus))'
 
 const SECOND = 1000
 const MINUTE = 60 * SECOND
@@ -36,6 +36,7 @@ const VIDEO_ID = /^[\w-]{11}$/
 // A batch of 50 answers is about 25 kB: more than the answer for one video.
 const MAX_BODY_CHARS = 200_000
 const LONGEST_VIDEO_SEC = 24 * 60 * 60
+const MUSIC_CATEGORY_ID = '10'
 const TITLE_MAX = 100
 const ARTIST_MAX = 50
 
@@ -61,7 +62,7 @@ export interface YouTubeResolverOptions {
   budget?: { burst: number; refillMs: number }
 }
 
-type Refusal = Extract<ResolveError, 'not-found' | 'not-embeddable' | 'unavailable'>
+type Refusal = Extract<ResolveError, 'not-found' | 'not-embeddable' | 'unavailable' | 'not-music'>
 
 type Verdict =
   | { kind: 'ok'; video: VideoInfo }
@@ -119,6 +120,8 @@ export function classifyVideo(videoId: string, body: unknown): Verdict {
   if (snippet.liveBroadcastContent === 'live' || snippet.liveBroadcastContent === 'upcoming') {
     return { kind: 'refused', error: 'unavailable' }
   }
+  // Noctune plays music only: YouTube's category "10" (Music), as declared by the uploader. A missing category is not music.
+  if (snippet.categoryId !== MUSIC_CATEGORY_ID) return { kind: 'refused', error: 'not-music' }
   const durationSec = parseIsoDuration(contentDetails.duration)
   // A stream that never ends has a duration of days, one that has not started has none.
   if (durationSec === null || durationSec === 0 || durationSec > LONGEST_VIDEO_SEC) {

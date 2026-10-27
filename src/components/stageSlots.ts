@@ -57,15 +57,21 @@ function hash(text: string): number {
  * (unless two ids want the same slot, then the later one takes the next free slot). Returns slot indexes.
  * People beyond the number of slots (`count`, all of STAGE_SLOTS by default) get none: the stage shows "+N" for them.
  */
-export function assignSlots(ids: string[], count: number = STAGE_SLOTS.length): Map<string, number> {
+export function assignSlots(ids: string[], count: number = STAGE_SLOTS.length, order?: number[]): Map<string, number> {
   const taken = new Set<number>()
   const slots = new Map<string, number>()
   for (const id of ids) {
     if (taken.size === count) break
-    let index = hash(id) % count
+    // With an order, the hash is squeezed towards 0 so that few people gather near the front of the order (the middle).
+    let index = order ? Math.floor((hash(id) / 2 ** 32) ** 2 * count) : hash(id) % count
     while (taken.has(index)) index = (index + 1) % count
     taken.add(index)
-    slots.set(id, index)
+    slots.set(id, order ? order[index] : index)
   }
   return slots
 }
+
+/** Indexes of STAGE_SLOTS, the ones nearest the middle of the scene first. */
+export const CENTER_FIRST: number[] = STAGE_SLOTS.map((slot, index) => ({ index, d: Math.abs(slot.x + slot.size / 2 - 470) }))
+  .sort((a, b) => a.d - b.d || a.index - b.index)
+  .map((entry) => entry.index)

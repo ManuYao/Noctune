@@ -35,6 +35,7 @@ function item(id: string, options: Record<string, unknown> = {}) {
       title: pick(options, 'title', 'A song'),
       channelTitle: pick(options, 'channel', 'A channel'),
       liveBroadcastContent: pick(options, 'live', 'none'),
+      categoryId: pick(options, 'category', '10'),
     },
     contentDetails,
     status: {
@@ -184,6 +185,8 @@ describe('YouTubeResolver: what a video is', () => {
     ['a deleted video', { upload: 'deleted' }, 'unavailable'],
     ['a video with no upload status', { upload: undefined }, 'unavailable'],
     ['an age-restricted video', { rating: { ytRating: 'ytAgeRestricted' } }, 'unavailable'],
+    ['a video that is not music', { category: '24' }, 'not-music'],
+    ['a video with no category', { category: undefined }, 'not-music'],
     ['a video no country may watch', { region: { allowed: [] } }, 'unavailable'],
   ]
   for (const [what, options, error] of REFUSED) {

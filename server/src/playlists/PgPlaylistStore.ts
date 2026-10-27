@@ -25,11 +25,12 @@ interface TrackRow {
   artist: string
   duration_sec: number
   unavailable: boolean
+  not_music: boolean
   fetched_at: Date
   checked_at: Date
 }
 
-const TRACK_COLUMNS = 't.id, t.playlist_id, t.position, t.video_id, t.title, t.artist, t.duration_sec, t.unavailable, t.fetched_at, t.checked_at'
+const TRACK_COLUMNS = 't.id, t.playlist_id, t.position, t.video_id, t.title, t.artist, t.duration_sec, t.unavailable, t.not_music, t.fetched_at, t.checked_at'
 
 const toPlaylist = (row: PlaylistRow): StoredPlaylist => ({ id: row.id, name: row.name, trackCount: row.track_count })
 
@@ -42,6 +43,7 @@ const toTrack = (row: TrackRow): StoredTrack => ({
   artist: row.artist,
   durationSec: row.duration_sec,
   unavailable: row.unavailable,
+  notMusic: row.not_music,
   fetchedAt: row.fetched_at,
   checkedAt: row.checked_at,
 })
@@ -206,12 +208,12 @@ export class PgPlaylistStore implements PlaylistStore {
     for (const refresh of [...refreshes].sort((a, b) => (a.videoId < b.videoId ? -1 : a.videoId > b.videoId ? 1 : 0))) {
       if (refresh.video) {
         await this.pool.query(
-          `UPDATE playlist_tracks SET title = $2, artist = $3, duration_sec = $4, unavailable = false, fetched_at = $5, checked_at = $5
+          `UPDATE playlist_tracks SET title = $2, artist = $3, duration_sec = $4, unavailable = false, not_music = false, fetched_at = $5, checked_at = $5
             WHERE video_id = $1`,
           [refresh.videoId, refresh.video.title, refresh.video.artist, refresh.video.durationSec, refresh.at],
         )
       } else {
-        await this.pool.query('UPDATE playlist_tracks SET unavailable = true, checked_at = $2 WHERE video_id = $1', [refresh.videoId, refresh.at])
+        await this.pool.query('UPDATE playlist_tracks SET unavailable = true, not_music = $3, checked_at = $2 WHERE video_id = $1', [refresh.videoId, refresh.at, refresh.notMusic === true])
       }
     }
   }

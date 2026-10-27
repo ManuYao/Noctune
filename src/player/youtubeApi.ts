@@ -15,6 +15,9 @@ export interface YouTubePlayer {
   getCurrentTime(): number
   getPlayerState(): number
   destroy(): void
+  // Not in the official reference: may be missing or do nothing, so always called inside try/catch.
+  unloadModule?(name: string): void
+  setOption?(module: string, option: string, value: unknown): void
 }
 
 interface PlayerOptions {

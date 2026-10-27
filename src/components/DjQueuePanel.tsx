@@ -8,6 +8,7 @@ import { djCount, estimateWaitSec, findMyPlace } from '../realtime/djQueue'
 import { turnMessage } from '../realtime/djMessages'
 import DjQueueRow from './DjQueueRow'
 import TrackCover from './TrackCover'
+import '../pages/PageKit.css'
 import './DjQueuePanel.css'
 
 interface DjQueuePanelProps {
@@ -203,16 +204,15 @@ export default function DjQueuePanel({
         <p className={noTrack ? 'dj-queue__status dj-queue__status--warn' : 'dj-queue__status'}>{status}</p>
       )}
       {showCta && !isMember && (
-        <p id="dj-queue-locked" className="dj-queue__locked">
+        <div id="dj-queue-locked" className="dj-queue__locked">
           {/* New tabs: the room, and its player, keep going while the visitor signs in. */}
-          <Link to="/connexion" target="_blank" rel="noopener noreferrer">
-            Se connecter<span className="visually-hidden"> (nouvel onglet)</span>
-          </Link>
-          {' · '}
-          <Link to="/inscription" target="_blank" rel="noopener noreferrer">
+          <Link to="/inscription" target="_blank" rel="noopener noreferrer" className="kit-btn">
             Créer un compte<span className="visually-hidden"> (nouvel onglet)</span>
           </Link>
-        </p>
+          <Link to="/connexion" target="_blank" rel="noopener noreferrer" className="kit-btn kit-btn--ghost">
+            Se connecter<span className="visually-hidden"> (nouvel onglet)</span>
+          </Link>
+        </div>
       )}
     </>
   )

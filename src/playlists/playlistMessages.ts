@@ -42,6 +42,8 @@ export function playlistErrorMessage(failure: PlaylistCallFailure): string {
       return 'Cette vidéo est introuvable ou privée.'
     case 'not-embeddable':
       return 'Le propriétaire de cette vidéo ne permet pas de la lire en dehors de YouTube.'
+    case 'not-music':
+      return "Ce n'est pas un contenu musical : Noctune ne passe que de la musique."
     case 'unavailable':
       return "Cette vidéo ne peut pas être lue ici (direct, restriction d'âge ou vidéo bloquée)."
     case 'service-unavailable':
@@ -68,5 +70,7 @@ export function verdictText(status: TrackStatus): string | null {
       return 'Déjà dans la file'
     case 'unavailable':
       return 'Indisponible'
+    case 'not-music':
+      return 'Pas de la musique'
   }
 }
