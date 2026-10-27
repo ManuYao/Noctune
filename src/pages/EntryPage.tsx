@@ -40,7 +40,10 @@ export default function EntryPage() {
   // The rooms come from the server. The list sends people back here with the room they picked (?room=...);
   // otherwise the first one. Until the list arrives there is no room to propose and the button waits.
   const { rooms, status } = useRooms()
-  const suggested = rooms?.find((room) => room.id === searchParams.get('room')) ?? rooms?.[0] ?? null
+  // Without a picked room the button leads to the list instead of straight into the first room.
+  const picked = searchParams.get('room')
+  const suggested = rooms?.find((room) => room.id === picked) ?? rooms?.[0] ?? null
+  const choosing = !rooms?.some((room) => room.id === picked)
   const totalOnline = rooms?.reduce((sum, room) => sum + room.online, 0) ?? 0
 
   // Nothing is asked of YouTube before the visitor says yes to its player: the first time (and once a year), entering a
@@ -54,7 +57,13 @@ export default function EntryPage() {
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    if (!suggested || accountStatus === 'loading') return
+    if (accountStatus === 'loading') return
+    // Pseudo and avatar are already kept for the tab (entryDraft): the list's "Rejoindre" comes back here with the room.
+    if (choosing) {
+      navigate('/rooms')
+      return
+    }
+    if (!suggested) return
     let identity: { pseudo: string; avatarId: AvatarId }
     if (account) {
       identity = { pseudo: account.pseudo, avatarId: account.avatarId }
@@ -172,6 +181,7 @@ export default function EntryPage() {
             </>
           )}
 
+          {!choosing && (
           <div className="entry__field">
             <span className="entry__label" id="entry-room-label">
               Room
@@ -209,15 +219,18 @@ export default function EntryPage() {
               </Link>
             </div>
           </div>
+          )}
 
           <div className="entry__go">
-            <button type="submit" className="entry__enter" disabled={!suggested || accountStatus === 'loading'}>
+            <button type="submit" className="entry__enter" disabled={(!choosing && !suggested) || accountStatus === 'loading'}>
               <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true" focusable="false">
                 <path d="M6 3.5 L18 11 L6 18.5 Z" />
               </svg>
-              Entrer dans la room
+              {choosing ? 'Voir les rooms' : 'Entrer dans la room'}
             </button>
-            {choice === 'refused' ? (
+            {choosing ? (
+              <p className="entry__note">Tu choisis ta room à l'étape suivante.</p>
+            ) : choice === 'refused' ? (
               <p className="entry__note">
                 Le lecteur YouTube est désactivé : tu entres sans la musique.{' '}
                 <button type="button" className="entry__linklike" onClick={() => ask({ intent: 'manage' })}>

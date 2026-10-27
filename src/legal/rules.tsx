@@ -1,5 +1,4 @@
 import PendingLink from '../components/PendingLink'
-import ToComplete from './ToComplete'
 import type { LegalDocument } from './types'
 
 const RULES = [
@@ -113,7 +112,7 @@ export const rules: LegalDocument = {
             signalement est pris en compte, sans voir la sanction décidée.
           </p>
           <p className="legal__note">
-            Pour joindre l'équipe Noctune : <ToComplete what="adresse e-mail ou formulaire de contact de l'équipe" />. Voir
+            Pour joindre l'équipe Noctune : <a href="mailto:yaomanuit@gmail.com">yaomanuit@gmail.com</a>. Voir
             aussi la <PendingLink page="confidentialite">politique de confidentialité</PendingLink> et les{' '}
             <PendingLink page="mentions-legales">mentions légales</PendingLink>.
           </p>
