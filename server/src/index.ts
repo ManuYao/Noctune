@@ -4,6 +4,9 @@ import { PgActivityStore } from './activity/PgActivityStore'
 import type { ActivityStore } from './activity/ActivityStore'
 import { createNoctuneServer } from './createServer'
 import { createPool } from './db/pool'
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { loadLocalEnv } from './env'
 import { parseAllowedOrigins } from './http/origin'
 import { PgPlaylistStore } from './playlists/PgPlaylistStore'
@@ -72,6 +75,11 @@ async function openDatabase(): Promise<{ accounts: AccountService; playlistStore
   }
 }
 
+// The built site (npm run build) is served by this same server, so site, API and realtime share one origin.
+const staticDir = process.env.STATIC_DIR ? resolve(process.env.STATIC_DIR) : fileURLToPath(new URL('../../dist/', import.meta.url))
+const servesSite = existsSync(staticDir)
+console.log(servesSite ? `[site] sert ${staticDir}` : `[site] ${staticDir} absent : seuls /api et le temps réel sont servis (npm run build pour le site).`)
+
 const database = await openDatabase()
 const accounts = database?.accounts ?? null
 if (accounts) {
@@ -109,6 +117,7 @@ const { httpServer, playlists, rooms, activity } = createNoctuneServer({
   allowedOrigins,
   secureCookies,
   trustedProxies,
+  staticDir: servesSite ? staticDir : null,
 })
 // The counters of requests to the playlists are cleaned every minute, like those of the accounts.
 if (playlists) setInterval(() => playlists.sweep(), MINUTE_MS).unref()
@@ -129,4 +138,5 @@ for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     if (!activity) process.exit(0)
   })
 }
-httpServer.listen(PORT, () => console.log(`Serveur temps réel sur :${PORT}`))
+// Hosts need 0.0.0.0 (all interfaces); locally the default (all interfaces too) is unchanged.
+httpServer.listen(PORT, process.env.HOST || '0.0.0.0', () => console.log(`Serveur temps réel sur :${PORT}`))

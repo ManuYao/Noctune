@@ -8,6 +8,7 @@ import { createApiHandler } from './http/apiHandler'
 import { originAllowed } from './http/origin'
 import { createPlaylistHandler } from './http/playlistApi'
 import { createRoomHandler } from './http/roomApi'
+import { createStaticHandler } from './http/staticSite'
 import { PlaylistService, type PlaylistServiceOptions } from './playlists/PlaylistService'
 import type { PlaylistStore } from './playlists/PlaylistStore'
 import { MemoryRoomStore } from './rooms/MemoryRoomStore'
@@ -36,6 +37,8 @@ export interface ServerOptions extends HandlerOptions {
   roomOptions?: RoomServiceOptions
   /** Where what members do is counted (profile and badges). Without it (no database) nothing is counted and the profile route says so. */
   activityStore?: ActivityStore | null
+  /** Folder of the built site (Vite's dist/). Without it only /api and /socket.io are served. */
+  staticDir?: string | null
 }
 
 /**
@@ -130,10 +133,17 @@ export function createNoctuneServer(options: ServerOptions): {
     onSessionEnded: (token) => sessionEnded.handler?.(token),
     lifecycle,
   })
+  const site = options.staticDir ? createStaticHandler(options.staticDir) : null
   const httpServer = createServer((req, res) => {
+    // Probe for the host: no database, no origin check.
+    if ((req.url ?? '').split('?')[0] === '/healthz') {
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' }).end(req.method === 'HEAD' ? undefined : 'ok')
+      return
+    }
     if (playlistApi(req, res)) return
     if (roomApi(req, res)) return
     if (api(req, res)) return
+    if (site?.(req, res)) return
     res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Introuvable')
   })
   const io: IoServer = new Server(httpServer, {

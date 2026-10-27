@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "start": "node scripts/start.mjs",
+    "start:prod": "npm run start -w server",
     "db:setup": "node scripts/db.mjs setup",
     "db:start": "node scripts/db.mjs start",
     "db:stop": "node scripts/db.mjs stop",
