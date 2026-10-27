@@ -26,17 +26,17 @@ function Meters({ x, delay, frame }: { x: number; delay: number; frame: DecorPro
   // stand on the speaker instead of sinking behind it.
   return (
     <g transform={frame === 'entry' ? 'translate(0 -34)' : 'translate(0 30)'}>
-      <rect x={x - 3} y="124" width="72" height="132" rx="6" fill={OUT} opacity="0.55" />
+      <rect x={x} y="124" width="66" height="132" rx="6" fill={OUT} opacity="0.55" />
       {heights.map((height, index) => (
         <line
           key={index}
           className="mw-eq"
-          x1={x + 6 + index * 11.6}
-          x2={x + 6 + index * 11.6}
+          x1={x + 10 + index * 9.2}
+          x2={x + 10 + index * 9.2}
           y1="250"
           y2={250 - height}
           stroke={index % 2 === 0 ? 'var(--accent-2)' : 'var(--accent)'}
-          strokeWidth="8"
+          strokeWidth="7"
           strokeDasharray="7 3"
           style={{ animationDuration: `${0.8 + (index % 3) * 0.23}s`, animationDelay: `${delay - index * 0.17}s` }}
         />
