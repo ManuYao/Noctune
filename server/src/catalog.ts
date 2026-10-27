@@ -32,7 +32,7 @@ export const ROOM_DEFS: RoomDef[] = [
     name: 'Rock progressif',
     description: 'Guitares planantes, longs morceaux et albums cultes.',
     styles: ['rock'],
-    theme: 'sunset',
+    theme: 'neon',
     rules: { maxTrackSec: 15 * MINUTE, repeatDelaySec: 4 * HOUR, maxDjs: 8 },
   },
   {
@@ -48,7 +48,7 @@ export const ROOM_DEFS: RoomDef[] = [
     name: 'Jazz café',
     description: 'Un piano, un café, du jazz à toute heure.',
     styles: ['jazz'],
-    theme: 'sunset',
+    theme: 'neon',
     rules: { maxTrackSec: 10 * MINUTE, repeatDelaySec: 4 * HOUR, maxDjs: 8 },
   },
   {
@@ -56,7 +56,7 @@ export const ROOM_DEFS: RoomDef[] = [
     name: 'Hip-hop classics',
     description: 'Les classiques du rap : boom bap, samples et vieilles écoles.',
     styles: ['rap'],
-    theme: 'sunset',
+    theme: 'neon',
     rules: { maxTrackSec: 6 * MINUTE, repeatDelaySec: 2 * HOUR, maxDjs: 12 },
   },
   {
