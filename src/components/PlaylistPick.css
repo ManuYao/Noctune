@@ -1,0 +1,64 @@
+/* A row of 72 px (mock-up 5b): the active playlist in the accent, the others on the page's colour. */
+.playlist-pick {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 72px;
+  padding: 0 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.playlist-pick:hover {
+  border-color: var(--border-field);
+}
+
+.playlist-pick[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.playlist-pick__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.playlist-pick__name {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlist-pick__meta {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.playlist-pick__badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.playlist-pick[aria-pressed='true'] .playlist-pick__badge {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}

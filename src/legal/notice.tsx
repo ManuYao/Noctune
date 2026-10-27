@@ -6,6 +6,7 @@ import type { LegalDocument } from './types'
 // or a host is a <ToComplete />: it is the operator's to fill in.
 export const notice: LegalDocument = {
   title: 'Mentions légales',
+  draft: true,
   updated: '25 octobre 2026',
   intro: <p>Les informations que la loi demande sur le site Noctune et sur la personne qui le publie.</p>,
   sections: [

@@ -1,0 +1,28 @@
+/* The sign-up form of mock-up 5: the fields one under the other, then the button with, beside it, the sentence that
+   accepts the rules (where the mock-up has "Continuer avec Google", which does not exist). */
+.signup {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.signup__go {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
+.signup__submit {
+  flex: 1 1 220px;
+}
+
+.signup__terms {
+  flex: 1 1 220px;
+}
+
+.signup__terms a {
+  color: var(--accent-text);
+  font-weight: 700;
+}

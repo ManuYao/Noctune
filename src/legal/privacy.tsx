@@ -27,6 +27,7 @@ const external = { target: '_blank', rel: 'noopener noreferrer' } as const
 // Every fact below is one the code does today. What depends on who runs the site or where it is hosted is a <ToComplete />.
 export const privacy: LegalDocument = {
   title: 'Politique de confidentialité',
+  draft: true,
   updated: '25 octobre 2026',
   intro: (
     <>

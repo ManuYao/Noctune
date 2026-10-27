@@ -1,33 +1,41 @@
+/* Mock-up 2b at 1440 x 900: the settings in a glass panel 820 px wide, the preview column 492 px, 16 px between them.
+   The two keep these proportions on a narrower computer and stack on a phone. */
 .room-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 420px);
-  gap: 32px;
-  align-items: start;
+  grid-template-columns: minmax(0, 820fr) minmax(0, 492fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.room-form p {
+  margin: 0;
 }
 
 .room-form__card,
 .room-form__host {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 24px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-l);
-  background: var(--wall);
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  background: var(--glass);
 }
 
-.room-form h2 {
-  font-size: 1.15rem;
+.room-form__card {
+  gap: 16px;
+  min-width: 0;
+  padding: 18px 20px;
 }
 
-.room-form h3 {
-  font-size: 1rem;
+.room-form__card h2 {
+  font-size: 17px;
+  line-height: 1.5;
 }
 
 .room-form__field {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  min-width: 0;
 }
 
 .room-form__label-row {
@@ -37,30 +45,42 @@
   gap: 12px;
 }
 
-.room-form label[for] {
+.room-form label[for],
+.room-form__label {
+  font-size: 14px;
   font-weight: 700;
 }
 
 .room-form__counter {
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 12px;
 }
 
 .room-form input[type='text'],
 .room-form textarea {
   width: 100%;
-  min-height: var(--tap-main);
-  padding: 12px 16px;
-  border: 2px solid var(--border-field);
-  border-radius: var(--radius-s);
+  border: 1.5px solid var(--border-field);
+  border-radius: 16px;
   background: var(--bg);
   color: var(--text);
 }
 
+.room-form input[type='text'] {
+  height: var(--tap-main);
+  padding: 0 16px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Two lines in view, as the mock-up; it can be pulled taller. A text field does not take the font of the page by itself. */
 .room-form textarea {
+  min-height: 72px;
+  height: 72px;
+  padding: 12px 16px;
   resize: vertical;
-  /* A text field does not take the font of the page by itself: without this the description is typed in monospace. */
   font: inherit;
+  font-size: 15px;
+  line-height: 1.45;
 }
 
 .room-form input[aria-invalid='true'],
@@ -70,50 +90,22 @@
 
 /* Messages next to the part they are about. Information with a reason, not alarm: the warn colour. */
 .room-form__error {
-  margin: 0;
   color: var(--warn);
+  font-size: 14px;
   font-weight: 700;
 }
 
-.room-form fieldset {
-  margin: 0;
-  padding: 0;
-  border: 0;
-  min-width: 0;
-}
-
-.room-form legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 12px;
-  width: 100%;
-  padding: 0;
-  margin-bottom: 8px;
-  font-weight: 700;
-}
-
-.room-form legend small {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-  font-weight: 400;
-}
-
-.room-form__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-/* A chip is a label around a real radio or checkbox, hidden but still reachable: the checked state is drawn here. */
+/* A chip, a choice of a rule, an ambiance: a label around a real checkbox or radio, hidden but still reachable; the
+   state is drawn here. */
 .room-form__chip,
+.room-form__seg,
 .room-form__theme {
   position: relative;
   cursor: pointer;
 }
 
 .room-form__chip input,
+.room-form__seg input,
 .room-form__theme input {
   position: absolute;
   inset: 0;
@@ -124,21 +116,36 @@
   cursor: inherit;
 }
 
-.room-form__chip span {
+.room-form__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+}
+
+/* The styles: pills of 36 px, in a target of 44. */
+.room-form__chip {
   display: inline-flex;
   align-items: center;
   min-height: var(--tap);
-  padding: 0 18px;
-  border: 1px solid var(--border-field);
-  border-radius: 999px;
-  color: var(--text);
 }
 
-.room-form__chip input:checked + span {
+.room-form__chip span {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 16px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.room-form__chip input:checked + span,
+.room-form__seg input:checked + span {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--on-accent);
-  font-weight: 700;
 }
 
 .room-form__chip input:disabled + span {
@@ -149,110 +156,280 @@
   cursor: not-allowed;
 }
 
+.room-form__chip:hover input:not(:checked, :disabled) + span,
+.room-form__seg:hover input:not(:checked) + span {
+  border-color: var(--text);
+}
+
 .room-form__chip input:focus-visible + span,
-.room-form__theme input:focus-visible ~ span:last-child {
+.room-form__seg input:focus-visible + span,
+.room-form__theme:has(input:focus-visible) {
   outline: 3px solid var(--accent-2-text);
   outline-offset: 2px;
 }
 
+/* The ambiances: four cards of 64 px, the chosen one outlined in the accent with a tick in its corner. */
 .room-form__themes {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .room-form__theme {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: var(--tap-main);
-  padding: 8px 12px;
+  gap: 12px;
+  min-width: 0;
+  height: 64px;
+  padding: 0 12px;
   border: 2px solid var(--border);
-  border-radius: var(--radius-s);
+  border-radius: 16px;
   background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.room-form__theme:hover:not(:has(input:checked)) {
+  border-color: var(--border-field);
 }
 
 .room-form__theme:has(input:checked) {
   border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
-/* The swatch wears the colours of the ambiance it stands for, whatever look the page has. */
+/* Three bands of the ambiance it stands for: its page, its accent, its second accent. */
 .room-form__swatch {
   flex: none;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
+  border: 1.5px solid var(--border);
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  background: linear-gradient(135deg, var(--bg) 0 40%, var(--accent) 40% 70%, var(--accent-2) 70% 100%);
 }
 
+.room-form__badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  display: none;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.room-form__theme:has(input:checked) .room-form__badge {
+  display: grid;
+}
+
+/* The rules: a name and its hint (250 px), then the choices (40 px, in a target of 44). */
 .room-form__rules {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 8px;
 }
+
+.room-form__rule {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+}
+
+.room-form__rule-name {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  width: 250px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.room-form__rule-name small {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.room-form__segs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 6px;
+}
+
+.room-form__seg {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+}
+
+.room-form__seg span {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 16px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 12px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.room-form__rule .room-form__error {
+  flex-basis: 100%;
+}
+
+/* ---- The column on the right ---- */
 
 .room-form__side {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
+  min-width: 0;
 }
 
-.room-form__side-title {
-  margin-bottom: 8px;
-  color: var(--text-muted);
-  font-family: var(--font-text);
-  font-size: 0.95rem;
-  font-weight: 700;
-}
-
-.room-form__host {
+.room-form__preview {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
-.room-form__host p,
-.room-form__host ul {
-  margin: 0;
+.room-form__preview h2 {
+  color: var(--text-muted);
+  font-family: var(--font-text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.room-form__host {
+  gap: 12px;
+  padding: 18px 20px;
+}
+
+.room-form__host-who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.room-form__host-who svg {
+  flex: none;
+}
+
+.room-form__host h2 {
+  font-family: var(--font-text);
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.3;
 }
 
 .room-form__host-account {
   color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.3;
 }
 
 .room-form__host ul {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding-left: 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
+.room-form__host li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.room-form__tick {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+/* "Annuler" and "Créer la room" at the bottom of the column, 52 px, one third and two thirds. */
 .room-form__actions {
   display: flex;
   gap: 12px;
+  margin-top: auto;
 }
 
-.room-form__actions .btn-primary {
-  flex: 1;
+.room-form__cancel,
+.room-form__submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 20px;
+  border-radius: 999px;
+  font-size: 16px;
+  cursor: pointer;
 }
 
 .room-form__cancel {
-  min-height: var(--tap-main);
-  padding: 0 24px;
-  border: 2px solid var(--border-field);
-  border-radius: var(--radius-m);
+  flex: 1;
+  border: 1.5px solid var(--border-field);
   background: transparent;
   color: var(--text);
   font-weight: 700;
-  cursor: pointer;
+}
+
+.room-form__cancel:hover:not(:disabled) {
+  border-color: var(--text);
+}
+
+.room-form__submit {
+  flex: 2;
+  border: 0;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 800;
+}
+
+.room-form__cancel:disabled,
+.room-form__submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* A computer narrower than the mock-up: the four ambiances on two rows. */
+@media (max-width: 1180px) {
+  .room-form__themes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 900px) {
   .room-form {
     grid-template-columns: minmax(0, 1fr);
-    gap: 20px;
   }
 
   .room-form__card,
   .room-form__host {
-    padding: 18px;
+    padding: 16px;
+  }
+
+  .room-form__rule-name {
+    width: 100%;
   }
 }

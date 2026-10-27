@@ -250,6 +250,8 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
           <DjDialog
             open={djOpen}
             onClose={() => setDjOpen(false)}
+            roomName={info?.name}
+            styles={info?.styles ?? []}
             rules={rules}
             queue={queue}
             selfId={snapshot?.selfId}

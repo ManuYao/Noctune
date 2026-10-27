@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import type { AvatarId } from '../../shared/protocol'
 import { AVATARS } from '../data/avatars'
 import Avatar from './Avatar'
@@ -6,13 +7,21 @@ import './AvatarPicker.css'
 interface AvatarPickerProps {
   value: AvatarId
   onChange: (avatarId: AvatarId) => void
+  /** What the group is called on screen ("Avatar" unless said otherwise). */
+  legend?: ReactNode
+  /**
+   * `grid`: four square tiles to a row (mock-up 1, the entry).
+   * `row`: 64 px tiles, the eight on one line when there is room (mock-up 5, "Ton avatar").
+   * `compact`: four to a row, 64 px tall (the narrower "Mon avatar" of mock-up 5b).
+   */
+  variant?: 'grid' | 'row' | 'compact'
 }
 
 /** The eight starting avatars, as a group of toggle buttons: one is pressed, with a check on its corner (mock-up 1). */
-export default function AvatarPicker({ value, onChange }: AvatarPickerProps) {
+export default function AvatarPicker({ value, onChange, legend = 'Avatar', variant = 'grid' }: AvatarPickerProps) {
   return (
-    <fieldset className="avatar-picker">
-      <legend>Avatar</legend>
+    <fieldset className={variant === 'grid' ? 'avatar-picker' : `avatar-picker avatar-picker--${variant}`}>
+      <legend>{legend}</legend>
       {AVATARS.map((avatar) => (
         <button
           key={avatar.id}

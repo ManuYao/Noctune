@@ -1,0 +1,88 @@
+/* The card of mock-up 2b: 24 px corners, glass, the stage at 492 x 170 (it follows the width of the column). */
+.room-preview {
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  background: var(--glass);
+}
+
+.room-preview p {
+  margin: 0;
+}
+
+.room-preview__scene {
+  position: relative;
+}
+
+.room-preview .room-scene {
+  height: auto;
+  aspect-ratio: 492 / 170;
+}
+
+/* The dark pill over the stage, 14 px from its corner. */
+.room-preview__pill {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--outline);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.room-preview__pill i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.room-preview__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 18px 16px;
+}
+
+.room-preview__name {
+  overflow: hidden;
+  font-family: var(--font-title);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-preview__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.room-preview__chip {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.room-preview__host {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.room-preview__host strong {
+  color: var(--text);
+}

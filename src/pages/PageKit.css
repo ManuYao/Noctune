@@ -1,0 +1,243 @@
+/* The pieces the pages of mock-ups 5, 5b, 7 and 8 share: the title block, the glass panels, the fields and the pill
+   buttons. Measured on the mock-ups at 1440 x 900: the title at 100 px from the top, 56 px from the sides; the panels
+   below it at 212 px (5, 7, 8) or under a band (5b). Used by the profile, the playlists, signing in and the legal pages. */
+.kit-page {
+  --gutter: clamp(16px, 5vw, 56px);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 14px var(--gutter) 8px;
+  /* The mock-ups' text runs at 1.5. */
+  line-height: 1.5;
+}
+
+.kit-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  max-width: 900px;
+}
+
+.kit-intro h1 {
+  font-size: clamp(32px, 7vw, 46px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+.kit-intro p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 17px;
+}
+
+/* A panel of the mock-ups: glass over the page, a thin border, 24 px corners. */
+.kit-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 18px 20px;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  background: var(--glass);
+}
+
+/* The one panel that asks for something (create an account, "Un souci ?"): the accent around it, and its soft halo. */
+.kit-panel--accent {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+.kit-panel__title {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* A heading row: the title on the left, a count or a button on the right. */
+.kit-panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  min-height: 36px;
+}
+
+.kit-panel__count {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* A small filled pill next to a title ("Gratuit"). */
+.kit-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* The small capitals over a list ("Déjà possible en visiteur", "Sommaire"). */
+.kit-eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* A field: its label above, a 48 px box, an optional hint under it. */
+.kit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.kit-field > label,
+.kit-label {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.kit-field input,
+.kit-input {
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  padding: 0 16px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 16px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 16px;
+}
+
+.kit-field input::placeholder,
+.kit-input::placeholder {
+  color: var(--text-muted);
+}
+
+.kit-field input[aria-invalid='true'],
+.kit-input[aria-invalid='true'] {
+  border-color: var(--accent);
+}
+
+/* What cannot be changed here (the e-mail address): readable, not a box that invites typing. */
+.kit-field input[readonly] {
+  border-style: dashed;
+  color: var(--text-muted);
+}
+
+.kit-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* The line under a form: always in the page (a screen reader only hears a region it already knew), so that nothing jumps
+   when something is said. */
+.kit-feedback {
+  margin: 0;
+  min-height: 1.5em;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.kit-feedback:empty {
+  min-height: 0;
+}
+
+.kit-feedback--done {
+  color: var(--accent-2-text);
+}
+
+.kit-feedback--error {
+  color: var(--accent-text);
+}
+
+/* The pill buttons of the mock-ups: the accent one, and the outlined one. Links can wear them too. */
+.kit-btn {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-family: var(--font-text);
+  font-size: 15px;
+  font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.kit-btn--tall {
+  min-height: 50px;
+  font-size: 16px;
+}
+
+.kit-btn--ghost {
+  border: 1.5px solid var(--border-field);
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.kit-btn--ghost:hover {
+  border-color: var(--text);
+}
+
+.kit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* What cannot be undone (deleting the account): the colour of danger of the mock-ups. */
+.kit-danger-link {
+  align-self: flex-start;
+  min-height: var(--tap);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--danger, #ff7a7a);
+  font-family: var(--font-text);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* A link inside a sentence ("Déjà un compte ? Se connecter"): in the accent, bold, with a 44 px target that takes no
+   more room in the line than a word. */
+.kit-inline-link {
+  display: inline-block;
+  margin: -12px 0;
+  padding: 12px 0;
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+@media print {
+  .kit-panel {
+    border-color: #999;
+    background: none;
+    box-shadow: none;
+  }
+}

@@ -1,17 +1,21 @@
 import { useRef, useState } from 'react'
 import type { FormEvent, RefObject } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router'
-import { PASSWORD_MAX, PASSWORD_MIN, PSEUDO_MAX, type Account, type AvatarId } from '../../shared/protocol'
+import { Link, useNavigate } from 'react-router'
+import { PASSWORD_MAX, PASSWORD_MIN, PSEUDO_MAX, PSEUDO_MIN, type Account, type AvatarId } from '../../shared/protocol'
 import { isAcceptablePassword, normalizePseudo } from '../../shared/validation'
 import { fetchExport } from '../auth/accountApi'
 import { authMessage } from '../auth/authMessages'
 import { useAccount } from '../auth/useAccount'
-import Avatar from '../components/Avatar'
 import AvatarPicker from '../components/AvatarPicker'
 import DeleteAccountDialog from '../components/DeleteAccountDialog'
 import PasswordField from '../components/PasswordField'
+import ProfilePlaylists from '../components/ProfilePlaylists'
+import ProfileScene from '../components/ProfileScene'
+import ProfileVisitor from '../components/ProfileVisitor'
 import SiteHeader from '../components/SiteHeader'
-import { AVATARS } from '../data/avatars'
+import { AVATARS, findAvatar } from '../data/avatars'
+import { usePlaylists } from '../playlists/usePlaylists'
+import './PageKit.css'
 import './ProfilePage.css'
 
 /** A line under a form: what happened, and whether it needs attention. */
@@ -20,29 +24,32 @@ interface Feedback {
   text: string
 }
 
-function FeedbackLine({ feedback, id }: { feedback: Feedback | null; id?: string }) {
-  if (!feedback) return <p className="profile__feedback" role="status" id={id} />
+function FeedbackLine({ feedback }: { feedback: Feedback | null }) {
   return (
-    <p className={`profile__feedback profile__feedback--${feedback.kind}`} role={feedback.kind === 'error' ? 'alert' : 'status'} id={id}>
-      {feedback.text}
+    <p className={`kit-feedback kit-feedback--${feedback?.kind ?? 'done'}`} role={feedback?.kind === 'error' ? 'alert' : 'status'}>
+      {feedback?.text ?? ''}
     </p>
   )
 }
 
+/** `/profil`: the member's profile (mock-up 5b), or the visitor's (mock-up 5). */
 export default function ProfilePage() {
   const { account, status } = useAccount()
-  // Set while the page leaves on purpose (account deleted, signed out everywhere): the account then goes away under it,
-  // and that is not a visitor who stumbled on the page.
+  // Set while the page leaves on purpose (signed out, account deleted): the account then goes away under it, and the
+  // visitor's profile must not flash before the page has left.
   const leaving = useRef(false)
+  // The visitor has just created their account from this page.
+  const [welcome, setWelcome] = useState(false)
 
-  if (status === 'ready' && !account && !leaving.current) return <Navigate to="/connexion" replace />
   return (
     <div>
       <SiteHeader />
       {account ? (
-        <ProfileContent account={account} leaving={leaving} />
+        <MemberProfile account={account} leaving={leaving} welcome={welcome} />
+      ) : status === 'ready' && !leaving.current ? (
+        <ProfileVisitor onRegistered={() => setWelcome(true)} />
       ) : (
-        <main className="profile">
+        <main className="kit-page">
           <p role="status">Chargement…</p>
         </main>
       )}
@@ -50,42 +57,73 @@ export default function ProfilePage() {
   )
 }
 
-function ProfileContent({ account, leaving }: { account: Account; leaving: RefObject<boolean> }) {
+function MemberProfile({ account, leaving, welcome }: { account: Account; leaving: RefObject<boolean>; welcome: boolean }) {
   const navigate = useNavigate()
-  const { updateProfile, changePassword, logoutEverywhere, deleteAccount } = useAccount()
-  const avatar = AVATARS.find((candidate) => candidate.id === account.avatarId)
+  const { updateProfile, changePassword, logout, logoutEverywhere, deleteAccount } = useAccount()
+  const lists = usePlaylists()
+  const savedAvatar = findAvatar(account.avatarId) ?? AVATARS[0]
+  const tracksInPlaylists = lists.playlists.reduce((sum, playlist) => sum + playlist.trackCount, 0)
 
-  // Pseudo and avatar.
-  const [pseudo, setPseudo] = useState(account.pseudo)
+  // The avatar ("Mon avatar") and the pseudo ("Réglages du compte") are saved apart, each by its own button.
   const [avatarId, setAvatarId] = useState<AvatarId>(account.avatarId)
-  const [profileFeedback, setProfileFeedback] = useState<Feedback | null>(null)
-  const [profilePending, setProfilePending] = useState(false)
-  const changed = pseudo.trim() !== account.pseudo || avatarId !== account.avatarId
+  const [avatarFeedback, setAvatarFeedback] = useState<Feedback | null>(null)
+  const [avatarPending, setAvatarPending] = useState(false)
+  const chosenAvatar = findAvatar(avatarId) ?? AVATARS[0]
 
-  async function handleProfile(event: FormEvent) {
+  async function handleAvatar(event: FormEvent) {
     event.preventDefault()
-    if (profilePending || !changed) return
+    if (avatarPending || avatarId === account.avatarId) return
+    setAvatarFeedback(null)
+    setAvatarPending(true)
+    const result = await updateProfile({ avatarId })
+    setAvatarPending(false)
+    if (result.ok) {
+      setAvatarId(result.account.avatarId)
+      setAvatarFeedback({ kind: 'done', text: 'Avatar enregistré.' })
+    } else {
+      setAvatarFeedback({ kind: 'error', text: authMessage(result) })
+    }
+  }
+
+  const [pseudo, setPseudo] = useState(account.pseudo)
+  const [pseudoFeedback, setPseudoFeedback] = useState<Feedback | null>(null)
+  const [pseudoPending, setPseudoPending] = useState(false)
+  const pseudoChanged = pseudo.trim() !== account.pseudo
+
+  async function handlePseudo(event: FormEvent) {
+    event.preventDefault()
+    if (pseudoPending || !pseudoChanged) return
     const checked = normalizePseudo(pseudo)
     if (!checked) {
-      setProfileFeedback({ kind: 'error', text: authMessage({ ok: false, error: 'invalid-pseudo' }) })
+      setPseudoFeedback({ kind: 'error', text: authMessage({ ok: false, error: 'invalid-pseudo' }) })
       return document.getElementById('profile-pseudo')?.focus()
     }
-    setProfileFeedback(null)
-    setProfilePending(true)
-    // Only what changed is sent.
-    const result = await updateProfile({
-      ...(checked !== account.pseudo ? { pseudo: checked } : {}),
-      ...(avatarId !== account.avatarId ? { avatarId } : {}),
-    })
-    setProfilePending(false)
+    setPseudoFeedback(null)
+    setPseudoPending(true)
+    const result = await updateProfile({ pseudo: checked })
+    setPseudoPending(false)
     if (result.ok) {
       setPseudo(result.account.pseudo)
-      setAvatarId(result.account.avatarId)
-      setProfileFeedback({ kind: 'done', text: 'Profil enregistré.' })
+      setPseudoFeedback({ kind: 'done', text: 'Pseudo enregistré.' })
     } else {
-      setProfileFeedback({ kind: 'error', text: authMessage(result) })
+      setPseudoFeedback({ kind: 'error', text: authMessage(result) })
       if (result.error === 'pseudo-taken' || result.error === 'invalid-pseudo') document.getElementById('profile-pseudo')?.focus()
     }
+  }
+
+  // Signing out, here as in the header: only when the server has ended the session.
+  const [logoutPending, setLogoutPending] = useState(false)
+
+  async function handleLogout() {
+    if (logoutPending) return
+    setPseudoFeedback(null)
+    setLogoutPending(true)
+    leaving.current = true
+    const done = await logout()
+    setLogoutPending(false)
+    if (done) return navigate('/')
+    leaving.current = false
+    setPseudoFeedback({ kind: 'error', text: "Déconnexion impossible pour l'instant : vérifie ta connexion et réessaie. Tu es toujours connecté." })
   }
 
   // Password.
@@ -174,127 +212,217 @@ function ProfileContent({ account, leaving }: { account: Account; leaving: RefOb
   }
 
   return (
-    <main className="profile">
-      <header className="profile__hero">
-        {avatar && <Avatar avatar={avatar} size={88} />}
-        <div>
-          <h1>Mon profil</h1>
-          <p className="profile__email">
+    <main className="kit-page profile">
+      {/* The band of mock-up 5b. Its statistics, genres, favourite rooms and "Membre depuis" are not things the site
+          knows: what it does know is shown instead (the playlists), with the ways to the rooms. */}
+      <section className="kit-panel profile__band" aria-labelledby="profile-title">
+        <div className="profile__band-scene">
+          <ProfileScene variant="band" avatar={savedAvatar} />
+        </div>
+        <div className="profile__who">
+          <h1 id="profile-title">
+            <span className="visually-hidden">Mon profil : </span>
+            {account.pseudo}
+          </h1>
+          <p className="profile__line">
             Connecté avec <strong>{account.email}</strong>
           </p>
+          <p className="profile__chips">
+            <span className="profile__chip">Membre</span>
+            <span className="profile__chip">Avatar {savedAvatar.name}</span>
+          </p>
+          <p className="profile__line profile__fact">
+            <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 11H18V20H6ZM8 11V8A4 4 0 0 1 16 8V11" />
+            </svg>
+            Ton pseudo n'est qu'à toi : personne d'autre ne peut le prendre.
+          </p>
+          {welcome && (
+            <p className="profile__welcome" role="status">
+              Bienvenue ! Ton compte est créé.
+            </p>
+          )}
         </div>
-      </header>
+        <div className="profile__tiles">
+          <div className="profile__tile">
+            <span className="profile__tile-big">{lists.status === 'ready' ? lists.playlists.length : '…'}</span>
+            <span className="profile__tile-label">{lists.status === 'ready' && lists.playlists.length > 1 ? 'playlists' : 'playlist'}</span>
+          </div>
+          <div className="profile__tile">
+            <span className="profile__tile-big">{lists.status === 'ready' ? tracksInPlaylists : '…'}</span>
+            <span className="profile__tile-label">{tracksInPlaylists > 1 ? 'morceaux en playlist' : 'morceau en playlist'}</span>
+          </div>
+          <Link to="/rooms/new" className="profile__tile profile__tile--link">
+            <span className="profile__tile-big profile__tile-big--small">Créer une room</span>
+            <span className="profile__tile-label">Tu en deviens l'hôte</span>
+          </Link>
+          <Link to="/rooms" className="profile__tile profile__tile--link">
+            <span className="profile__tile-big profile__tile-big--small">Les rooms</span>
+            <span className="profile__tile-label">Rejoindre une room</span>
+          </Link>
+        </div>
+      </section>
 
-      <div className="profile__grid">
-        <form className="profile__card" onSubmit={handleProfile} noValidate aria-labelledby="profile-identity">
-          <h2 id="profile-identity">Pseudo et avatar</h2>
-          <label htmlFor="profile-pseudo">Pseudo</label>
-          <input
-            id="profile-pseudo"
-            type="text"
-            autoComplete="nickname"
-            maxLength={PSEUDO_MAX}
-            value={pseudo}
-            aria-describedby="profile-hint"
-            aria-invalid={profileFeedback?.kind === 'error'}
-            onChange={(event) => {
-              setPseudo(event.target.value)
-              setProfileFeedback(null)
-            }}
-          />
+      <div className="profile__columns">
+        <ProfilePlaylists lists={lists} />
+
+        {/* "Mon avatar": the mock-up chooses a shape and two colours, which the site does not have (the server keeps one
+            of the eight avatars): the eight are offered here. */}
+        <form className="kit-panel profile__avatar" onSubmit={handleAvatar} noValidate aria-labelledby="profile-avatar-title">
+          <h2 className="kit-panel__title" id="profile-avatar-title">
+            Mon avatar
+          </h2>
+          <div className="profile__avatar-scene">
+            <ProfileScene variant="preview" avatar={chosenAvatar} />
+          </div>
           <AvatarPicker
             value={avatarId}
             onChange={(next) => {
               setAvatarId(next)
-              setProfileFeedback(null)
+              setAvatarFeedback(null)
             }}
+            variant="compact"
+            legend={
+              <>
+                Choisis ton avatar · <span className="profile__accent">{chosenAvatar.name}</span>
+              </>
+            }
           />
-          <p className="profile__hint" id="profile-hint">
-            Le changement s'affiche dans une room la prochaine fois que tu y entres.
-          </p>
-          <FeedbackLine feedback={profileFeedback} />
-          <button type="submit" className="btn-primary" disabled={profilePending || !changed}>
-            {profilePending ? 'Enregistrement…' : 'Enregistrer'}
+          <p className="kit-hint">Le changement s'affiche dans une room la prochaine fois que tu y entres.</p>
+          <FeedbackLine feedback={avatarFeedback} />
+          <button type="submit" className="kit-btn profile__push" disabled={avatarPending || avatarId === account.avatarId}>
+            {avatarPending ? 'Enregistrement…' : "Enregistrer l'avatar"}
           </button>
         </form>
 
-        <form className="profile__card" onSubmit={handlePassword} noValidate aria-labelledby="profile-password">
-          <h2 id="profile-password">Mot de passe</h2>
-          <label htmlFor="current-password">Mot de passe actuel</label>
-          <PasswordField
-            id="current-password"
-            autoComplete="current-password"
-            maxLength={PASSWORD_MAX}
-            value={currentPassword}
-            onChange={(event) => setCurrentPassword(event.target.value)}
-          />
-          <label htmlFor="new-password">Nouveau mot de passe</label>
-          <PasswordField
-            id="new-password"
-            autoComplete="new-password"
-            maxLength={PASSWORD_MAX}
-            value={newPassword}
-            aria-describedby="password-hint"
-            onChange={(event) => setNewPassword(event.target.value)}
-          />
-          <label htmlFor="confirm-password">Confirme le nouveau mot de passe</label>
-          <PasswordField
-            id="confirm-password"
-            autoComplete="new-password"
-            maxLength={PASSWORD_MAX}
-            value={confirmation}
-            onChange={(event) => setConfirmation(event.target.value)}
-          />
-          <p className="profile__hint" id="password-hint">
-            {PASSWORD_MIN} caractères au moins. Tes autres appareils seront déconnectés, celui-ci reste connecté.
-          </p>
-          <FeedbackLine feedback={passwordFeedback} />
-          <button type="submit" className="btn-primary" disabled={passwordPending}>
-            {passwordPending ? 'Changement…' : 'Changer le mot de passe'}
-          </button>
-        </form>
+        <section className="kit-panel profile__settings" aria-labelledby="profile-settings-title">
+          <h2 className="kit-panel__title" id="profile-settings-title">
+            Réglages du compte
+          </h2>
+          <form className="profile__settings-form" onSubmit={handlePseudo} noValidate>
+            <div className="kit-field">
+              <label htmlFor="profile-pseudo">Pseudo</label>
+              <input
+                id="profile-pseudo"
+                type="text"
+                autoComplete="nickname"
+                maxLength={PSEUDO_MAX}
+                value={pseudo}
+                aria-describedby="profile-pseudo-hint"
+                aria-invalid={pseudoFeedback?.kind === 'error'}
+                onChange={(event) => {
+                  setPseudo(event.target.value)
+                  setPseudoFeedback(null)
+                }}
+              />
+              <p className="kit-hint" id="profile-pseudo-hint">
+                {PSEUDO_MIN} à {PSEUDO_MAX} caractères. Une room l'affiche la prochaine fois que tu y entres.
+              </p>
+            </div>
+            <div className="kit-field">
+              <label htmlFor="profile-email">Adresse e-mail</label>
+              <input id="profile-email" type="email" value={account.email} readOnly aria-describedby="profile-email-hint" />
+              <p className="kit-hint" id="profile-email-hint">
+                Elle sert uniquement à te connecter.
+              </p>
+            </div>
+            <FeedbackLine feedback={pseudoFeedback} />
+            <div className="profile__buttons">
+              <button type="submit" className="kit-btn kit-btn--tall" disabled={pseudoPending || !pseudoChanged}>
+                {pseudoPending ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+              <button type="button" className="kit-btn kit-btn--tall kit-btn--ghost" disabled={logoutPending} onClick={handleLogout}>
+                {logoutPending ? 'Déconnexion…' : 'Se déconnecter'}
+              </button>
+            </div>
+          </form>
 
-        <section className="profile__card" aria-labelledby="profile-things">
-          <h2 id="profile-things">Mes playlists et mes rooms</h2>
-          <p className="profile__hint">Tes playlists te suivent sur tous tes appareils.</p>
-          <div className="profile__links">
-            <Link to="/playlist">Gérer mes playlists</Link>
-            <Link to="/rooms/new">Créer une room</Link>
+          <div className="profile__danger">
+            <p className="kit-hint">
+              C'est définitif : ton compte, tes playlists et les rooms que tu animes sont supprimés. Il te faudra ton mot de passe.
+            </p>
+            <button type="button" className="kit-danger-link" onClick={() => setDeleteOpen(true)}>
+              Supprimer mon compte
+            </button>
           </div>
         </section>
-
-        <section className="profile__card" aria-labelledby="profile-devices">
-          <h2 id="profile-devices">Mes appareils</h2>
-          <p className="profile__hint">
-            Si tu as laissé ta session ouverte quelque part, tu peux la fermer partout. Celle-ci aussi : tu devras te reconnecter.
-          </p>
-          <FeedbackLine feedback={devicesFeedback} />
-          <button type="button" className="profile__secondary" disabled={devicesPending} onClick={handleSignOutEverywhere}>
-            {devicesPending ? 'Déconnexion…' : 'Se déconnecter de tous les appareils'}
-          </button>
-        </section>
-
-        <section className="profile__card" aria-labelledby="profile-data">
-          <h2 id="profile-data">Mes données</h2>
-          <p className="profile__hint">
-            Télécharge une copie de ce que Noctune garde sur toi : ton compte, tes playlists et tes rooms.
-          </p>
-          <FeedbackLine feedback={exportFeedback} />
-          <button type="button" className="profile__secondary" disabled={exportPending} onClick={handleExport}>
-            {exportPending ? 'Préparation…' : 'Télécharger mes données'}
-          </button>
-        </section>
-
-        <section className="profile__card profile__card--danger" aria-labelledby="profile-danger">
-          <h2 id="profile-danger">Supprimer mon compte</h2>
-          <p className="profile__hint">
-            C'est définitif : ton compte, tes playlists et les rooms que tu animes sont supprimés. Il te faudra ton mot de passe.
-          </p>
-          <button type="button" className="profile__danger" onClick={() => setDeleteOpen(true)}>
-            Supprimer mon compte…
-          </button>
-        </section>
       </div>
+
+      {/* Not drawn in the mock-up: what the site has besides, in the same panels, under the three columns. */}
+      <section className="profile__more" aria-labelledby="profile-more-title">
+        <h2 className="profile__more-title" id="profile-more-title">
+          Sécurité et données
+        </h2>
+        <div className="profile__more-grid">
+          <form className="kit-panel" onSubmit={handlePassword} noValidate aria-labelledby="profile-password">
+            <h3 className="kit-panel__title" id="profile-password">
+              Mot de passe
+            </h3>
+            <div className="kit-field">
+              <label htmlFor="current-password">Mot de passe actuel</label>
+              <PasswordField
+                id="current-password"
+                autoComplete="current-password"
+                maxLength={PASSWORD_MAX}
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+              />
+            </div>
+            <div className="kit-field">
+              <label htmlFor="new-password">Nouveau mot de passe</label>
+              <PasswordField
+                id="new-password"
+                autoComplete="new-password"
+                maxLength={PASSWORD_MAX}
+                value={newPassword}
+                aria-describedby="password-hint"
+                onChange={(event) => setNewPassword(event.target.value)}
+              />
+            </div>
+            <div className="kit-field">
+              <label htmlFor="confirm-password">Confirme le nouveau mot de passe</label>
+              <PasswordField
+                id="confirm-password"
+                autoComplete="new-password"
+                maxLength={PASSWORD_MAX}
+                value={confirmation}
+                onChange={(event) => setConfirmation(event.target.value)}
+              />
+            </div>
+            <p className="kit-hint" id="password-hint">
+              {PASSWORD_MIN} caractères au moins. Tes autres appareils seront déconnectés, celui-ci reste connecté.
+            </p>
+            <FeedbackLine feedback={passwordFeedback} />
+            <button type="submit" className="kit-btn profile__push" disabled={passwordPending}>
+              {passwordPending ? 'Changement…' : 'Changer le mot de passe'}
+            </button>
+          </form>
+
+          <section className="kit-panel" aria-labelledby="profile-devices">
+            <h3 className="kit-panel__title" id="profile-devices">
+              Mes appareils
+            </h3>
+            <p className="kit-hint">
+              Si tu as laissé ta session ouverte quelque part, tu peux la fermer partout. Celle-ci aussi : tu devras te reconnecter.
+            </p>
+            <FeedbackLine feedback={devicesFeedback} />
+            <button type="button" className="kit-btn kit-btn--ghost profile__push" disabled={devicesPending} onClick={handleSignOutEverywhere}>
+              {devicesPending ? 'Déconnexion…' : 'Se déconnecter de tous les appareils'}
+            </button>
+          </section>
+
+          <section className="kit-panel" aria-labelledby="profile-data">
+            <h3 className="kit-panel__title" id="profile-data">
+              Mes données
+            </h3>
+            <p className="kit-hint">Télécharge une copie de ce que Noctune garde sur toi : ton compte, tes playlists et tes rooms.</p>
+            <FeedbackLine feedback={exportFeedback} />
+            <button type="button" className="kit-btn kit-btn--ghost profile__push" disabled={exportPending} onClick={handleExport}>
+              {exportPending ? 'Préparation…' : 'Télécharger mes données'}
+            </button>
+          </section>
+        </div>
+      </section>
 
       <DeleteAccountDialog open={deleteOpen} busy={deleting} onClose={() => setDeleteOpen(false)} onConfirm={handleDelete} />
     </main>

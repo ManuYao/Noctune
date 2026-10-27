@@ -41,10 +41,10 @@ export default function CreateRoomPage() {
       </Shell>
     )
   }
-  return <MemberCreateRoom pseudo={account.pseudo} />
+  return <MemberCreateRoom pseudo={account.pseudo} avatarId={account.avatarId} />
 }
 
-function MemberCreateRoom({ pseudo }: { pseudo: string }) {
+function MemberCreateRoom({ pseudo, avatarId }: { pseudo: string; avatarId: string }) {
   const navigate = useNavigate()
   const mine = useMyRooms()
 
@@ -61,9 +61,15 @@ function MemberCreateRoom({ pseudo }: { pseudo: string }) {
   if (mine.state === 'refused') {
     return (
       <Shell>
-        <h1>Créer une room</h1>
-        <p role="alert">{mine.message}</p>
-        <Link to="/rooms">Retour aux rooms</Link>
+        <div className="room-form-page__head">
+          <h1>Créer une room</h1>
+        </div>
+        <p className="room-form-page__alert" role="alert">
+          {mine.message}
+        </p>
+        <Link to="/rooms" className="room-form-page__back">
+          Retour aux rooms
+        </Link>
       </Shell>
     )
   }
@@ -72,7 +78,9 @@ function MemberCreateRoom({ pseudo }: { pseudo: string }) {
   if (mine.state === 'ready' && mine.rooms.length >= ROOMS_PER_MEMBER_MAX) {
     return (
       <Shell>
-        <h1>Créer une room</h1>
+        <div className="room-form-page__head">
+          <h1>Créer une room</h1>
+        </div>
         <section className="room-form-page__limit" aria-labelledby="limit-title">
           <h2 id="limit-title">Tu animes déjà {ROOMS_PER_MEMBER_MAX} rooms</h2>
           <p>C'est le maximum. Supprime-en une pour en créer une autre, ou change les réglages de l'une d'elles.</p>
@@ -80,7 +88,7 @@ function MemberCreateRoom({ pseudo }: { pseudo: string }) {
             {mine.rooms.map((room) => (
               <li key={room.id}>
                 <span>{room.name}</span>
-                <Link to={`/rooms/${encodeURIComponent(room.id)}/edit`}>
+                <Link to={`/rooms/${encodeURIComponent(room.id)}/edit`} className="room-form-page__pill">
                   Réglages<span className="visually-hidden"> de {room.name}</span>
                 </Link>
               </li>
@@ -93,13 +101,17 @@ function MemberCreateRoom({ pseudo }: { pseudo: string }) {
 
   return (
     <Shell>
-      <h1>Créer une room</h1>
-      <p className="room-form-page__intro">Choisis un style, une ambiance et tes règles. Tu seras l'hôte de la room.</p>
+      <div className="room-form-page__head">
+        <h1>Créer une room</h1>
+        <p>Choisis un style, une ambiance et tes règles. Tu seras l'hôte de la room.</p>
+      </div>
       <RoomForm
         initial={NEW_ROOM}
         hostPseudo={pseudo}
+        hostAvatarId={avatarId}
         hostTitle="Tu seras l'hôte"
-        submitLabel="+ Créer la room"
+        fresh
+        submitLabel="Créer la room"
         onCancel={() => navigate('/rooms')}
         onSubmit={async (settings) => {
           const result = await createRoom(settings)

@@ -1,0 +1,62 @@
+/* The little stages of the profile (mock-ups 5 and 5b). The drawing fills its box, centred: past its edges the wall and
+   the floor go on. */
+.profile-scene {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.profile-scene__wall { fill: var(--wall); }
+.profile-scene__wall-2 { fill: var(--wall-2); }
+.profile-scene__floor { fill: var(--floor); }
+.profile-scene__accent { fill: var(--accent); }
+.profile-scene__stop-accent { stop-color: var(--accent); }
+.profile-scene__stop-accent-2 { stop-color: var(--accent-2); }
+.profile-scene__grid { stroke: var(--accent-2); }
+
+.profile-scene__ring {
+  fill: color-mix(in srgb, var(--accent) 16%, transparent);
+  stroke: var(--accent);
+}
+
+.profile-scene__pill {
+  fill: var(--on-accent);
+  font-family: var(--font-text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+/* The avatars bounce, the beams sway, the hearts rise (all stopped with reduced motion: see index.css). */
+.profile-scene__bob {
+  transform-box: fill-box;
+  animation: profile-scene-bob 1.1s ease-in-out infinite;
+}
+
+.profile-scene__sway {
+  animation: profile-scene-sway 5s ease-in-out infinite;
+}
+
+.profile-scene__sway-2 {
+  animation: profile-scene-sway 6.5s ease-in-out infinite reverse;
+}
+
+.profile-scene__float {
+  transform-box: fill-box;
+  animation: profile-scene-float 3.4s ease-out infinite;
+}
+
+@keyframes profile-scene-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes profile-scene-sway {
+  0%, 100% { transform: rotate(-2.5deg); }
+  50% { transform: rotate(2.5deg); }
+}
+
+@keyframes profile-scene-float {
+  0% { transform: translateY(0); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: translateY(-34px); opacity: 0; }
+}

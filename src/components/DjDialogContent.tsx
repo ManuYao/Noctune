@@ -1,20 +1,26 @@
 import { useRef, useState } from 'react'
-import type { FormEvent, KeyboardEvent } from 'react'
+import type { KeyboardEvent } from 'react'
 import {
   DJ_INPUT_MAX,
   LINEUP_MAX,
   type DjQueue,
+  type PlaylistTrack,
   type QueuedTrack,
   type RoomRules,
+  type RoomStyle,
   type Track,
 } from '../../shared/protocol'
-import { formatClock, formatSpan } from '../data/duration'
+import { formatClock, formatSpan, formatWait } from '../data/duration'
 import { useServerNow } from '../player/useServerNow'
 import { keepInPlaylist } from '../playlists/keepInPlaylist'
-import { djCount, estimateWaitSec, findMyPlace } from '../realtime/djQueue'
-import { djErrorMessage, turnMessage } from '../realtime/djMessages'
+import { djCount, estimateWaitSec, findMyPlace, type MyPlace } from '../realtime/djQueue'
+import { djErrorMessage } from '../realtime/djMessages'
 import type { SendAddTrackResult, SendDjResult, SendPlaylistStatusResult } from '../realtime/useRoom'
+import { STYLE_LABELS, maxTrackChip } from '../rooms/roomLabels'
 import DjPlaylistTab from './DjPlaylistTab'
+import TrackCover from './TrackCover'
+import { trackVerdict, useDjPlaylist } from './useDjPlaylist'
+import { useMediaQuery } from './useMediaQuery'
 
 interface DjDialogContentProps {
   rules: RoomRules
@@ -25,6 +31,9 @@ interface DjDialogContentProps {
   nowPlaying: Track | null
   /** Milliseconds to add to the local clock to get the server clock. */
   clockOffsetMs: number
+  /** The room's name and styles, for "Accepté dans …" and the chips of its rules. */
+  roomName?: string
+  styles?: RoomStyle[]
   onAdd: (input: string) => Promise<SendAddTrackResult>
   onAddFromPlaylist: (playlistTrackId: string) => Promise<SendAddTrackResult>
   onPlaylistStatus: (playlistId: string) => Promise<SendPlaylistStatusResult>
@@ -35,15 +44,59 @@ interface DjDialogContentProps {
 
 type Busy = 'add' | 'remove' | 'leave'
 type Tab = 'playlist' | 'link'
+/** Where "Ton morceau" comes from: a row of the playlist, or the link being typed. */
+type Source = 'playlist' | 'link'
+
+// The phone layout (a sheet with tabs): the same breakpoint as the room's.
+const PHONE_QUERY = '(max-width: 760px)'
 
 // A touch screen raises its keyboard when a field takes the focus: only mouse and keyboard users get it moved for them.
 const touchScreen = () => window.matchMedia('(pointer: coarse)').matches
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'playlist', label: 'Ma playlist' },
-  { id: 'link', label: 'Lien' },
+  { id: 'link', label: 'Lien YouTube' },
 ]
 
+/** The sentence under the title (mock-up 3c: "Choisis le morceau que tu lances à ton tour · 3 DJ avant toi, environ 12 min."). */
+function turnLine(place: MyPlace | null, queue: DjQueue, maxDjs: number, waitSec: number): string {
+  if (place) {
+    const lead = 'Ajoute les morceaux de tes prochains tours'
+    if (place.onDecks) return `${lead} · tu es à la console.`
+    const ahead = (place.position ?? 0) + (queue.current ? 1 : 0)
+    return ahead === 0 ? `${lead} · tu es le prochain.` : `${lead} · ${ahead} DJ avant toi, ${formatWait(waitSec)}.`
+  }
+  const djs = djCount(queue)
+  if (djs >= maxDjs) return 'La file est complète : réessaie quand un DJ sera parti.'
+  if (djs === 0) return 'Choisis le morceau que tu lances · la file est vide, il démarre tout de suite.'
+  return `Choisis le morceau que tu lances à ton tour · ${djs} DJ avant toi, ${formatWait(waitSec)}.`
+}
+
+/** A link as it reads best on one line: without its scheme nor "www.". */
+const shortLink = (link: string) => link.replace(/^https?:\/\//i, '').replace(/^www\./i, '')
+
+function Check() {
+  return (
+    <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
+      <path d="M2.5 6.2 L5 8.7 L9.5 3.6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function Plus() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+      <path d="M8 3 V13 M3 8 H13" />
+    </svg>
+  )
+}
+
+/**
+ * The inside of "Passer DJ" (mock-up 3c): "Ma playlist" on the left, the link and the member's own tracks lined up on the
+ * right, "Ton morceau" at the bottom. A track is chosen first (a row of the playlist, or a link), then the button at
+ * the bottom joins the queue with it, or adds it to the tracks already lined up (up to LINEUP_MAX). On a phone the two
+ * sources are tabs of a sheet.
+ */
 export default function DjDialogContent({
   rules,
   queue,
@@ -51,6 +104,8 @@ export default function DjDialogContent({
   lineup,
   nowPlaying,
   clockOffsetMs,
+  roomName,
+  styles = [],
   onAdd,
   onAddFromPlaylist,
   onPlaylistStatus,
@@ -58,13 +113,15 @@ export default function DjDialogContent({
   onLeave,
   onClose,
 }: DjDialogContentProps) {
+  const phone = useMediaQuery(PHONE_QUERY)
   const serverNow = useServerNow(clockOffsetMs, nowPlaying !== null)
   const place = findMyPlace(queue, selfId)
-  const count = djCount(queue)
   const waitSec = estimateWaitSec(queue, nowPlaying, serverNow, place?.position ?? queue.waiting.length)
 
   const [tab, setTab] = useState<Tab>('playlist')
   const [input, setInput] = useState('')
+  const [source, setSource] = useState<Source | null>(null)
+  const [pickedId, setPickedId] = useState<string | null>(null)
   const [busy, setBusy] = useState<Busy | null>(null)
   const [error, setError] = useState('')
   // Which part of the dialog the error is about: the link field is only marked invalid for its own mistakes.
@@ -72,7 +129,7 @@ export default function DjDialogContent({
   const [done, setDone] = useState('')
   const [confirmLeave, setConfirmLeave] = useState(false)
   // The last link that was lined up, which can be kept in a playlist; and how many times something was kept (the
-  // playlist tab reads its list again when that goes up).
+  // playlist reads its tracks again when that goes up).
   const [lastAdded, setLastAdded] = useState<QueuedTrack | null>(null)
   const [keeping, setKeeping] = useState(false)
   const [keptVersion, setKeptVersion] = useState(0)
@@ -80,11 +137,39 @@ export default function DjDialogContent({
 
   // What the room would answer about a playlist track depends on what plays and on what the member already lined up.
   const refreshKey = `${nowPlaying?.id ?? ''}|${queue.current?.id ?? ''}|${lineup.map((track) => track.id).join(',')}`
+  const playlist = useDjPlaylist(onPlaylistStatus, refreshKey, keptVersion)
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
+  const link = input.trim()
+  const picked = pickedId === null ? null : (playlist.tracks.tracks.find((track) => track.id === pickedId) ?? null)
+  const pickedVerdict = picked ? trackVerdict(picked, playlist.statuses[picked.id], rules) : null
+  const choice: Source | null = source === 'link' && link !== '' ? 'link' : source === 'playlist' && picked ? 'playlist' : null
+
+  function handlePick(track: PlaylistTrack) {
+    setDone('')
+    const verdict = trackVerdict(track, playlist.statuses[track.id], rules)
+    if (verdict) {
+      setErrorFromLink(false)
+      setError(verdict.full)
+      return
+    }
+    setError('')
+    if (choice === 'playlist' && track.id === pickedId) {
+      setPickedId(null)
+      setSource(link !== '' ? 'link' : null)
+    } else {
+      setPickedId(track.id)
+      setSource('playlist')
+    }
+  }
+
+  function handleSelectPlaylist(playlistId: string) {
+    playlist.lists.select(playlistId)
+    setPickedId(null)
+    if (source === 'playlist') setSource(link !== '' ? 'link' : null)
+  }
+
+  async function handleAddLink() {
     if (busy) return
-    const link = input.trim()
     setDone('')
     setLastAdded(null)
     setErrorFromLink(true)
@@ -93,33 +178,38 @@ export default function DjDialogContent({
       if (!touchScreen()) inputRef.current?.focus()
       return
     }
-
+    setSource('link')
     setBusy('add')
     setError('')
     const result = await onAdd(link)
     setBusy(null)
     if (result.ok) {
       setInput('')
+      setSource(null)
       setDone(`« ${result.track.title} » est dans ta file.`)
       setLastAdded(result.track)
     } else {
       setError(djErrorMessage(result))
     }
-    // Ready for the next link, or to fix this one.
-    if (!touchScreen()) inputRef.current?.focus()
   }
 
-  async function handleAddFromPlaylist(playlistTrackId: string) {
-    if (busy) return
-    setBusy('add')
-    setError('')
-    setErrorFromLink(false)
+  async function handleAddPicked() {
+    if (busy || !picked) return
     setDone('')
     setLastAdded(null)
-    const result = await onAddFromPlaylist(playlistTrackId)
+    setErrorFromLink(false)
+    if (pickedVerdict) return setError(pickedVerdict.full)
+    setBusy('add')
+    setError('')
+    const result = await onAddFromPlaylist(picked.id)
     setBusy(null)
-    if (result.ok) setDone(`« ${result.track.title} » est dans ta file.`)
-    else setError(djErrorMessage(result))
+    if (result.ok) {
+      setDone(`« ${result.track.title} » est dans ta file.`)
+      setPickedId(null)
+      setSource(link !== '' ? 'link' : null)
+    } else {
+      setError(djErrorMessage(result))
+    }
   }
 
   async function handleKeep() {
@@ -188,192 +278,293 @@ export default function DjDialogContent({
       ? 'Quitter la file efface tes morceaux en attente.'
       : null
 
+  const ruleChips = [
+    maxTrackChip(rules),
+    rules.repeatDelaySec === null ? 'Aucun doublon' : `Pas de doublon (${formatSpan(rules.repeatDelaySec)})`,
+    `${rules.maxDjs} DJ max`,
+    ...(styles.length > 0 ? [styles.map((style) => STYLE_LABELS[style]).join(' · ')] : []),
+  ]
+
   return (
-    <div className="dj-dialog__sheet">
-      <header className="dj-dialog__header">
-        <h2 id="dj-dialog-title">{place ? 'Ma file de DJ' : 'Passer DJ'}</h2>
-        <button type="button" className="dj-dialog__close" aria-label="Fermer" onClick={onClose}>
-          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
-            <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    <div className="dj-dialog__sheet dj-sheet">
+      <header className="dj-dialog__header dj-head">
+        <div className="dj-head__titles">
+          <h2 id="dj-dialog-title">{place ? 'Ma file de DJ' : 'Passer DJ'}</h2>
+          <p id="dj-dialog-sub" className="dj-head__sub">
+            {turnLine(place, queue, rules.maxDjs, waitSec)}
+          </p>
+        </div>
+        <div className="dj-head__rules">
+          <span id="dj-rules-label">Règles de la room</span>
+          <ul role="list" aria-labelledby="dj-rules-label">
+            {ruleChips.map((chip) => (
+              <li key={chip} className="dj-chip">
+                {chip}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <button type="button" className="dj-dialog__close dj-head__close" aria-label="Fermer" onClick={onClose}>
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+            <path d="M3 3 L13 13 M13 3 L3 13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
           </svg>
         </button>
       </header>
 
-      <div className="dj-dialog__body">
-        <section aria-labelledby="dj-rules-title">
-          <h3 id="dj-rules-title">Règles de cette room</h3>
-          <dl className="dj-dialog__rules">
-            <div>
-              <dt>Durée maximale d'un morceau</dt>
-              <dd>{rules.maxTrackSec === null ? 'Sans limite' : formatSpan(rules.maxTrackSec)}</dd>
-            </div>
-            <div>
-              <dt>Retour d'un même morceau</dt>
-              <dd>{rules.repeatDelaySec === null ? 'Jamais' : `Après ${formatSpan(rules.repeatDelaySec)}`}</dd>
-            </div>
-            <div>
-              <dt>DJ dans la file</dt>
-              <dd>
-                {count} sur {rules.maxDjs}
-              </dd>
-            </div>
-          </dl>
-          <p className="dj-dialog__turn">
-            {place === null && count >= rules.maxDjs
-              ? 'La file est complète : réessaie quand un DJ sera parti.'
-              : turnMessage(place, count, waitSec)}
-          </p>
+      {phone && (
+        <div className="dj-tabs" role="tablist" aria-label="Où choisir ton morceau" onKeyDown={handleTabKeys}>
+          {TABS.map((candidate) => (
+            <button
+              key={candidate.id}
+              type="button"
+              role="tab"
+              id={`dj-tab-${candidate.id}`}
+              className="dj-tabs__tab"
+              // The dialog puts the focus here when it opens on a narrow screen with a mouse or a keyboard.
+              data-autofocus={tab === candidate.id ? '' : undefined}
+              aria-selected={tab === candidate.id}
+              aria-controls={`dj-panel-${candidate.id}`}
+              tabIndex={tab === candidate.id ? 0 : -1}
+              onClick={() => setTab(candidate.id)}
+            >
+              {candidate.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Both sources stay in the page on a phone too: what was typed, and the playlist that was read, are still there on coming back. */}
+      <div className="dj-cols">
+        <section
+          className="dj-panel dj-panel--playlist"
+          id="dj-panel-playlist"
+          role={phone ? 'tabpanel' : undefined}
+          aria-labelledby={phone ? 'dj-tab-playlist' : 'dj-playlist-title'}
+          hidden={phone && tab !== 'playlist'}
+        >
+          <DjPlaylistTab
+            playlist={playlist}
+            rules={rules}
+            pickedId={choice === 'playlist' ? pickedId : null}
+            onPick={handlePick}
+            onSelectPlaylist={handleSelectPlaylist}
+            onShowLink={
+              phone
+                ? () => {
+                    setTab('link')
+                    // The button that was pressed is in the panel that goes away: the focus must not be lost with it. The
+                    // link field takes it with a mouse or a keyboard; on a touch screen that would raise the keyboard.
+                    window.setTimeout(() => (touchScreen() ? document.getElementById('dj-tab-link') : inputRef.current)?.focus(), 0)
+                  }
+                : undefined
+            }
+          />
         </section>
 
-        <section aria-label="Choisir un morceau">
-          <div className="dj-tabs" role="tablist" aria-label="Où choisir ton morceau" onKeyDown={handleTabKeys}>
-            {TABS.map((candidate) => (
-              <button
-                key={candidate.id}
-                type="button"
-                role="tab"
-                id={`dj-tab-${candidate.id}`}
-                className="dj-tabs__tab"
-                // The dialog puts the focus here when it opens (a mouse or keyboard user goes on from the tabs).
-                data-autofocus={tab === candidate.id ? '' : undefined}
-                aria-selected={tab === candidate.id}
-                aria-controls={`dj-panel-${candidate.id}`}
-                tabIndex={tab === candidate.id ? 0 : -1}
-                onClick={() => setTab(candidate.id)}
-              >
-                {candidate.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Both panels stay in the page: what was typed, and the playlist that was read, are still there on coming back. */}
-          <div role="tabpanel" id="dj-panel-playlist" aria-labelledby="dj-tab-playlist" hidden={tab !== 'playlist'} className="dj-dialog__panel">
-            <DjPlaylistTab
-              inQueue={place !== null}
-              busy={busy !== null}
-              refreshKey={refreshKey}
-              keptVersion={keptVersion}
-              onAdd={(playlistTrackId) => void handleAddFromPlaylist(playlistTrackId)}
-              onPlaylistStatus={onPlaylistStatus}
-              onShowLink={() => {
-                setTab('link')
-                // The button that was pressed is in the panel that goes away: the focus must not be lost with it. The link
-                // field takes it on a computer; on a touch screen that would raise the keyboard, so the tab does.
-                window.setTimeout(() => (touchScreen() ? document.getElementById('dj-tab-link') : inputRef.current)?.focus(), 0)
+        <div className="dj-panel dj-panel--side">
+          <div
+            className="dj-link"
+            id="dj-panel-link"
+            role={phone ? 'tabpanel' : undefined}
+            aria-labelledby={phone ? 'dj-tab-link' : undefined}
+            hidden={phone && tab !== 'link'}
+          >
+            <form
+              className="dj-link__form"
+              noValidate
+              onSubmit={(event) => {
+                event.preventDefault()
+                void handleAddLink()
               }}
-            />
-          </div>
-
-          <div role="tabpanel" id="dj-panel-link" aria-labelledby="dj-tab-link" hidden={tab !== 'link'} className="dj-dialog__panel">
-            <form className="dj-dialog__form" onSubmit={handleSubmit} noValidate>
-              <label htmlFor="dj-link">Lien YouTube</label>
-              <div className="dj-dialog__field">
+            >
+              <label htmlFor="dj-link">Coller un lien YouTube</label>
+              <div className="dj-search" data-active={choice === 'link' ? '' : undefined}>
+                <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M7.5 10.5 A3 3 0 0 0 11.7 10.8 L14.2 8.3 A3 3 0 0 0 10 4.1 L9 5.1" />
+                  <path d="M10.5 7.5 A3 3 0 0 0 6.3 7.2 L3.8 9.7 A3 3 0 0 0 8 13.9 L9 12.9" />
+                </svg>
                 <input
                   ref={inputRef}
                   id="dj-link"
                   type="text"
                   inputMode="url"
+                  enterKeyHint="go"
                   autoComplete="off"
                   autoCapitalize="off"
                   spellCheck={false}
                   maxLength={DJ_INPUT_MAX}
-                  placeholder="https://www.youtube.com/watch?v=…"
+                  placeholder="https://youtu.be/…"
                   value={input}
+                  // A mouse or a keyboard starts here on a computer: a link can be pasted at once.
+                  data-autofocus={phone ? undefined : ''}
                   aria-describedby="dj-link-help"
                   aria-invalid={error !== '' && errorFromLink}
+                  onFocus={() => {
+                    if (link !== '') setSource('link')
+                  }}
                   onChange={(event) => {
                     setInput(event.target.value)
+                    setSource(event.target.value.trim() !== '' ? 'link' : picked ? 'playlist' : null)
                     setError('')
                     setDone('')
                     setLastAdded(null)
                   }}
                 />
-                <button type="submit" className="btn-primary" disabled={busy !== null}>
-                  {busy === 'add' ? 'Vérification…' : place ? 'Ajouter à ma file' : 'Rejoindre la file'}
-                </button>
               </div>
-              <p id="dj-link-help" className="dj-dialog__hint">
-                Colle l'adresse d'une vidéo YouTube. Elle doit pouvoir être lue en dehors de YouTube.
+              <p id="dj-link-help" className="dj-link__help">
+                La vidéo doit pouvoir être lue en dehors de YouTube. Elle devient « Ton morceau » en bas.
               </p>
             </form>
             {lastAdded && (
-              <div className="dj-dialog__keep">
-                <button type="button" disabled={keeping} onClick={() => void handleKeep()}>
+              <div className="dj-found">
+                <div className="dj-song">
+                  <TrackCover seed={lastAdded.videoId} size={40} />
+                  <span className="dj-song__text">
+                    <span className="dj-song__title">{lastAdded.title}</span>
+                    <span className="dj-song__meta">
+                      {lastAdded.artist} · {formatClock(lastAdded.durationSec)}
+                    </span>
+                  </span>
+                  <span className="dj-chip">
+                    <Check />
+                    Lien reconnu
+                  </span>
+                </div>
+                <button type="button" className="dj-pill" disabled={keeping} onClick={() => void handleKeep()}>
+                  <Plus />
                   {keeping ? 'Un instant…' : 'Garder dans ma playlist'}
                 </button>
               </div>
             )}
           </div>
 
-          {/* Live regions: always in the page (a screen reader only hears a region it already knew), empty most of the time. */}
-          <p className="dj-dialog__feedback dj-dialog__feedback--error" role="alert">
-            {error}
-          </p>
-          <p className="dj-dialog__feedback dj-dialog__feedback--done" role="status">
-            {done}
-          </p>
-        </section>
-
-        <section aria-labelledby="dj-lineup-title">
-          <h3 id="dj-lineup-title">
-            Mes morceaux{' '}
-            <span>
-              ({lineup.length}/{LINEUP_MAX})
-            </span>
-          </h3>
-          {lineup.length === 0 ? (
-            <p className="dj-dialog__hint">Aucun morceau en attente : choisis-en un dans ta playlist ou colle un lien YouTube pour garder ta place.</p>
-          ) : (
-            <ol className="dj-dialog__lineup" role="list">
-              {lineup.map((track, index) => (
-                <li key={track.id}>
-                  <span className="dj-dialog__order">{index === 0 ? 'Ton prochain morceau' : `N° ${index + 1}`}</span>
-                  <span className="dj-dialog__track">
-                    <span className="dj-dialog__title">{track.title}</span>
-                    <span className="dj-dialog__meta">
-                      {track.artist} · {formatClock(track.durationSec)}
-                    </span>
-                  </span>
-                  <button
-                    type="button"
-                    className="dj-dialog__remove"
-                    aria-label={`Retirer « ${track.title} » de ma file`}
-                    disabled={busy !== null}
-                    onClick={() => void handleRemove(track)}
-                  >
-                    Retirer
-                  </button>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
-
-        {place && (
-          <section className="dj-dialog__leave" aria-label="Quitter la file">
-            {confirmLeave && leaveCosts ? (
-              <div role="group" aria-label="Confirmer">
-                <p>{leaveCosts}</p>
-                <div className="dj-dialog__confirm">
-                  <button type="button" className="dj-dialog__danger" disabled={busy !== null} onClick={() => void handleLeave()}>
-                    Quitter la file
-                  </button>
-                  <button type="button" onClick={() => setConfirmLeave(false)}>
-                    Rester
-                  </button>
-                </div>
+          <section className="dj-lineup" aria-labelledby="dj-lineup-title">
+            <h3 id="dj-lineup-title">
+              Mes morceaux{' '}
+              <span>
+                ({lineup.length}/{LINEUP_MAX})
+              </span>
+            </h3>
+            {lineup.length === 0 ? (
+              <div className="dj-lineup__empty">
+                <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M3 6 H15 M3 12 H15 M3 18 H10" />
+                  <circle cx="18" cy="17" r="3" />
+                  <path d="M21 17 V8" />
+                </svg>
+                <p>
+                  {place
+                    ? 'Aucun morceau en attente : ajoutes-en un pour garder ta place.'
+                    : `Tes morceaux en attente seront ici, jusqu'à ${LINEUP_MAX}. Tu pourras en ajouter d'autres et les retirer.`}
+                </p>
               </div>
             ) : (
-              <button
-                type="button"
-                disabled={busy !== null}
-                onClick={() => (leaveCosts ? setConfirmLeave(true) : void handleLeave())}
-              >
-                Quitter la file
-              </button>
+              <ol className="dj-lineup__list" role="list">
+                {lineup.map((track, index) => (
+                  <li key={track.id} className="dj-song">
+                    <TrackCover seed={track.videoId} size={40} />
+                    <span className="dj-song__text">
+                      <span className="dj-song__title">{track.title}</span>
+                      <span className="dj-song__meta">
+                        <strong>{index === 0 ? 'Ton prochain' : `N° ${index + 1}`}</strong> · {track.artist} · {formatClock(track.durationSec)}
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      className="dj-song__remove"
+                      aria-label={`Retirer « ${track.title} » de ma file`}
+                      disabled={busy !== null}
+                      onClick={() => void handleRemove(track)}
+                    >
+                      <span aria-hidden="true">Retirer</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            {place && (
+              <div className="dj-lineup__leave">
+                {confirmLeave && leaveCosts ? (
+                  <div role="group" aria-label="Confirmer">
+                    <p>{leaveCosts}</p>
+                    <div className="dj-lineup__confirm">
+                      <button type="button" className="dj-pill dj-pill--danger" disabled={busy !== null} onClick={() => void handleLeave()}>
+                        Quitter la file
+                      </button>
+                      <button type="button" className="dj-pill" onClick={() => setConfirmLeave(false)}>
+                        Rester
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="dj-pill"
+                    disabled={busy !== null}
+                    onClick={() => (leaveCosts ? setConfirmLeave(true) : void handleLeave())}
+                  >
+                    Quitter la file
+                  </button>
+                )}
+              </div>
             )}
           </section>
-        )}
+        </div>
+      </div>
+
+      {/* Live regions: always in the page (a screen reader only hears a region it already knew), empty most of the time. */}
+      <p className="dj-feedback dj-feedback--error" role="alert">
+        {error}
+      </p>
+      <p className="dj-feedback dj-feedback--done" role="status">
+        {done}
+      </p>
+
+      <div className="dj-band">
+        <TrackCover seed={choice === 'playlist' && picked ? picked.videoId : null} />
+        <div className="dj-band__what" id="dj-band-what">
+          <span className="dj-band__text">
+            <span className="dj-band__label">Ton morceau</span>
+            {choice === 'playlist' && picked ? (
+              <span className="dj-band__track">
+                <strong>{picked.title ?? 'Titre à actualiser'}</strong> · {picked.artist ?? 'Artiste inconnu'}
+                {picked.durationSec !== null && ` · ${formatClock(picked.durationSec)}`}
+              </span>
+            ) : choice === 'link' ? (
+              <span className="dj-band__track">
+                <strong>Lien YouTube</strong> · {shortLink(link)}
+              </span>
+            ) : (
+              <span className="dj-band__none">Choisis un morceau dans ta playlist, ou colle un lien YouTube.</span>
+            )}
+          </span>
+          {choice === 'playlist' &&
+            (pickedVerdict ? (
+              <span className="dj-band__refused">{pickedVerdict.short}</span>
+            ) : (
+              <span className="dj-chip">
+                <Check />
+                Accepté dans {roomName ?? 'cette room'}
+              </span>
+            ))}
+          {choice === 'link' && <span className="dj-chip dj-chip--quiet">La room le vérifie à l'ajout</span>}
+        </div>
+        <div className="dj-band__actions">
+          <button type="button" className="dj-band__cancel" onClick={onClose}>
+            Annuler
+          </button>
+          <button
+            type="button"
+            className="dj-band__go"
+            aria-describedby="dj-band-what"
+            disabled={busy !== null || choice === null || (choice === 'playlist' && pickedVerdict !== null)}
+            onClick={() => void (choice === 'link' ? handleAddLink() : handleAddPicked())}
+          >
+            <Plus />
+            {busy === 'add' ? 'Vérification…' : place ? 'Ajouter à ma file' : 'Rejoindre la file'}
+          </button>
+        </div>
       </div>
     </div>
   )

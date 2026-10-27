@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
+import { Link } from 'react-router'
 import {
   ROOM_DESCRIPTION_MAX,
   ROOM_MAX_DJS_CHOICES,
@@ -13,18 +14,23 @@ import {
   type RoomSettings,
   type RoomStyle,
 } from '../../shared/protocol'
+import { findAvatar } from '../data/avatars'
 import type { RoomCallFailure } from '../rooms/roomApi'
 import { STYLE_LABELS, THEME_LABELS, maxTrackLabel, repeatLabel, themeAttribute } from '../rooms/roomLabels'
 import { roomErrorField, roomErrorMessage, type RoomField } from '../rooms/roomMessages'
-import RoomCard from './RoomCard'
+import Avatar from './Avatar'
+import RoomFormPreview from './RoomFormPreview'
 import './RoomForm.css'
 
 interface RoomFormProps {
   initial: RoomSettings
-  /** Pseudo of the host, for the preview card. */
+  /** Pseudo and avatar of the host, for the preview card and the box under it. */
   hostPseudo: string
+  hostAvatarId: string
   /** What the box under the preview says first: "Tu seras l'hôte" when making, "Tu es l'hôte" when changing. */
   hostTitle: string
+  /** A room being made (the preview shows it empty, with a free place for a DJ, and the button a "+"). */
+  fresh?: boolean
   submitLabel: string
   /** The server's answer: it worked, or why not. The form shows the reason next to the part it is about. */
   onSubmit: (settings: RoomSettings) => Promise<{ ok: true } | RoomCallFailure>
@@ -41,8 +47,19 @@ const codePoints = (text: string) => [...text].length
 /** One line, spaces folded: a description is a sentence, not a page. */
 const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim()
 
+/** The ids that describe a group: its hint, and its error when there is one. */
+const describedBy = (...ids: (string | false | undefined)[]) => ids.filter(Boolean).join(' ') || undefined
+
+function Check({ size = 12 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 12 12" width={size} height={size} aria-hidden="true" focusable="false">
+      <path d="M2.5 6.2 L5 8.7 L9.5 3.6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 interface ChoiceProps<T extends number | null> {
-  legend: string
+  title: string
   hint: string
   name: string
   choices: readonly T[]
@@ -52,32 +69,47 @@ interface ChoiceProps<T extends number | null> {
   error?: string
 }
 
-/** A row of chips of which exactly one is chosen: real radio buttons, so the arrow keys and screen readers work. */
-function Choice<T extends number | null>({ legend, hint, name, choices, value, label, onChange, error }: ChoiceProps<T>) {
+/**
+ * A rule of mock-up 2b: its name and hint on the left, a row of choices of which exactly one is taken. Real radio
+ * buttons (hidden, drawn by their label), so that the arrow keys and screen readers work.
+ */
+function Choice<T extends number | null>({ title, hint, name, choices, value, label, onChange, error }: ChoiceProps<T>) {
   return (
-    <fieldset className="room-form__rule" aria-describedby={error ? `${name}-error` : undefined}>
-      <legend>
-        <span>{legend}</span>
-        <small>{hint}</small>
-      </legend>
-      <div className="room-form__chips">
+    <div className="room-form__rule" role="radiogroup" aria-labelledby={`${name}-title`} aria-describedby={describedBy(`${name}-hint`, error && `${name}-error`)}>
+      <span className="room-form__rule-name">
+        <span id={`${name}-title`}>{title}</span>
+        <small id={`${name}-hint`}>{hint}</small>
+      </span>
+      <span className="room-form__segs">
         {choices.map((choice) => (
-          <label key={String(choice)} className="room-form__chip">
+          <label key={String(choice)} className="room-form__seg">
             <input type="radio" name={name} checked={value === choice} onChange={() => onChange(choice)} />
             <span>{label(choice)}</span>
           </label>
         ))}
-      </div>
+      </span>
       {error && (
         <p id={`${name}-error`} className="room-form__error" role="alert">
           {error}
         </p>
       )}
-    </fieldset>
+    </div>
   )
 }
 
-export default function RoomForm({ initial, hostPseudo, hostTitle, submitLabel, onSubmit, onCancel, cancelLabel = 'Annuler', children }: RoomFormProps) {
+/** Mock-up 2b: the settings on the left, the preview of the card, the host's role and the buttons on the right. */
+export default function RoomForm({
+  initial,
+  hostPseudo,
+  hostAvatarId,
+  hostTitle,
+  fresh = false,
+  submitLabel,
+  onSubmit,
+  onCancel,
+  cancelLabel = 'Annuler',
+  children,
+}: RoomFormProps) {
   const [name, setName] = useState(initial.name)
   const [description, setDescription] = useState(initial.description)
   const [styles, setStyles] = useState<RoomStyle[]>(initial.styles)
@@ -89,6 +121,7 @@ export default function RoomForm({ initial, hostPseudo, hostTitle, submitLabel, 
   const [busy, setBusy] = useState(false)
   const nameField = useRef<HTMLInputElement>(null)
   const descriptionField = useRef<HTMLTextAreaElement>(null)
+  const hostAvatar = findAvatar(hostAvatarId)
 
   const rules = { maxTrackSec, repeatDelaySec, maxDjs }
 
@@ -132,8 +165,8 @@ export default function RoomForm({ initial, hostPseudo, hostTitle, submitLabel, 
 
   return (
     <form className="room-form" onSubmit={handleSubmit} noValidate>
-      <div className="room-form__card">
-        <h2>Les réglages de la room</h2>
+      <section className="room-form__card" aria-labelledby="room-settings-title">
+        <h2 id="room-settings-title">Les réglages de ta room</h2>
 
         <div className="room-form__field">
           <div className="room-form__label-row">
@@ -173,7 +206,7 @@ export default function RoomForm({ initial, hostPseudo, hostTitle, submitLabel, 
           <textarea
             ref={descriptionField}
             id="room-description"
-            rows={3}
+            rows={2}
             value={description}
             maxLength={ROOM_DESCRIPTION_MAX * 2}
             aria-invalid={errors.description !== undefined}
@@ -191,11 +224,15 @@ export default function RoomForm({ initial, hostPseudo, hostTitle, submitLabel, 
           )}
         </div>
 
-        <fieldset className="room-form__rule" aria-describedby={errors.styles ? 'room-styles-error' : undefined}>
-          <legend>
-            <span>Style de musique</span>
-            <small>Jusqu'à {ROOM_STYLES_MAX} styles</small>
-          </legend>
+        <div className="room-form__field" role="group" aria-labelledby="room-styles-title" aria-describedby={describedBy('room-styles-hint', errors.styles && 'room-styles-error')}>
+          <div className="room-form__label-row">
+            <span id="room-styles-title" className="room-form__label">
+              Style de musique
+            </span>
+            <span id="room-styles-hint" className="room-form__counter">
+              Jusqu'à {ROOM_STYLES_MAX} styles
+            </span>
+          </div>
           <div className="room-form__chips">
             {ROOM_STYLES.map((style) => {
               const checked = styles.includes(style)
@@ -218,18 +255,22 @@ export default function RoomForm({ initial, hostPseudo, hostTitle, submitLabel, 
               {errors.styles}
             </p>
           )}
-        </fieldset>
+        </div>
 
-        <fieldset className="room-form__rule" aria-describedby={errors.theme ? 'room-theme-error' : undefined}>
-          <legend>
-            <span>Ambiance de la scène</span>
-          </legend>
+        <div className="room-form__field" role="radiogroup" aria-labelledby="room-theme-title" aria-describedby={errors.theme ? 'room-theme-error' : undefined}>
+          <span id="room-theme-title" className="room-form__label">
+            Ambiance de la scène
+          </span>
           <div className="room-form__themes">
             {ROOM_THEMES.map((candidate) => (
               <label key={candidate} className="room-form__theme">
                 <input type="radio" name="room-theme" checked={theme === candidate} onChange={() => setTheme(candidate)} />
+                {/* The swatch wears the colours of the ambiance it stands for: its tokens come from its own data-theme. */}
                 <span className="room-form__swatch" data-theme={themeAttribute(candidate)} aria-hidden="true" />
                 <span>{THEME_LABELS[candidate]}</span>
+                <span className="room-form__badge" aria-hidden="true">
+                  <Check />
+                </span>
               </label>
             ))}
           </div>
@@ -238,12 +279,14 @@ export default function RoomForm({ initial, hostPseudo, hostTitle, submitLabel, 
               {errors.theme}
             </p>
           )}
-        </fieldset>
+        </div>
 
-        <div className="room-form__rules">
-          <h3>Règles de la room</h3>
+        <div className="room-form__rules" role="group" aria-labelledby="room-rules-title">
+          <span id="room-rules-title" className="room-form__label">
+            Règles de la room
+          </span>
           <Choice<number | null>
-            legend="Durée max d'un morceau"
+            title="Durée max d'un morceau"
             hint="Chaque salon fixe sa limite"
             name="room-max-track"
             choices={ROOM_MAX_TRACK_CHOICES}
@@ -253,7 +296,7 @@ export default function RoomForm({ initial, hostPseudo, hostTitle, submitLabel, 
             error={errors.rules}
           />
           <Choice<number | null>
-            legend="Pas de doublon pendant"
+            title="Pas de doublon pendant"
             hint="Un morceau ne revient pas avant"
             name="room-repeat"
             choices={ROOM_REPEAT_CHOICES}
@@ -262,7 +305,7 @@ export default function RoomForm({ initial, hostPseudo, hostTitle, submitLabel, 
             onChange={setRepeatDelaySec}
           />
           <Choice<number>
-            legend="DJ max dans la file"
+            title="DJ max dans la file"
             hint="Au-delà, la file est complète"
             name="room-max-djs"
             choices={ROOM_MAX_DJS_CHOICES}
@@ -271,38 +314,48 @@ export default function RoomForm({ initial, hostPseudo, hostTitle, submitLabel, 
             onChange={setMaxDjs}
           />
         </div>
-      </div>
+      </section>
 
-      <aside className="room-form__side">
-        <section aria-labelledby="room-preview-title">
-          <h2 id="room-preview-title" className="room-form__side-title">
-            Aperçu dans la liste des rooms
-          </h2>
-          <RoomCard
-            preview
-            room={{
-              id: 'preview',
-              name,
-              description: oneLine(description),
-              styles,
-              theme,
-              host: hostPseudo,
-              rules,
-              online: 0,
-              nowPlaying: null,
-              djs: 0,
-              maxDjs,
-            }}
-          />
+      <div className="room-form__side">
+        <section className="room-form__preview" aria-labelledby="room-preview-title">
+          <h2 id="room-preview-title">Aperçu dans la liste des rooms</h2>
+          <RoomFormPreview name={name} styles={styles} theme={theme} rules={rules} hostPseudo={hostPseudo} fresh={fresh} />
         </section>
 
         <section className="room-form__host" aria-labelledby="room-host-title">
-          <h2 id="room-host-title">{hostTitle}</h2>
-          <p className="room-form__host-account">{hostPseudo} · compte connecté</p>
+          <div className="room-form__host-who">
+            {hostAvatar && <Avatar avatar={hostAvatar} size={44} framing="icon" decorative />}
+            <div>
+              <h2 id="room-host-title">{hostTitle}</h2>
+              <p className="room-form__host-account">{hostPseudo} · compte connecté</p>
+            </div>
+          </div>
           <ul>
-            <li>Tu modéreras le chat et la file des DJ (les outils arrivent bientôt).</li>
-            <li>Tu peux changer ces réglages à tout moment.</li>
-            <li>Tu peux supprimer la room quand tu veux.</li>
+            <li>
+              <span className="room-form__tick" aria-hidden="true">
+                <Check size={11} />
+              </span>
+              Tu modères le chat et la file des DJ.
+            </li>
+            <li>
+              <span className="room-form__tick" aria-hidden="true">
+                <Check size={11} />
+              </span>
+              Tu peux changer ces réglages à tout moment.
+            </li>
+            <li>
+              <span className="room-form__tick" aria-hidden="true">
+                <Check size={11} />
+              </span>
+              <span>
+                Les{' '}
+                {/* A new tab: what is typed in the form stays. */}
+                <Link to="/regles" target="_blank" rel="noopener noreferrer">
+                  règles de la communauté<span className="visually-hidden"> (nouvel onglet)</span>
+                </Link>{' '}
+                valent pour toutes les rooms.
+              </span>
+            </li>
           </ul>
         </section>
 
@@ -316,12 +369,17 @@ export default function RoomForm({ initial, hostPseudo, hostTitle, submitLabel, 
           <button type="button" className="room-form__cancel" onClick={onCancel} disabled={busy}>
             {cancelLabel}
           </button>
-          <button type="submit" className="btn-primary" disabled={busy}>
+          <button type="submit" className="room-form__submit" disabled={busy}>
+            {fresh && (
+              <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                <path d="M8 3 V13 M3 8 H13" />
+              </svg>
+            )}
             {busy ? 'Un instant…' : submitLabel}
           </button>
         </div>
         {children}
-      </aside>
+      </div>
     </form>
   )
 }

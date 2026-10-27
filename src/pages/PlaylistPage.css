@@ -1,83 +1,19 @@
-/* The playlists page (mock-up 5b, "Mes playlists"): the list of playlists on the left, the tracks of the chosen one on
-   the right. Two cards on a computer, stacked on a phone. */
+/* The playlists page: no mock-up of its own. The list of playlists is the "Mes playlists" card of 5b (440 px wide), the
+   tracks of the chosen one are rows of "Ma playlist" in 3c (68 px, a cover, the title, the artist, the duration). */
 .playlist {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 16px clamp(16px, 5vw, 56px) 48px;
+  gap: 16px;
 }
 
-.playlist__title {
-  font-size: clamp(1.4rem, 3vw, 2rem);
+/* Empty most of the time: they take no room then. */
+.playlist__feedback:empty {
+  display: none;
 }
 
 .playlist__layout {
   display: grid;
-  grid-template-columns: minmax(260px, 360px) minmax(0, 1fr);
-  gap: 24px;
+  grid-template-columns: minmax(0, 440px) minmax(0, 1fr);
+  gap: 16px;
   align-items: start;
-}
-
-.playlist__card {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-  background: var(--wall);
-}
-
-.playlist__card-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.playlist__card-header--tracks {
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.playlist__card h2 {
-  font-size: 1.15rem;
-  overflow-wrap: anywhere;
-}
-
-.playlist__card h2:focus {
-  outline: none;
-}
-
-.playlist__card h2:focus-visible {
-  outline: 3px solid var(--accent-2-text);
-  outline-offset: 4px;
-}
-
-.playlist__count,
-.playlist__hint,
-.playlist__note {
-  margin: 0;
-  color: var(--text-muted);
-}
-
-.playlist__note p {
-  margin: 0 0 10px;
-}
-
-/* Live regions: always in the page (a screen reader only hears a region it already knew), empty most of the time. */
-.playlist__feedback {
-  margin: 0;
-  font-weight: 600;
-}
-
-.playlist__feedback--error {
-  color: var(--accent);
-}
-
-.playlist__feedback--done {
-  color: var(--accent-2-text);
 }
 
 .playlist__items,
@@ -90,85 +26,43 @@
   list-style: none;
 }
 
-/* The playlist that is active: the one the "Passer DJ" window and the "+ Playlist" button use. */
-.playlist__item {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 64px;
-  padding: 8px 12px 8px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-s);
-  background: var(--bg);
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
+.playlist__tracks {
+  gap: 6px;
 }
 
-.playlist__item[aria-pressed='true'] {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 16%, var(--bg));
+.playlist__empty {
+  font-size: 14px;
 }
 
-.playlist__item-text {
+.playlist__problem {
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  align-items: flex-start;
+  gap: 8px;
 }
 
-.playlist__item-name,
-.playlist__track-title,
-.playlist__track-meta {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.playlist__item-name,
-.playlist__track-title {
-  font-weight: 700;
-}
-
-.playlist__item-meta,
-.playlist__track-meta {
-  color: var(--text-muted);
-  font-size: 0.9rem;
-}
-
-.playlist__pill {
-  padding: 6px 12px;
-  border: 1px solid var(--border-field);
-  border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 700;
-}
-
-.playlist__item[aria-pressed='true'] .playlist__pill {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--on-accent);
-}
-
-.playlist__cover {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, hsl(var(--hue) 80% 62%), hsl(calc(var(--hue) + 50) 70% 45%));
-  color: var(--outline);
+.playlist__problem p {
+  margin: 0;
 }
 
 .playlist__create {
-  min-height: var(--tap-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 52px;
   border: 2px dashed var(--border-field);
-  border-radius: var(--radius-s);
+  border-radius: 16px;
   background: transparent;
   color: var(--text);
+  font-family: var(--font-text);
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.playlist__create:hover {
+  border-color: var(--text);
 }
 
 .playlist__create:disabled {
@@ -179,44 +73,7 @@
 .playlist__form {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.playlist__form label {
-  font-weight: 700;
-}
-
-.playlist__field,
-.playlist__rename {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.playlist__rename {
-  flex: 1;
-}
-
-.playlist input[type='text'],
-.playlist input[type='search'] {
-  flex: 1;
-  min-width: 0;
-  min-height: var(--tap-main);
-  padding: 0 16px;
-  border: 2px solid var(--border-field);
-  border-radius: var(--radius-s);
-  background: var(--bg);
-  color: var(--text);
-}
-
-.playlist input::placeholder {
-  color: var(--text-muted);
-}
-
-.playlist .btn-primary {
-  flex: none;
-  padding: 0 18px;
-  font-size: 0.9rem;
+  gap: 6px;
 }
 
 .playlist__row-actions {
@@ -225,125 +82,259 @@
   gap: 8px;
 }
 
-.playlist__secondary,
-.playlist__danger,
-.playlist__track-actions button {
-  min-height: var(--tap);
+/* The smaller pills of a row (rename, delete, remove a track). */
+.playlist__small {
   padding: 0 16px;
-  border: 2px solid var(--border-field);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text);
-  font-weight: 600;
-  cursor: pointer;
+  font-size: 14px;
 }
 
-.playlist__danger {
-  border-color: var(--accent);
-  background: var(--accent);
-  color: var(--on-accent);
+/* The heading of the tracks: the playlist's cover, its name and numbers, then rename and delete. */
+.playlist__tracks-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 14px;
 }
 
-.playlist button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+.playlist__heading {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.playlist__heading p {
+  margin: 0;
+}
+
+.playlist__name {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.playlist__name:focus,
+.kit-panel__title:focus {
+  outline: none;
+}
+
+.playlist__name:focus-visible,
+.kit-panel__title:focus-visible {
+  outline: 3px solid var(--accent-2-text);
+  outline-offset: 4px;
+}
+
+.playlist__active {
+  color: var(--accent-text);
+  font-weight: 700;
+}
+
+.playlist__rename {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.playlist__rename .kit-input {
+  flex: 1 1 200px;
 }
 
 .playlist__confirm {
   padding: 12px 16px;
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-s);
+  border: 1.5px solid var(--accent);
+  border-radius: 16px;
+  background: var(--bg);
 }
 
 .playlist__confirm p {
   margin: 0 0 10px;
 }
 
+.playlist__danger {
+  min-width: 120px;
+}
+
+/* The link field, with its icon inside, and "Ajouter" beside it. */
+.playlist__field {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.playlist__field-box,
+.playlist__filter {
+  position: relative;
+  display: flex;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+/* In the column of the panel, not in a row: its height is its field's. */
+.playlist__filter {
+  flex: none;
+}
+
+.playlist__field-box svg,
+.playlist__filter svg {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.playlist__field-box .kit-input,
+.playlist__filter .kit-input {
+  padding-left: 42px;
+}
+
+.playlist__filter .kit-input {
+  height: 44px;
+  border-radius: 14px;
+  font-size: 15px;
+}
+
+/* A track, as in "Ma playlist" of mock-up 3c. */
 .playlist__track {
-  display: grid;
-  grid-template-columns: 1.6rem auto minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 12px 8px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-s);
+  gap: 14px;
+  min-height: 68px;
+  padding: 8px 14px 8px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
   background: var(--bg);
 }
 
 .playlist__rank {
+  flex: none;
+  width: 1.6rem;
   color: var(--text-muted);
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
 .playlist__track-text {
   display: flex;
+  flex: 1;
   flex-direction: column;
   min-width: 0;
+  line-height: 1.3;
+}
+
+.playlist__track-title,
+.playlist__track-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlist__track-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.playlist__track-meta,
+.playlist__duration {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.playlist__duration {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The duration is said once to a screen reader: in the line of the artist, hidden there on a wide screen where it has
+   its own column. */
+.playlist__duration-inline {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* A video that can no longer be played stays in the list, quiet, with the reason. */
 .playlist__track[data-unavailable] .playlist__track-title,
 .playlist__track[data-unavailable] .playlist__track-meta,
-.playlist__track[data-unavailable] .playlist__cover {
+.playlist__track[data-unavailable] .playlist__duration {
   opacity: 0.6;
 }
 
 .playlist__verdict {
   color: var(--warn);
-  font-size: 0.9rem;
+  font-size: 13px;
   font-weight: 700;
 }
 
 .playlist__track-actions {
   display: flex;
+  flex: none;
   gap: 6px;
 }
 
-.playlist__track-actions button {
-  min-width: var(--tap);
-  padding: 0 12px;
+.playlist__icon-button {
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border: 1.5px solid var(--border-field);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.playlist__icon-button:hover:not(:disabled) {
+  border-color: var(--text);
+}
+
+.playlist__icon-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* A phone: one column; the buttons of a track go under its title, so that the title keeps its width. */
-@media (max-width: 760px) {
+@media (max-width: 860px) {
   .playlist__layout {
     grid-template-columns: minmax(0, 1fr);
   }
+}
 
-  .playlist__card {
-    padding: 16px;
-  }
-
+@media (max-width: 600px) {
   .playlist__track {
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      'cover text'
-      'actions actions';
+    flex-wrap: wrap;
   }
 
-  .playlist__rank {
+  .playlist__rank,
+  .playlist__duration {
     display: none;
   }
 
-  .playlist__track .playlist__cover {
-    grid-area: cover;
+  .playlist__duration-inline {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
   }
 
   .playlist__track-text {
-    grid-area: text;
+    flex-basis: calc(100% - 62px);
   }
 
   .playlist__track-actions {
-    grid-area: actions;
+    width: 100%;
     justify-content: flex-end;
   }
 
-  .playlist__field {
-    flex-direction: column;
-  }
-
-  .playlist__field .btn-primary {
-    min-height: var(--tap-main);
+  .playlist__field .kit-btn {
+    flex: 1 1 100%;
   }
 }

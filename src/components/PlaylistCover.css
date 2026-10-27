@@ -1,0 +1,16 @@
+.playlist-cover {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--pl-cover-size);
+  height: var(--pl-cover-size);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--pl-cover-from), var(--pl-cover-to));
+}
+
+/* A video that can no longer be played: the cover fades with its title. */
+.playlist-cover--dimmed {
+  opacity: 0.45;
+}

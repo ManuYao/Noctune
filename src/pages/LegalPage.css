@@ -1,89 +1,157 @@
-/* The legal pages: a readable column of text (about 75 characters a line), cards where the content is a list of items. */
-.legal {
-  padding: 16px clamp(16px, 5vw, 56px) 48px;
+/* The legal pages. Mock-up 8 (legal notice, privacy): the title, then the table of contents in a 300 px panel on the left
+   and the numbered text in a panel beside it (from 212 px, 16 px apart). Mock-up 7 (rules): six cards three to a row,
+   then the ladder of sanctions (880 px) beside "Un souci ?" (432 px). */
+.legal__lead {
+  color: var(--text-muted);
+  font-size: 17px;
 }
 
-.legal__article {
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-  max-width: 78ch;
-  margin-inline: auto;
-  min-width: 0;
+.legal__lead p {
+  margin: 0 0 6px;
 }
 
-.legal__article--wide {
-  max-width: 1100px;
+.legal__lead p:last-child {
+  margin-bottom: 0;
 }
 
-.legal__hero {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.legal__hero h1 {
-  font-size: clamp(1.5rem, 4vw, 2.4rem);
-  overflow-wrap: anywhere;
+.legal__lead strong {
+  color: var(--text);
 }
 
 .legal__updated {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 13px;
 }
 
-.legal__intro {
-  color: var(--text-muted);
-  line-height: 1.6;
-}
-
-.legal__intro p {
-  margin: 0 0 0.8em;
+/* Mock-up 8. */
+.legal__layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
 }
 
 .legal__toc {
-  padding: 16px 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-  background: var(--wall);
+  position: sticky;
+  top: 16px;
+  gap: 10px;
+  max-height: calc(100dvh - 32px);
+  padding: 18px 16px;
+  overflow-y: auto;
 }
 
-.legal__toc h2 {
-  margin-bottom: 8px;
-  font-size: 1rem;
+.legal__toc-title {
+  padding: 0 8px;
+  font-family: var(--font-text);
+  line-height: 1.5;
 }
 
 .legal__toc ol {
-  display: grid;
-  gap: 0 24px;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
   margin: 0;
-  padding-left: 1.4em;
+  padding: 0;
+  list-style: none;
 }
 
 .legal__toc a {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  min-height: var(--tap);
+  min-height: 44px;
+  padding: 6px 12px;
+  border-radius: 14px;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none;
+}
+
+.legal__toc a:hover {
+  background: var(--accent-soft);
+}
+
+/* The part being read, lit as the first link of the mock-up. */
+.legal__toc a[aria-current='true'] {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 800;
+}
+
+.legal__text {
+  gap: 26px;
+  padding: 22px 28px 28px;
+}
+
+/* "Contenu provisoire", as in mock-up 8: what is still to be filled in. */
+.legal__draft {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0;
+  padding: 10px 14px;
+  border: 1.5px dashed var(--warn);
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.legal__draft-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 26px;
+  padding: 0 12px;
+  border: 1.5px solid var(--warn);
+  border-radius: 999px;
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.legal__updated + .legal__section {
+  margin-top: -12px;
 }
 
 .legal__section {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  /* The header does not hide the title when an anchor is followed. */
+  gap: 8px;
+  min-width: 0;
+  /* The title is not hidden under the top of the window when an anchor is followed. */
   scroll-margin-top: 16px;
-  line-height: 1.65;
 }
 
-.legal__section h2 {
-  font-size: clamp(1.1rem, 2.4vw, 1.4rem);
+.legal__text .legal__section h2 {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.legal__number {
+  color: var(--accent-text);
+}
+
+.legal__text .legal__section {
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 .legal__section h3 {
-  font-family: var(--font-title);
-  font-size: 1rem;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.legal__text .legal__section strong,
+.legal__text .legal__section h3 {
+  color: var(--text);
 }
 
 .legal__section p,
@@ -92,12 +160,11 @@
   margin: 0;
 }
 
-.legal__section ul,
-.legal__section ol {
-  padding-left: 1.4em;
+.legal__section ul:not([class]),
+.legal__section ol:not([class]) {
+  padding-left: 1.3em;
 }
 
-/* Only in running text: the cards and the steps are laid out by their grid. */
 .legal__section ul:not([class]) li + li,
 .legal__section ol:not([class]) li + li {
   margin-top: 0.4em;
@@ -107,18 +174,14 @@
   overflow-wrap: anywhere;
 }
 
-/* A list of items, each in its own card (what is kept and why, the six rules). */
+/* A list of items, each in its own card (what is kept and why; the six rules). */
 .legal__cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
-  gap: 16px;
-  margin: 0;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 12px;
+  margin: 4px 0 0;
   padding: 0;
   list-style: none;
-}
-
-.legal__section .legal__cards {
-  padding-left: 0;
 }
 
 .legal__card {
@@ -126,14 +189,10 @@
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-  padding: 16px 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-  background: var(--wall);
-}
-
-.legal__card + .legal__card {
-  margin-top: 0;
+  padding: 14px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg);
 }
 
 .legal__card dl {
@@ -144,81 +203,227 @@
 
 .legal__card dt {
   color: var(--text-muted);
-  font-size: 0.8rem;
-  letter-spacing: 0.04em;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .legal__card dd {
   margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
-/* The ladder of sanctions: four steps, from the lightest to the heaviest. */
-.legal__ladder {
+/* Mock-up 7: the title, with one line under it (the table of contents and the date), then the panels on a grid of six
+   columns. */
+.legal--panels .legal__intro {
+  max-width: none;
+}
+
+.legal__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.kit-intro .legal__updated {
+  font-size: 13px;
+}
+
+.legal__inline-toc {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+}
+
+.legal__inline-title {
+  font-family: var(--font-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.legal__inline-toc ol {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.legal__inline-toc li + li::before {
+  content: '·';
+  margin: 0 8px;
+}
+
+/* Small links in a line, a 44 px target all the same. */
+.legal__inline-toc a {
+  display: inline-block;
+  padding: 12px 0;
+  color: var(--text-muted);
+}
+
+.legal__inline-toc a:hover {
+  color: var(--text);
+}
+
+.legal__panels {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.legal__panel--bare {
+  grid-column: 1 / -1;
+}
+
+.legal__panel--wide {
+  grid-column: span 4;
+}
+
+.legal__panel--accent {
+  grid-column: span 2;
+}
+
+.legal__panel--half {
+  grid-column: span 3;
+}
+
+.legal__panels .kit-panel {
+  color: var(--text-muted);
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+
+.legal__panels .legal__section .kit-panel__title {
+  color: var(--text);
+  line-height: 1.4;
+}
+
+/* The six rules: three to a row, a square icon in the accent beside the title. */
+.legal--panels .legal__cards {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   margin: 0;
+}
+
+.legal__rule {
+  gap: 10px;
+  min-height: 204px;
+  padding: 18px 20px;
+  border-radius: 24px;
+  background: var(--glass);
+}
+
+.legal__rule-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.legal__rule h3 {
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1.3;
+}
+
+.legal__rule p {
+  color: var(--text-muted);
+  font-size: 14.5px;
+}
+
+.legal__rule-icon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+}
+
+.legal__rule-icon svg {
+  stroke: var(--accent-text);
+}
+
+/* The ladder of sanctions: four numbered circles joined by a line, from the lightest to the heaviest. */
+.legal__ladder {
+  display: flex;
+  margin: 6px 0 0;
   padding: 0;
   list-style: none;
   counter-reset: step;
 }
 
-.legal__section .legal__ladder {
-  padding-left: 0;
-}
-
 .legal__step {
+  position: relative;
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
-  padding: 16px 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-  background: var(--wall);
+  padding: 0 8px;
+  text-align: center;
   counter-increment: step;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .legal__step::before {
   content: counter(step);
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: var(--step-color, var(--accent));
-  color: #0e0b1f;
-  font-family: var(--font-title);
-  font-weight: 700;
+  background: var(--step-color);
+  color: #16142b;
+  font-size: 17px;
+  font-weight: 800;
 }
 
-.legal__step:nth-child(1) {
-  --step-color: #3de0ff;
-}
-
-.legal__step:nth-child(2) {
-  --step-color: #ff3d81;
-}
-
-.legal__step:nth-child(3) {
-  --step-color: #ffb13d;
-}
-
-.legal__step:nth-child(4) {
-  --step-color: #ff7a7a;
+/* The line to the next step. */
+.legal__step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 21px;
+  left: calc(50% + 32px);
+  width: calc(100% - 64px);
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
 }
 
 .legal__step strong {
-  font-family: var(--font-title);
-  font-size: 0.95rem;
+  color: var(--text);
+  font-size: 14.5px;
+  line-height: 1.3;
 }
 
+.legal__step:nth-child(1) { --step-color: var(--accent-2); }
+.legal__step:nth-child(2) { --step-color: var(--accent); }
+.legal__step:nth-child(3) { --step-color: #ffb347; }
+.legal__step:nth-child(4) { --step-color: #ff7a7a; }
+
+/* "Pour joindre l'équipe…" at the bottom of "Un souci ?". */
 .legal__note {
-  padding: 14px 18px;
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-m);
-  background: var(--wall);
+  margin-top: auto;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg);
+}
+
+.legal__panels .legal__section a {
+  color: var(--accent-text);
+  font-weight: 700;
 }
 
 /* A gap the operator must fill: loud on purpose. */
@@ -232,18 +437,76 @@
   overflow-wrap: anywhere;
 }
 
-@media print {
-  .legal {
-    padding: 0;
+@media (max-width: 1099px) {
+  .legal__panel--wide,
+  .legal__panel--accent,
+  .legal__panel--half {
+    grid-column: 1 / -1;
+  }
+
+  .legal--panels .legal__cards {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  }
+
+  .legal__rule {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 860px) {
+  .legal__layout {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .legal__toc {
+    position: static;
+    max-height: none;
+  }
+
+  .legal__text {
+    padding: 18px 18px 22px;
+  }
+}
+
+/* A phone: the ladder in two rows of two, without the lines. */
+@media (max-width: 640px) {
+  .legal__ladder {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 0;
+  }
+
+  .legal__step:not(:last-child)::after {
+    display: none;
+  }
+}
+
+@media print {
+  .legal__toc,
+  .legal__inline-toc {
     display: none;
   }
 
+  .legal__layout,
+  .legal__panels {
+    display: block;
+  }
+
+  .legal__text,
+  .legal__panels .kit-panel,
+  .legal__lead,
+  .legal__text .legal__section {
+    color: #000;
+  }
+
+  .legal__panel + .legal__panel {
+    margin-top: 16px;
+  }
+
   .legal__card,
-  .legal__step,
-  .legal__note {
+  .legal__rule,
+  .legal__note,
+  .legal__draft {
     break-inside: avoid;
     background: none;
     border-color: #999;

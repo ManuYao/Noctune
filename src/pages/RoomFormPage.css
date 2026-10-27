@@ -1,49 +1,87 @@
+/* Making a room and changing its settings (mock-up 2b), measured at 1440 x 900: the title 100 px from the top, the form
+   at 212, 56 px from both sides. The halos of the page are the body's (index.css). */
 .room-form-page {
+  --gutter: clamp(16px, 5vw, 56px);
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 16px clamp(16px, 5vw, 56px) 48px;
+  gap: 28px;
+  padding: 14px var(--gutter) 24px;
+  line-height: 1.5;
 }
 
-.room-form-page h1 {
-  font-size: clamp(1.6rem, 4vw, 2.6rem);
+.room-form-page p {
+  margin: 0;
 }
 
-.room-form-page__intro,
+.room-form-page__head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.room-form-page__head h1 {
+  font-size: clamp(32px, 7vw, 46px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.room-form-page__head p,
 .room-form-page__note {
-  margin: 0;
   color: var(--text-muted);
+  font-size: 17px;
 }
 
-.room-form-page__saved {
-  margin: 0;
-  padding: 10px 16px;
-  border: 1px solid var(--accent-2);
-  border-radius: var(--radius-s);
+/* "Les réglages sont enregistrés.": the second accent, as everything that went well. Empty, it takes no room. */
+.room-form-page__head .room-form-page__saved {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border: 1.5px solid var(--accent-2);
+  border-radius: 999px;
   color: var(--accent-2-text);
+  font-size: 14px;
   font-weight: 700;
 }
 
-.room-form-page__error {
-  margin: 0;
+.room-form-page__head .room-form-page__saved:empty {
+  margin-top: -8px;
+  padding: 0;
+  border: 0;
+}
+
+.room-form-page__alert {
   color: var(--warn);
   font-weight: 700;
 }
 
-/* Three rooms already: what to do instead of the form. */
+.room-form-page__error {
+  color: var(--warn);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.room-form-page__back {
+  align-self: flex-start;
+  font-weight: 700;
+}
+
+/* Three rooms already: what to do instead of the form, on a panel of the same glass. */
 .room-form-page__limit {
   display: flex;
   flex-direction: column;
   gap: 12px;
   max-width: 560px;
-  padding: 24px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-l);
-  background: var(--wall);
+  padding: 18px 20px;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  background: var(--glass);
 }
 
-.room-form-page__limit p {
-  margin: 0;
+.room-form-page__limit h2 {
+  font-size: 17px;
+}
+
+.room-form-page__limit > p {
   color: var(--text-muted);
 }
 
@@ -61,26 +99,48 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: var(--tap);
+  min-height: 58px;
+  padding: 0 8px 0 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg);
+  font-weight: 700;
 }
 
-/* The deletion sits apart from the buttons that save: it cannot be reached by a slip. */
+.room-form-page__pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 18px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* The deletion, apart from the buttons that save (it cannot be reached by a slip): a panel under them. */
 .room-form-page__danger {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
+  padding: 18px 20px;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  background: var(--glass);
 }
 
 .room-form-page__danger h2 {
-  font-size: 1rem;
+  font-family: var(--font-text);
+  font-size: 16px;
+  font-weight: 800;
 }
 
 .room-form-page__danger p {
-  margin: 0;
   color: var(--text-muted);
+  font-size: 14px;
 }
 
 .room-form-page__confirm {
@@ -92,18 +152,27 @@
 
 .room-form-page__danger button {
   min-height: var(--tap);
-  padding: 0 18px;
-  border: 2px solid var(--border-field);
-  border-radius: var(--radius-s);
+  padding: 0 20px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 999px;
   background: transparent;
   color: var(--text);
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.room-form-page__danger > button {
+  align-self: flex-start;
 }
 
 .room-form-page__danger .room-form-page__delete {
   border-color: var(--warn);
   color: var(--warn);
+}
+
+.room-form-page__danger .room-form-page__keep:hover:not(:disabled) {
+  border-color: var(--text);
 }
 
 .room-form-page__danger button:disabled {

@@ -1,52 +1,61 @@
-/* The tab "Ma playlist" of the "Passer DJ" dialog (mock-ups 3c and M4): the member's tracks, each with what this room
-   says about it. A track the room would refuse stays in the list, greyed, with the reason in words. */
-.dj-playlist {
+/* "Ma playlist" in "Passer DJ" (mock-up 3c): the menu of playlists, the filter, one row (68 px) per track with its length
+   and "Choisir" / "Choisi", or what the room says about it. A track the room would refuse stays in the list, quiet. */
+.dj-playlist__top {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.dj-playlist__controls {
-  display: flex;
+  flex: none;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-}
-
-.dj-playlist__controls label {
-  font-family: var(--font-title);
-  font-size: 1rem;
-  font-weight: 700;
-}
-
-.dj-playlist select,
-.dj-playlist input[type='search'] {
   min-height: var(--tap);
-  padding: 0 12px;
-  border: 2px solid var(--border-field);
-  border-radius: var(--radius-s);
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
 }
 
-.dj-playlist select {
-  min-width: 0;
-  max-width: 60%;
+.dj-playlist__heading label {
   cursor: pointer;
 }
 
-.dj-playlist input[type='search'] {
-  width: 100%;
+/* A real <select>, drawn as the mock-up's button with its chevron. */
+.dj-playlist__menu {
+  position: relative;
+  min-width: 0;
+  max-width: 60%;
+  color: var(--text);
 }
 
-.dj-playlist input[type='search']::placeholder {
-  color: var(--text-muted);
+.dj-playlist__menu select {
+  width: 100%;
+  height: var(--tap);
+  padding: 0 38px 0 16px;
+  overflow: hidden;
+  border: 1.5px solid var(--border-field);
+  border-radius: var(--radius-s);
+  appearance: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* The list of the menu is drawn by the system: it takes the page's colours. */
+.dj-playlist__menu option {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.dj-playlist__menu svg {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  pointer-events: none;
 }
 
 .dj-playlist__note {
   margin: 0;
   color: var(--text-muted);
+  font-size: 14px;
 }
 
 .dj-playlist__note p {
@@ -57,111 +66,147 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px 16px;
+  gap: 8px;
+}
+
+.dj-playlist__secondary {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 18px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .dj-playlist__list {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 8px;
-  max-height: min(44dvh, 360px);
+  gap: 6px;
+  min-height: 0;
   margin: 0;
-  padding: 0 2px 0 0;
+  padding: 0;
   overflow-y: auto;
   list-style: none;
 }
 
-.dj-playlist__row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px 8px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-s);
-  background: var(--bg);
-}
-
-/* A colour per track, as in the mock-ups. Decorative. */
-.dj-playlist__cover {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, hsl(var(--hue) 80% 62%), hsl(calc(var(--hue) + 50) 70% 45%));
-  color: var(--outline);
-}
-
-.dj-playlist__text {
+/* A whole row is the button: pressed, it is "Ton morceau". */
+.dj-track {
   display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 68px;
+  padding: 0 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dj-track:hover:not([aria-disabled]) {
+  border-color: var(--border-field);
+}
+
+.dj-track[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.dj-track[aria-disabled] {
+  cursor: default;
+}
+
+.dj-track__text {
+  display: flex;
+  flex: 1;
   flex-direction: column;
   min-width: 0;
+  line-height: 1.3;
 }
 
-.dj-playlist__title,
-.dj-playlist__meta {
+.dj-track__title,
+.dj-track__artist {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.dj-playlist__title {
+.dj-track__title {
+  font-size: 15px;
   font-weight: 700;
 }
 
-.dj-playlist__meta {
+.dj-track__artist,
+.dj-track__length {
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 13px;
 }
 
-.dj-playlist__verdict {
-  color: var(--warn);
-  font-size: 0.9rem;
-  font-weight: 700;
+.dj-track__length {
+  flex: none;
 }
 
-/* The room would not take it now: it stays in the list, but quiet. */
-.dj-playlist__row[data-refused] .dj-playlist__title,
-.dj-playlist__row[data-refused] .dj-playlist__meta,
-.dj-playlist__row[data-refused] .dj-playlist__cover {
+/* The room would not take it now: quiet, with the reason in the colour of the verdicts. */
+.dj-track[aria-disabled] .track-cover,
+.dj-track[aria-disabled] .dj-track__text,
+.dj-track[aria-disabled] .dj-track__length {
   opacity: 0.6;
 }
 
-.dj-playlist__add,
-.dj-playlist__secondary {
-  min-height: var(--tap);
-  padding: 0 16px;
-  border: 2px solid var(--accent);
+.dj-track__pick,
+.dj-track__verdict {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 76px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1.5px solid transparent;
   border-radius: 999px;
-  background: transparent;
-  color: var(--accent);
-  font-weight: 700;
-  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
-.dj-playlist__add:hover:not(:disabled) {
+.dj-track__pick {
+  border-color: var(--border-field);
+}
+
+.dj-track[aria-pressed='true'] .dj-track__pick {
+  border-color: var(--accent);
   background: var(--accent);
   color: var(--on-accent);
 }
 
-.dj-playlist__secondary {
-  border-color: var(--border-field);
-  color: var(--text);
+.dj-track__verdict {
+  color: var(--warn);
 }
 
-/* "Pas dans ta playlist ?": the way to the other tab, dashed like the mock-up. */
+/* "Pas dans ta playlist ?" (a phone, where the link is behind the other tab): dashed, as the mock-up. */
 .dj-playlist__elsewhere {
   display: flex;
+  flex: none;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
   min-height: var(--tap-main);
   padding: 10px 16px;
   border: 2px dashed var(--border-field);
-  border-radius: var(--radius-s);
+  border-radius: 16px;
   background: transparent;
   color: var(--text);
+  font: inherit;
   text-align: left;
   cursor: pointer;
 }
@@ -172,11 +217,16 @@
 
 @media (max-width: 760px) {
   .dj-playlist__list {
-    max-height: none;
-    padding-right: 0;
+    overflow: visible;
   }
 
-  .dj-playlist__add {
-    min-width: var(--tap-main);
+  .dj-track {
+    gap: 10px;
+    padding: 0 10px;
+  }
+
+  .dj-track__pick,
+  .dj-track__verdict {
+    min-width: 0;
   }
 }

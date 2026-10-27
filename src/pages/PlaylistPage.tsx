@@ -1,41 +1,25 @@
 import { useEffect, useRef, useState } from 'react'
-import type { CSSProperties, FormEvent } from 'react'
+import type { FormEvent } from 'react'
 import { Navigate } from 'react-router'
 import { DJ_INPUT_MAX, PLAYLISTS_MAX, PLAYLIST_NAME_MAX, PLAYLIST_TRACKS_MAX, type PlaylistSummary } from '../../shared/protocol'
 import { useAccount } from '../auth/useAccount'
+import PlaylistCover from '../components/PlaylistCover'
+import PlaylistPick from '../components/PlaylistPick'
 import SiteHeader from '../components/SiteHeader'
 import { formatClock } from '../data/duration'
 import { usePlaylists, usePlaylistTracks } from '../playlists/usePlaylists'
+import './PageKit.css'
 import './PlaylistPage.css'
 
 /** Without accents and capitals, so that "cafe" finds "Café froid". */
 const fold = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
 
-/** A colour for a cover, the same every time for the same text (the mock-ups have gradient covers). */
-function hueOf(text: string): number {
-  let sum = 0
-  for (const character of text) sum = (sum * 31 + character.charCodeAt(0)) % 360
-  return sum
-}
-
 const trackCountText = (count: number) => `${count} morceau${count > 1 ? 'x' : ''}`
 
-function NoteIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
-      <path
-        d="M9 18V6l10-2v12M9 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm10-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
-/** The member's playlists: the list on the left, the tracks of the chosen one on the right (mock-up 5b). */
+/**
+ * The member's playlists (no mock-up of its own: dressed as the panels of 5b and 3c): the list on the left, the tracks
+ * of the chosen one on the right.
+ */
 export default function PlaylistPage() {
   const { account, status } = useAccount()
 
@@ -45,8 +29,8 @@ export default function PlaylistPage() {
     return (
       <div>
         <SiteHeader />
-        <main className="playlist">
-          <p className="playlist__note" role="status">
+        <main className="kit-page playlist">
+          <p className="kit-hint" role="status">
             Chargement…
           </p>
         </main>
@@ -178,26 +162,29 @@ function MemberPlaylists() {
   return (
     <div>
       <SiteHeader />
-      <main className="playlist">
-        <h1 className="playlist__title">Mes playlists</h1>
+      <main className="kit-page playlist">
+        <div className="kit-intro">
+          <h1>Mes playlists</h1>
+          <p>Range tes morceaux et choisis ta playlist active : c'est elle qui s'ouvre en premier quand tu passes DJ.</p>
+        </div>
 
         {/* Live regions: always in the page, empty most of the time. */}
-        <p className="playlist__feedback playlist__feedback--error" role="alert">
+        <p className="kit-feedback kit-feedback--error playlist__feedback" role="alert">
           {error}
         </p>
-        <p className="playlist__feedback playlist__feedback--done" role="status">
+        <p className="kit-feedback kit-feedback--done playlist__feedback" role="status">
           {note}
         </p>
 
         {lists.status === 'loading' && (
-          <p className="playlist__note" role="status">
+          <p className="kit-hint" role="status">
             Chargement de tes playlists…
           </p>
         )}
         {lists.status === 'error' && (
-          <div className="playlist__note">
+          <div className="playlist__problem">
             <p role="alert">{lists.error}</p>
-            <button type="button" className="playlist__secondary" onClick={() => void lists.reload()}>
+            <button type="button" className="kit-btn kit-btn--ghost" onClick={() => void lists.reload()}>
               Réessayer
             </button>
           </div>
@@ -205,47 +192,38 @@ function MemberPlaylists() {
 
         {lists.status === 'ready' && (
           <div className="playlist__layout">
-            <section className="playlist__card" aria-labelledby="playlists-title">
-              <header className="playlist__card-header">
-                <h2 id="playlists-title" tabIndex={-1} ref={listsHeading}>
+            <section className="kit-panel playlist__lists" aria-labelledby="playlists-title">
+              <div className="kit-panel__head">
+                <h2 className="kit-panel__title" id="playlists-title" tabIndex={-1} ref={listsHeading}>
                   Playlists
                 </h2>
-                <span className="playlist__count">
+                <span className="kit-panel__count">
                   {lists.playlists.length} / {PLAYLISTS_MAX}
                 </span>
-              </header>
+              </div>
 
               {lists.playlists.length === 0 && !creating && (
-                <p className="playlist__note">Tu n'as pas encore de playlist. Crée la première : tu pourras y garder les morceaux que tu aimes, et les lancer d'un clic quand tu passes DJ.</p>
+                <p className="kit-hint playlist__empty">
+                  Tu n'as pas encore de playlist. Crée la première : tu pourras y garder les morceaux que tu aimes, et les lancer d'un
+                  clic quand tu passes DJ.
+                </p>
               )}
 
               {lists.playlists.length > 0 && (
                 <ul className="playlist__items" role="list">
                   {lists.playlists.map((playlist: PlaylistSummary) => (
                     <li key={playlist.id}>
-                      <button
-                        type="button"
-                        className="playlist__item"
-                        aria-pressed={playlist.id === activeId}
-                        onClick={() => {
+                      <PlaylistPick
+                        playlist={playlist}
+                        active={playlist.id === activeId}
+                        onSelect={() => {
                           lists.select(playlist.id)
                           setRenaming(false)
                           setConfirmDelete(false)
                           setFilter('')
                           resetMessages()
                         }}
-                      >
-                        <span className="playlist__cover" aria-hidden="true" style={{ '--hue': hueOf(playlist.id) } as CSSProperties}>
-                          <NoteIcon />
-                        </span>
-                        <span className="playlist__item-text">
-                          <span className="playlist__item-name">{playlist.name}</span>
-                          <span className="playlist__item-meta">{trackCountText(playlist.trackCount)}</span>
-                        </span>
-                        <span className="playlist__pill" aria-hidden="true">
-                          {playlist.id === activeId ? 'Active' : 'Choisir'}
-                        </span>
-                      </button>
+                      />
                     </li>
                   ))}
                 </ul>
@@ -253,9 +231,12 @@ function MemberPlaylists() {
 
               {creating ? (
                 <form className="playlist__form" onSubmit={handleCreate} noValidate>
-                  <label htmlFor="playlist-new-name">Nom de la playlist</label>
+                  <label htmlFor="playlist-new-name" className="kit-label">
+                    Nom de la playlist
+                  </label>
                   <input
                     id="playlist-new-name"
+                    className="kit-input"
                     type="text"
                     maxLength={PLAYLIST_NAME_MAX}
                     autoComplete="off"
@@ -265,12 +246,12 @@ function MemberPlaylists() {
                     autoFocus
                   />
                   <div className="playlist__row-actions">
-                    <button type="submit" className="btn-primary" disabled={busy}>
+                    <button type="submit" className="kit-btn" disabled={busy}>
                       Créer
                     </button>
                     <button
                       type="button"
-                      className="playlist__secondary"
+                      className="kit-btn kit-btn--ghost"
                       onClick={() => {
                         setCreating(false)
                         setNewName('')
@@ -291,17 +272,18 @@ function MemberPlaylists() {
                     resetMessages()
                   }}
                 >
-                  + Créer une playlist
+                  <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                    <path d="M8 3 V13 M3 8 H13" />
+                  </svg>
+                  Créer une playlist
                 </button>
               )}
-              {lists.playlists.length >= PLAYLISTS_MAX && (
-                <p className="playlist__note">Tu as atteint la limite de {PLAYLISTS_MAX} playlists.</p>
-              )}
+              {lists.playlists.length >= PLAYLISTS_MAX && <p className="kit-hint">Tu as atteint la limite de {PLAYLISTS_MAX} playlists.</p>}
             </section>
 
             {active && (
-              <section className="playlist__card" aria-labelledby="tracks-title">
-                <header className="playlist__card-header playlist__card-header--tracks">
+              <section className="kit-panel playlist__tracks-panel" aria-labelledby="tracks-title">
+                <div className="playlist__tracks-head">
                   {renaming ? (
                     <form className="playlist__rename" onSubmit={handleRename} noValidate>
                       <label htmlFor="playlist-rename" className="visually-hidden">
@@ -309,6 +291,7 @@ function MemberPlaylists() {
                       </label>
                       <input
                         id="playlist-rename"
+                        className="kit-input"
                         type="text"
                         maxLength={PLAYLIST_NAME_MAX}
                         autoComplete="off"
@@ -316,27 +299,30 @@ function MemberPlaylists() {
                         onChange={(event) => setRenameTo(event.target.value)}
                         autoFocus
                       />
-                      <button type="submit" className="btn-primary" disabled={busy}>
+                      <button type="submit" className="kit-btn" disabled={busy}>
                         Enregistrer
                       </button>
-                      <button type="button" className="playlist__secondary" onClick={() => setRenaming(false)}>
+                      <button type="button" className="kit-btn kit-btn--ghost" onClick={() => setRenaming(false)}>
                         Annuler
                       </button>
                     </form>
                   ) : (
                     <>
+                      <PlaylistCover seed={active.id} size={64} />
                       <div className="playlist__heading">
-                        <h2 id="tracks-title" tabIndex={-1} ref={tracksHeading}>
+                        <h2 className="playlist__name" id="tracks-title" tabIndex={-1} ref={tracksHeading}>
                           {active.name}
                         </h2>
-                        <p className="playlist__count">
+                        <p className="kit-panel__count">
                           {trackList.length} / {PLAYLIST_TRACKS_MAX} morceaux{total > 0 && ` · ${formatClock(total)}`}
+                          {' · '}
+                          <span className="playlist__active">Playlist active</span>
                         </p>
                       </div>
                       <div className="playlist__row-actions">
                         <button
                           type="button"
-                          className="playlist__secondary"
+                          className="kit-btn kit-btn--ghost playlist__small"
                           onClick={() => {
                             setRenameTo(active.name)
                             setRenaming(true)
@@ -346,13 +332,13 @@ function MemberPlaylists() {
                         >
                           Renommer
                         </button>
-                        <button type="button" className="playlist__secondary" onClick={() => setConfirmDelete(true)}>
+                        <button type="button" className="kit-btn kit-btn--ghost playlist__small" onClick={() => setConfirmDelete(true)}>
                           Supprimer
                         </button>
                       </div>
                     </>
                   )}
-                </header>
+                </div>
 
                 {confirmDelete && (
                   <div className="playlist__confirm" role="group" aria-label="Confirmer la suppression">
@@ -360,10 +346,10 @@ function MemberPlaylists() {
                       Supprimer « {active.name} » ? Ses {trackCountText(trackList.length)} seront supprimés aussi, et on ne peut pas revenir en arrière.
                     </p>
                     <div className="playlist__row-actions">
-                      <button type="button" className="playlist__danger" disabled={busy} onClick={() => void handleDelete()}>
+                      <button type="button" className="kit-btn playlist__danger" disabled={busy} onClick={() => void handleDelete()}>
                         Supprimer
                       </button>
-                      <button type="button" className="playlist__secondary" onClick={() => setConfirmDelete(false)}>
+                      <button type="button" className="kit-btn kit-btn--ghost" onClick={() => setConfirmDelete(false)}>
                         Garder
                       </button>
                     </div>
@@ -371,67 +357,79 @@ function MemberPlaylists() {
                 )}
 
                 <form className="playlist__form" onSubmit={handleAddTrack} noValidate>
-                  <label htmlFor="playlist-link">Ajouter un morceau</label>
+                  <label htmlFor="playlist-link" className="kit-label">
+                    Ajouter un morceau
+                  </label>
                   <div className="playlist__field">
-                    <input
-                      id="playlist-link"
-                      type="text"
-                      inputMode="url"
-                      autoComplete="off"
-                      autoCapitalize="off"
-                      spellCheck={false}
-                      maxLength={DJ_INPUT_MAX}
-                      placeholder="https://www.youtube.com/watch?v=…"
-                      value={link}
-                      aria-describedby="playlist-link-help"
-                      onChange={(event) => {
-                        setLink(event.target.value)
-                        resetMessages()
-                      }}
-                    />
-                    <button type="submit" className="btn-primary" disabled={busy || trackList.length >= PLAYLIST_TRACKS_MAX}>
+                    <span className="playlist__field-box">
+                      <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M8.5 11.5 L11.5 8.5 M9 5.5 L10.5 4 A3.2 3.2 0 0 1 16 8.5 L14.5 10 M11 14.5 L9.5 16 A3.2 3.2 0 0 1 4 11.5 L5.5 10" />
+                      </svg>
+                      <input
+                        id="playlist-link"
+                        className="kit-input"
+                        type="text"
+                        inputMode="url"
+                        autoComplete="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
+                        maxLength={DJ_INPUT_MAX}
+                        placeholder="https://www.youtube.com/watch?v=…"
+                        value={link}
+                        aria-describedby="playlist-link-help"
+                        onChange={(event) => {
+                          setLink(event.target.value)
+                          resetMessages()
+                        }}
+                      />
+                    </span>
+                    <button type="submit" className="kit-btn kit-btn--tall" disabled={busy || trackList.length >= PLAYLIST_TRACKS_MAX}>
                       Ajouter
                     </button>
                   </div>
-                  <p id="playlist-link-help" className="playlist__hint">
+                  <p id="playlist-link-help" className="kit-hint">
                     Colle l'adresse d'une vidéo YouTube. Elle doit pouvoir être lue en dehors de YouTube.
                   </p>
                 </form>
 
                 {tracks.status === 'loading' && (
-                  <p className="playlist__note" role="status">
+                  <p className="kit-hint" role="status">
                     Chargement de la playlist…
                   </p>
                 )}
                 {tracks.status === 'error' && (
-                  <div className="playlist__note">
+                  <div className="playlist__problem">
                     <p role="alert">{tracks.error}</p>
-                    <button type="button" className="playlist__secondary" onClick={() => void tracks.reload()}>
+                    <button type="button" className="kit-btn kit-btn--ghost" onClick={() => void tracks.reload()}>
                       Réessayer
                     </button>
                   </div>
                 )}
-                {tracks.status === 'ready' && trackList.length === 0 && <p className="playlist__note">Cette playlist est vide pour l'instant.</p>}
+                {tracks.status === 'ready' && trackList.length === 0 && <p className="kit-hint playlist__empty">Cette playlist est vide pour l'instant.</p>}
 
                 {tracks.status === 'ready' && trackList.length > 0 && (
-                  <>
+                  <div className="playlist__filter">
                     <label htmlFor="playlist-filter" className="visually-hidden">
                       Filtrer cette playlist
                     </label>
+                    <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                      <circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="2" />
+                      <path d="M13 13 L17 17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
                     <input
                       id="playlist-filter"
                       type="search"
-                      className="playlist__filter"
+                      className="kit-input"
                       autoComplete="off"
                       spellCheck={false}
                       placeholder="Filtrer cette playlist…"
                       value={filter}
                       onChange={(event) => setFilter(event.target.value)}
                     />
-                  </>
+                  </div>
                 )}
                 {shown.length === 0 && trackList.length > 0 && (
-                  <p className="playlist__note" role="status">
+                  <p className="kit-hint" role="status">
                     Aucun morceau ne correspond à « {filter.trim()} ».
                   </p>
                 )}
@@ -446,41 +444,50 @@ function MemberPlaylists() {
                           <span className="playlist__rank" aria-hidden="true">
                             {index + 1}
                           </span>
-                          <span className="playlist__cover" aria-hidden="true" style={{ '--hue': hueOf(track.videoId) } as CSSProperties}>
-                            <NoteIcon />
-                          </span>
+                          <PlaylistCover seed={track.videoId} size={48} dimmed={track.unavailable} />
                           <span className="playlist__track-text">
                             <span className="playlist__track-title">{title}</span>
                             <span className="playlist__track-meta">
                               {track.artist ?? 'Artiste inconnu'}
-                              {track.durationSec !== null && ` · ${formatClock(track.durationSec)}`}
+                              {track.durationSec !== null && <span className="playlist__duration-inline">{` · ${formatClock(track.durationSec)}`}</span>}
                             </span>
                             {track.unavailable && <span className="playlist__verdict">Indisponible : la vidéo ne peut plus être lue</span>}
                           </span>
+                          {track.durationSec !== null && (
+                            <span className="playlist__duration" aria-hidden="true">
+                              {formatClock(track.durationSec)}
+                            </span>
+                          )}
                           <span className="playlist__track-actions">
                             {/* Moving is by buttons, not by dragging: it works with a keyboard and on a touch screen. With a
                                 filter on, the order of the whole list is hidden, so the arrows wait until it is cleared. */}
                             <button
                               type="button"
                               id={`pl-move-up-${track.id}`}
+                              className="playlist__icon-button"
                               aria-label={`Monter « ${title} »`}
                               disabled={busy || index === 0 || wanted !== ''}
                               onClick={() => void handleMove(track.id, title, 'up')}
                             >
-                              ↑
+                              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M8 13 V3 M3.5 7.5 L8 3 L12.5 7.5" />
+                              </svg>
                             </button>
                             <button
                               type="button"
                               id={`pl-move-down-${track.id}`}
+                              className="playlist__icon-button"
                               aria-label={`Descendre « ${title} »`}
                               disabled={busy || index === trackList.length - 1 || wanted !== ''}
                               onClick={() => void handleMove(track.id, title, 'down')}
                             >
-                              ↓
+                              <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M8 3 V13 M3.5 8.5 L8 13 L12.5 8.5" />
+                              </svg>
                             </button>
                             <button
                               type="button"
-                              className="playlist__remove"
+                              className="kit-btn kit-btn--ghost playlist__small"
                               aria-label={`Retirer « ${title} » de la playlist`}
                               disabled={busy}
                               onClick={() => void handleRemoveTrack(track.id, title)}

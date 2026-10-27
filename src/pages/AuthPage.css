@@ -1,49 +1,54 @@
-/* Sign in and register: one card in the middle of the page, the same look as the entry card. */
-.auth__main {
+/* Signing in and creating an account: no mock-up of their own. The title as on the other pages, then two panels as in
+   mock-up 5: the form in the accent's frame ("Débloque tout avec un compte"), and what an account adds beside it. */
+.auth__columns {
   display: grid;
-  justify-items: center;
-  padding: 16px clamp(16px, 5vw, 56px) 48px;
+  grid-template-columns: minmax(0, 600fr) minmax(0, 712fr);
+  gap: 16px;
+  align-items: start;
 }
 
-.auth__card {
+.auth__form {
+  gap: 18px;
+}
+
+.auth__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.auth__accent {
+  color: var(--accent-text);
+}
+
+.auth__submit {
+  width: 100%;
+}
+
+.auth__links {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  width: min(100%, 460px);
-  padding: 28px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-l);
-  background: var(--wall);
-}
-
-.auth__card h1 {
-  font-size: 1.75rem;
-}
-
-.auth__card label {
-  font-weight: 700;
-}
-
-.auth__card input {
-  min-height: var(--tap-main);
-  padding: 0 16px;
-  border: 2px solid var(--border-field);
-  border-radius: var(--radius-s);
-  background: var(--bg);
-  color: var(--text);
-}
-
-.auth__card input[aria-invalid='true'] {
-  border-color: var(--accent);
-}
-
-.auth__hint {
-  margin: 0;
+  gap: 6px;
   color: var(--text-muted);
+  font-size: 14px;
 }
 
-.auth__error {
+.auth__links p {
   margin: 0;
-  color: var(--accent);
-  font-weight: 600;
+}
+
+.auth__side {
+  gap: 20px;
+}
+
+.auth__side-action {
+  align-self: flex-start;
+  padding: 0 28px;
+}
+
+@media (max-width: 1023px) {
+  .auth__columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

@@ -34,10 +34,10 @@ export default function EditRoomPage() {
       </Shell>
     )
   }
-  return <HostEdit pseudo={account.pseudo} />
+  return <HostEdit pseudo={account.pseudo} avatarId={account.avatarId} />
 }
 
-function HostEdit({ pseudo }: { pseudo: string }) {
+function HostEdit({ pseudo, avatarId }: { pseudo: string; avatarId: string }) {
   const { roomId = '' } = useParams()
   const navigate = useNavigate()
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' })
@@ -71,9 +71,15 @@ function HostEdit({ pseudo }: { pseudo: string }) {
   if (loaded.state === 'failed') {
     return (
       <Shell>
-        <h1>Réglages de la room</h1>
-        <p role="alert">{loaded.message}</p>
-        <Link to="/rooms">Retour aux rooms</Link>
+        <div className="room-form-page__head">
+          <h1>Réglages de la room</h1>
+        </div>
+        <p className="room-form-page__alert" role="alert">
+          {loaded.message}
+        </p>
+        <Link to="/rooms" className="room-form-page__back">
+          Retour aux rooms
+        </Link>
       </Shell>
     )
   }
@@ -83,9 +89,15 @@ function HostEdit({ pseudo }: { pseudo: string }) {
   if (!room.mine) {
     return (
       <Shell>
-        <h1>Réglages de la room</h1>
-        <p role="alert">Seul l'hôte de « {room.name} » peut en changer les réglages.</p>
-        <Link to="/rooms">Retour aux rooms</Link>
+        <div className="room-form-page__head">
+          <h1>Réglages de la room</h1>
+        </div>
+        <p className="room-form-page__alert" role="alert">
+          Seul l'hôte de « {room.name} » peut en changer les réglages.
+        </p>
+        <Link to="/rooms" className="room-form-page__back">
+          Retour aux rooms
+        </Link>
       </Shell>
     )
   }
@@ -103,19 +115,19 @@ function HostEdit({ pseudo }: { pseudo: string }) {
 
   return (
     <Shell>
-      <h1>Réglages de la room</h1>
-      <p className="room-form-page__intro">
-        Les personnes qui sont dans la room voient les changements tout de suite.
-      </p>
-      {note && (
+      <div className="room-form-page__head">
+        <h1>Réglages de la room</h1>
+        <p>Les personnes qui sont dans « {room.name} » voient les changements tout de suite.</p>
+        {/* Always in the page, so that a screen reader hears it when it fills; empty, it takes no room. */}
         <p className="room-form-page__saved" role="status">
           {note}
         </p>
-      )}
+      </div>
       <RoomForm
         key={room.id}
         initial={room}
         hostPseudo={pseudo}
+        hostAvatarId={avatarId}
         hostTitle="Tu es l'hôte"
         submitLabel="Enregistrer"
         cancelLabel="Retour à la room"
@@ -140,7 +152,7 @@ function HostEdit({ pseudo }: { pseudo: string }) {
                 <button type="button" className="room-form-page__delete" disabled={deleting} onClick={() => void handleDelete()}>
                   {deleting ? 'Suppression…' : 'Supprimer pour de bon'}
                 </button>
-                <button type="button" disabled={deleting} onClick={() => setConfirmingDelete(false)}>
+                <button type="button" className="room-form-page__keep" disabled={deleting} onClick={() => setConfirmingDelete(false)}>
                   Garder la room
                 </button>
               </div>

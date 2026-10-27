@@ -1,4 +1,5 @@
-/* The dialog that deletes the account: centred, narrow. No display is set on the closed dialog: the browser hides it. */
+/* The dialog that deletes the account: centred, narrow, dressed as the panels of the profile (mock-up 5b) with the colour
+   of danger around it. No display is set on the closed dialog: the browser hides it. */
 .account-dialog {
   --danger: #ff7a7a;
   width: min(480px, calc(100vw - 32px));
@@ -6,9 +7,10 @@
   max-height: min(92dvh, 720px);
   padding: 0;
   overflow-y: auto;
-  border: 1px solid var(--danger);
-  border-radius: var(--radius-l);
+  border: 1.5px solid var(--danger);
+  border-radius: 24px;
   background: var(--wall);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 16%, transparent);
   color: var(--text);
 }
 
@@ -25,11 +27,14 @@ html:has(.account-dialog[open]) {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 24px;
+  padding: 22px 24px;
+  line-height: 1.5;
 }
 
 .account-dialog__sheet h2 {
-  font-size: 1.35rem;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .account-dialog__sheet p,
@@ -44,14 +49,16 @@ html:has(.account-dialog[open]) {
 
 .account-dialog__sheet label {
   margin-top: 4px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .account-dialog__sheet input {
-  min-height: var(--tap-main);
+  height: 48px;
   padding: 0 16px;
-  border: 2px solid var(--border-field);
-  border-radius: var(--radius-s);
+  border: 1.5px solid var(--border-field);
+  border-radius: 16px;
+  font-size: 16px;
   background: var(--bg);
   color: var(--text);
 }
@@ -71,9 +78,11 @@ html:has(.account-dialog[open]) {
 .account-dialog__danger,
 .account-dialog__keep {
   min-height: var(--tap-main);
-  padding: 0 20px;
-  border-radius: var(--radius-m);
-  font-weight: 700;
+  padding: 0 22px;
+  border-radius: 999px;
+  font-family: var(--font-text);
+  font-size: 15px;
+  font-weight: 800;
   cursor: pointer;
 }
 
@@ -84,9 +93,10 @@ html:has(.account-dialog[open]) {
 }
 
 .account-dialog__keep {
-  border: 2px solid var(--border-field);
+  border: 1.5px solid var(--border-field);
   background: transparent;
   color: var(--text);
+  font-weight: 700;
 }
 
 .account-dialog__danger:disabled,

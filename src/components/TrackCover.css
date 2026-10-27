@@ -1,0 +1,26 @@
+/* A cover of mock-up 3c: 48 px (a playlist row, "Ton morceau") or 40 px (a link, a track lined up), 12 or 10 px
+   corners, a gradient, the note in the outline colour. */
+.track-cover {
+  display: grid;
+  flex: none;
+  place-items: center;
+  border: 1.5px solid var(--border);
+  background: linear-gradient(135deg, var(--from), var(--to));
+  color: var(--outline);
+}
+
+.track-cover--48 {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+}
+
+.track-cover--40 {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+.track-cover svg {
+  display: block;
+}

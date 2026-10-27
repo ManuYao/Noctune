@@ -1,0 +1,80 @@
+/* The visitor's profile (mock-up 5), measured at 1440 x 900: two cards under the title, 600 and 712 px wide, 16 px
+   apart, from 212 to 868 px. */
+.profile-visitor__columns {
+  display: grid;
+  grid-template-columns: minmax(0, 600fr) minmax(0, 712fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.profile-visitor__me,
+.profile-visitor__join {
+  min-height: 656px;
+}
+
+.profile-visitor__join {
+  gap: 20px;
+}
+
+/* The stage: 250 px tall, its corners rounded inside the card. */
+.profile-visitor__scene {
+  flex: none;
+  height: 250px;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  border-radius: 18px;
+}
+
+.profile-visitor__avatar-name {
+  color: var(--accent-text);
+}
+
+.profile-visitor__save {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.profile-visitor__save .kit-btn {
+  padding: 0 28px;
+}
+
+.profile-visitor__join-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.profile-visitor__after {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.profile-visitor__after p {
+  margin: 0;
+}
+
+/* Narrower windows: one card under the other. */
+@media (max-width: 1023px) {
+  .profile-visitor__columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-visitor__me,
+  .profile-visitor__join {
+    min-height: 0;
+  }
+
+}
+
+@media (max-width: 560px) {
+  .profile-visitor__scene {
+    height: 200px;
+  }
+}

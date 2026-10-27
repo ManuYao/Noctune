@@ -1,162 +1,275 @@
-/* The profile page (mock-up 5b): who I am, my pseudo and avatar, my password, my devices, my data, and the one thing that
-   cannot be undone, set apart at the end. Cards in a grid on a computer, stacked on a phone. */
+/* The member's profile (mock-up 5b), measured at 1440 x 900: the band from 100 to 300 px, 1328 px wide; the three
+   columns (440, 400 and 456 px, 16 px apart) from 316 to 868 px. Under them, what the mock-up does not draw (password,
+   devices, data). */
 .profile {
   --danger: #ff7a7a;
+  gap: 16px;
+}
+
+.profile__accent {
+  color: var(--accent-text);
+}
+
+/* The band: the little stage on the left, who the member is in the middle, four tiles on the right. */
+.profile__band {
+  flex-direction: row;
+  gap: 0;
+  min-height: 200px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.profile__band-scene {
+  flex: none;
+  width: 300px;
+}
+
+.profile__who {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 20px;
-  padding: 16px clamp(16px, 5vw, 56px) 48px;
-}
-
-.profile__hero {
-  display: flex;
-  align-items: center;
-  gap: 20px;
+  justify-content: center;
+  gap: 10px;
   min-width: 0;
+  padding: 18px 28px;
 }
 
-.profile__hero h1 {
-  font-size: clamp(1.4rem, 3vw, 2rem);
-}
-
-.profile__email {
-  margin: 4px 0 0;
-  color: var(--text-muted);
+.profile__who h1 {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
   overflow-wrap: anywhere;
 }
 
-.profile__email strong {
+.profile__line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.profile__line strong {
   color: var(--text);
 }
 
-.profile__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
-  gap: 20px;
-  align-items: start;
+.profile__fact svg {
+  flex: none;
+  stroke: var(--accent);
 }
 
-.profile__card {
+.profile__chips {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  min-width: 0;
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-  background: var(--wall);
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
 }
 
-.profile__card h2 {
-  font-size: 1.15rem;
-}
-
-.profile__card label {
+.profile__chip {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 13px;
   font-weight: 700;
 }
 
-.profile__card input {
-  min-height: var(--tap-main);
-  padding: 0 16px;
-  border: 2px solid var(--border-field);
-  border-radius: var(--radius-s);
-  background: var(--bg);
-  color: var(--text);
+.profile__welcome {
+  margin: 0;
+  color: var(--accent-2-text);
+  font-weight: 700;
 }
 
-.profile__card input[aria-invalid='true'] {
+.profile__tiles {
+  display: grid;
+  flex: none;
+  grid-template-columns: 1fr 1fr;
+  align-self: center;
+  gap: 12px;
+  width: 384px;
+  margin: 18px 28px 18px 0;
+}
+
+.profile__tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 72px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.profile__tile-big {
+  font-family: var(--font-title);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.profile__tile-big--small {
+  font-size: 14px;
+  white-space: normal;
+}
+
+.profile__tile-label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* The two tiles that lead somewhere: an arrow, and the accent when pointed at. */
+.profile__tile--link .profile__tile-big::after {
+  /* Glued to the last word: the arrow never goes to a line of its own. */
+  content: '\00a0→';
+  color: var(--accent-text);
+}
+
+.profile__tile--link:hover {
   border-color: var(--accent);
 }
 
-.profile__hint {
-  margin: 0;
-  color: var(--text-muted);
+/* The three columns. */
+.profile__columns {
+  display: grid;
+  grid-template-columns: minmax(0, 440fr) minmax(0, 400fr) minmax(0, 456fr);
+  gap: 16px;
+  align-items: stretch;
 }
 
-/* The line under a form always takes its place, so that the page does not jump when something is said. */
-.profile__feedback {
-  margin: 0;
-  min-height: 1.4em;
-  font-weight: 600;
+.profile__columns > .kit-panel {
+  min-height: 552px;
 }
 
-.profile__feedback--done {
-  color: var(--accent-2-text);
+.profile__avatar {
+  gap: 12px;
 }
 
-.profile__feedback--error {
-  color: var(--accent);
+.profile__avatar-scene {
+  flex: none;
+  height: 140px;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  border-radius: 18px;
 }
 
-.profile__links {
+/* A button that sits at the bottom of its card, whatever the card holds above it. */
+.profile__push {
+  margin-top: auto;
+}
+
+.profile__avatar .kit-btn {
+  width: 100%;
+}
+
+.profile__settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.profile__buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 16px;
+  gap: 12px;
 }
 
-.profile__links a {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--tap);
-  color: var(--accent-2-text);
-  font-weight: 700;
+.profile__buttons .kit-btn {
+  flex: 1 1 150px;
 }
 
-.profile__secondary,
+/* What cannot be undone, set apart at the bottom of the card. */
 .profile__danger {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1.5px solid var(--border);
+}
+
+/* Under the three columns: password, devices, data. */
+.profile__more {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.profile__more-title {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.profile__more-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+.profile__more-grid .kit-btn {
   align-self: flex-start;
-  min-height: var(--tap-main);
-  padding: 0 20px;
-  border-radius: var(--radius-m);
-  font-weight: 700;
-  cursor: pointer;
 }
 
-.profile__secondary {
-  border: 2px solid var(--border-field);
-  background: transparent;
-  color: var(--text);
-}
-
-.profile__secondary:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.profile__card--danger {
-  border-color: var(--danger);
-}
-
-.profile__danger {
-  border: 2px solid var(--danger);
-  background: transparent;
-  color: var(--danger);
-}
-
-@media (max-width: 560px) {
-  .profile__hero {
-    gap: 14px;
+/* Narrower windows: the tiles go under the band's text, then the columns stack. */
+@media (max-width: 1199px) {
+  .profile__band {
+    flex-wrap: wrap;
   }
 
-  .profile__secondary,
-  .profile__danger {
+  .profile__who {
+    flex: 1 1 320px;
+  }
+
+  .profile__tiles {
+    flex: 1 1 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: auto;
+    margin: 0 20px 20px;
+  }
+
+  .profile__columns {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  }
+
+  .profile__columns > .kit-panel {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .profile__band-scene {
+    width: 100%;
+    height: 180px;
+  }
+
+  .profile__who {
+    padding: 16px 20px 4px;
+  }
+
+  .profile__who h1 {
+    font-size: 26px;
+  }
+
+  .profile__tiles {
+    grid-template-columns: 1fr 1fr;
+    margin: 12px 16px 16px;
+  }
+
+  .profile__more-grid .kit-btn {
     align-self: stretch;
   }
-}
-
-/* The eight avatars take the width the card gives them: on the narrowest phones (320 px) three to a row, never a page
-   wider than the screen. (The picker is also used where there is more room: it is only squeezed here.) */
-.profile__card .avatar-picker {
-  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-  min-width: 0;
-}
-
-.profile__card .avatar-picker button {
-  min-width: 0;
-}
-
-.profile__card .avatar-picker svg {
-  width: 100%;
-  max-width: 56px;
-  height: auto;
 }

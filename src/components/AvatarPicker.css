@@ -63,3 +63,37 @@
 .avatar-picker__check path {
   stroke: var(--on-accent);
 }
+
+/* Mock-up 5, "Ton avatar": 64 px tiles, the eight on one line in a wide card (they wrap in a narrow one). */
+.avatar-picker--row {
+  grid-template-columns: repeat(auto-fill, 64px);
+  gap: 6px;
+}
+
+.avatar-picker--row button,
+.avatar-picker--compact button {
+  aspect-ratio: auto;
+  height: 64px;
+  padding: 0;
+  background: var(--glass);
+}
+
+.avatar-picker--row button[aria-pressed='true'],
+.avatar-picker--compact button[aria-pressed='true'] {
+  background: var(--accent-soft);
+}
+
+.avatar-picker--row button > svg,
+.avatar-picker--compact button > svg {
+  width: 46px;
+}
+
+/* The narrower card of mock-up 5b: four to a row, as wide as the card allows, 64 px tall. */
+.avatar-picker--compact {
+  gap: 8px;
+}
+
+.avatar-picker--row legend,
+.avatar-picker--compact legend {
+  font-size: 14px;
+}

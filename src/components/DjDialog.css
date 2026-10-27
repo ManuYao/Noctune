@@ -1,15 +1,22 @@
-/* "Passer DJ": a centred dialog on a computer, a sheet that rises from the bottom on a phone (mock-up M4).
-   No display is set on the closed dialog: the browser hides it by itself. */
+/* The windows of the room, in the look of mock-up 3c: the page's background, a neon border in the accent with its soft
+   halo, 28 px corners, 24 px inside; their contents sit on glass panels. "Passer DJ" uses it, and so do the windows of
+   moderation (ModDialog: "Quitter la file ?", the host's reports, the actions on a person), which set their own width.
+   A sheet that rises from the bottom on a phone (mock-up M4). No display is set on the closed dialog: the browser hides
+   it by itself. */
 .dj-dialog {
-  width: min(560px, calc(100vw - 32px));
+  width: min(1000px, calc(100vw - 32px));
   max-width: none;
-  max-height: min(88dvh, 780px);
+  max-height: min(732px, calc(100dvh - 32px));
   padding: 0;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1.5px solid var(--accent);
   border-radius: var(--radius-l);
-  background: var(--wall);
+  background: var(--bg);
   color: var(--text);
+  line-height: 1.5;
+  box-shadow:
+    0 0 0 4px var(--accent-soft),
+    0 30px 90px rgb(0 0 0 / 0.55);
 }
 
 .dj-dialog[open] {
@@ -17,9 +24,19 @@
   flex-direction: column;
 }
 
-/* A literal colour: the backdrop does not always see the custom properties of the page. */
+/* "Passer DJ" keeps its height (732 px at 1440 x 900): its two columns scroll inside. */
+.dj-dialog--dj[open] {
+  height: min(732px, calc(100dvh - 32px));
+}
+
+/* Literal colours (the backdrop does not always see the custom properties of the page): the mock-up's scrim, lighter
+   over the light ambiance. */
 .dj-dialog::backdrop {
-  background: rgb(14 11 31 / 0.78);
+  background: rgb(6 4 16 / 0.74);
+}
+
+[data-theme='vinyl'] .dj-dialog::backdrop {
+  background: rgb(18 20 31 / 0.55);
 }
 
 /* Nothing behind the dialog scrolls while it is open. */
@@ -27,25 +44,28 @@ html:has(.dj-dialog[open]) {
   overflow: hidden;
 }
 
-/* The sheet fills the dialog (a click on the dialog itself is a click on the backdrop): the header stays, the body scrolls. */
+/* The sheet fills the dialog (a click on the dialog itself is a click on the backdrop). */
 .dj-dialog__sheet {
   display: flex;
   flex: 1;
   flex-direction: column;
+  gap: 18px;
   min-height: 0;
+  padding: 24px;
 }
 
 .dj-dialog__header {
   display: flex;
   flex: none;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
-  padding: 20px 24px 8px;
+  gap: 16px;
 }
 
 .dj-dialog__header h2 {
-  font-size: 1.35rem;
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
 .dj-dialog__close {
@@ -54,78 +74,124 @@ html:has(.dj-dialog[open]) {
   place-items: center;
   width: var(--tap);
   height: var(--tap);
-  border: 1px solid var(--border);
-  border-radius: 999px;
+  padding: 0;
+  border: 1.5px solid var(--border-field);
+  border-radius: 50%;
   background: transparent;
   color: var(--text);
   cursor: pointer;
 }
 
+.dj-dialog__close:hover {
+  border-color: var(--text);
+}
+
+/* The content of a window of moderation: one glass panel, which scrolls when it is long. */
 .dj-dialog__body {
   display: flex;
   flex-direction: column;
   gap: 20px;
   min-height: 0;
-  padding: 8px 24px 24px;
+  padding: 16px;
   overflow-y: auto;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--glass);
 }
 
-.dj-dialog h3 {
-  font-size: 1rem;
+.dj-dialog button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
-.dj-dialog h3 span {
-  color: var(--text-muted);
-  font-weight: 600;
+/* ---- "Passer DJ" ---- */
+
+.dj-dialog--dj h3 {
+  font-size: 15px;
+  line-height: 1.5;
 }
 
-.dj-dialog__rules {
+/* The title and its sentence on the left; the room's rules and the close button on the right, at the title's height. */
+.dj-head {
   display: grid;
-  gap: 6px;
-  margin: 10px 0 0;
+  grid-template-areas: 'titles rules close';
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: start;
+  gap: 8px 16px;
 }
 
-.dj-dialog__rules > div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-s);
-  background: var(--bg);
-}
-
-.dj-dialog__rules dt {
-  color: var(--text-muted);
-}
-
-.dj-dialog__rules dd {
-  margin: 0;
-  font-weight: 700;
-  text-align: right;
-}
-
-.dj-dialog__turn {
-  margin: 10px 0 0;
-  color: var(--accent-2-text);
-  font-weight: 600;
-}
-
-.dj-dialog__form {
+.dj-head__titles {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
+  grid-area: titles;
+  min-width: 0;
 }
 
-/* "Ma playlist" | "Lien": a segmented control, the chosen one filled (mock-ups 3c and M4). */
+.dj-head__sub {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.dj-head__rules {
+  display: flex;
+  flex-wrap: wrap;
+  grid-area: rules;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: 480px;
+  padding-top: 9px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.dj-head__rules ul {
+  display: contents;
+}
+
+.dj-head__close {
+  grid-area: close;
+  margin-left: -12px;
+}
+
+/* A chip of the mock-up: the room's rules, "Lien reconnu", "Accepté dans …". */
+.dj-chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.dj-band .dj-chip,
+.dj-found .dj-chip {
+  font-weight: 800;
+}
+
+.dj-chip--quiet {
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+/* "Ma playlist" | "Lien YouTube": a phone only (a computer shows both columns). The chosen one filled. */
 .dj-tabs {
   display: flex;
+  flex: none;
   gap: 4px;
   padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-m);
-  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  background: var(--glass);
 }
 
 .dj-tabs__tab {
@@ -144,177 +210,443 @@ html:has(.dj-dialog[open]) {
   color: var(--on-accent);
 }
 
-.dj-dialog__panel {
-  margin-top: 12px;
-}
-
-/* After a link was lined up: keeping it for the next time. */
-.dj-dialog__keep {
-  margin-top: 10px;
-}
-
-.dj-dialog__keep button {
-  min-height: var(--tap);
-  padding: 0 16px;
-  border: 2px solid var(--accent-2);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--accent-2-text);
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.dj-dialog__form label {
-  font-weight: 700;
-}
-
-.dj-dialog__field {
-  display: flex;
-  gap: 8px;
-}
-
-.dj-dialog__field input {
+/* The two columns of mock-up 3c, 560 and 376 px wide at 1000 px. */
+.dj-cols {
+  display: grid;
   flex: 1;
+  grid-template-columns: minmax(0, 560fr) minmax(0, 376fr);
+  gap: 16px;
+  min-height: 0;
+}
+
+.dj-panel {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  min-height: var(--tap-main);
-  padding: 0 16px;
-  border: 2px solid var(--border-field);
-  border-radius: var(--radius-s);
+  min-height: 0;
+  padding: 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--glass);
+}
+
+.dj-panel--playlist {
+  gap: 10px;
+}
+
+.dj-panel--side {
+  gap: 16px;
+}
+
+.dj-panel[hidden] {
+  display: none;
+}
+
+/* A field with its icon inside, on the left (the filter of the playlist, the link). */
+.dj-search {
+  position: relative;
+  flex: none;
+  color: var(--text-muted);
+}
+
+.dj-search svg {
+  position: absolute;
+  top: 13px;
+  left: 14px;
+  pointer-events: none;
+}
+
+.dj-search input {
+  width: 100%;
+  height: var(--tap);
+  padding: 0 14px 0 42px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 14px;
   background: var(--bg);
   color: var(--text);
+  font-size: 15px;
 }
 
-.dj-dialog__field input[aria-invalid='true'] {
-  border-color: var(--accent);
-}
-
-.dj-dialog__field input::placeholder {
+.dj-search input::placeholder {
   color: var(--text-muted);
 }
 
-.dj-dialog__field .btn-primary {
+/* The link that becomes "Ton morceau": the second accent, as in the mock-up. */
+.dj-search[data-active] input {
+  border-color: var(--accent-2);
+}
+
+.dj-search input[aria-invalid='true'] {
+  border-color: var(--warn);
+}
+
+/* ---- The right column: the link, then the member's tracks lined up ---- */
+
+.dj-link {
+  display: flex;
   flex: none;
-  padding: 0 18px;
-  font-size: 0.9rem;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.dj-dialog__hint {
-  margin: 0;
-  color: var(--text-muted);
+.dj-link[hidden] {
+  display: none;
 }
 
-/* Live regions: always in the page (a screen reader only hears a region it already knew), empty most of the time. */
-.dj-dialog__feedback {
-  margin: 0;
-  font-weight: 600;
-}
-
-/* Empty, it takes no room; it stays in the page all the same (display: none would make a screen reader miss it). */
-.dj-dialog__feedback:not(:empty) {
-  margin-top: 8px;
-}
-
-.dj-dialog__feedback--error {
-  color: var(--accent);
-}
-
-.dj-dialog__feedback--done {
-  color: var(--accent-2-text);
-}
-
-.dj-dialog__lineup {
+.dj-link__form {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin: 10px 0 0;
-  padding: 0;
-  list-style: none;
 }
 
-.dj-dialog__lineup li {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    'order remove'
-    'track remove';
+.dj-link__form label {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.dj-link__help {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.dj-found {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* A track in a small row (58 px): the link that was recognised, a track lined up. */
+.dj-song {
+  display: flex;
   align-items: center;
-  gap: 0 12px;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-s);
+  gap: 10px;
+  min-height: 58px;
+  padding: 0 4px 0 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
   background: var(--bg);
 }
 
-.dj-dialog__order {
-  grid-area: order;
-  color: var(--text-muted);
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: uppercase;
+.dj-found .dj-song {
+  padding-right: 10px;
 }
 
-.dj-dialog__track {
+.dj-song__text {
   display: flex;
+  flex: 1;
   flex-direction: column;
-  grid-area: track;
   min-width: 0;
+  line-height: 1.3;
 }
 
-.dj-dialog__title,
-.dj-dialog__meta {
+.dj-song__title,
+.dj-song__meta {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.dj-dialog__title {
+.dj-song__title {
+  font-size: 14px;
   font-weight: 700;
 }
 
-.dj-dialog__meta {
+.dj-song__meta {
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 12px;
 }
 
-.dj-dialog__remove {
-  grid-area: remove;
+.dj-song__meta strong {
+  color: var(--accent-2-text);
 }
 
-.dj-dialog__remove,
-.dj-dialog__leave button {
-  min-height: var(--tap);
-  padding: 0 16px;
-  border: 2px solid var(--border-field);
-  border-radius: 999px;
+/* "Retirer": a small outlined pill, inside a target of 44 px. */
+.dj-song__remove {
+  display: grid;
+  flex: none;
+  place-items: center;
+  min-width: var(--tap);
+  height: var(--tap);
+  padding: 0 4px;
+  border: 0;
   background: transparent;
   color: var(--text);
-  font-weight: 600;
   cursor: pointer;
 }
 
-.dj-dialog button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
+.dj-song__remove span {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
 }
 
-.dj-dialog__leave p {
-  margin: 0 0 10px;
-  color: var(--text-muted);
+.dj-song__remove:hover:not(:disabled) span {
+  border-color: var(--accent);
+  color: var(--accent-text);
 }
 
-.dj-dialog__confirm {
-  display: flex;
-  flex-wrap: wrap;
+/* An outlined pill (44 px): "Garder dans ma playlist", "Quitter la file", "Rester". */
+.dj-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
+  min-height: var(--tap);
+  padding: 0 18px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
-.dj-dialog__leave .dj-dialog__danger {
+.dj-pill:hover:not(:disabled) {
+  border-color: var(--text);
+}
+
+.dj-found .dj-pill {
+  align-self: flex-start;
+}
+
+.dj-pill--danger {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--on-accent);
 }
 
-/* A phone: a sheet that rises from the bottom and almost fills the screen; the field and its button are stacked. */
+.dj-pill--danger:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.dj-lineup {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.dj-lineup h3 span {
+  color: var(--text-muted);
+  font-family: var(--font-text);
+  font-weight: 700;
+}
+
+/* Nothing lined up yet: the place where the tracks will be, dashed, rather than an empty column. */
+.dj-lineup__empty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 120px;
+  padding: 16px 20px;
+  border: 1.5px dashed var(--border-field);
+  border-radius: 14px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.dj-lineup__empty p {
+  max-width: 260px;
+  margin: 0;
+  font-size: 14px;
+}
+
+.dj-lineup__list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.dj-lineup__list .dj-song {
+  flex: none;
+}
+
+.dj-lineup__leave {
+  flex: none;
+  margin-top: auto;
+}
+
+.dj-lineup__leave > .dj-pill {
+  width: 100%;
+}
+
+.dj-lineup__leave p {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.dj-lineup__confirm {
+  display: flex;
+  gap: 8px;
+}
+
+.dj-lineup__confirm .dj-pill {
+  flex: 1;
+}
+
+/* ---- What was done, or why not ---- */
+
+.dj-feedback {
+  flex: none;
+  margin: -10px 0 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* Empty, it takes no room; it stays in the page all the same (display: none would make a screen reader miss it). */
+.dj-feedback:empty {
+  margin: 0 0 -18px;
+}
+
+/* A refusal is information with a reason, not an alarm: the colour of the verdicts. */
+.dj-feedback--error {
+  color: var(--warn);
+}
+
+.dj-feedback--done {
+  color: var(--accent-2-text);
+}
+
+/* ---- "Ton morceau": the band at the bottom (76 px) ---- */
+
+.dj-band {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 16px;
+  min-height: 76px;
+  padding: 0 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-m);
+  background: var(--glass);
+}
+
+.dj-band__what {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.dj-band__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.dj-band__label {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dj-band__track {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 16px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dj-band__track strong {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.dj-band__none {
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.dj-band__refused {
+  flex: none;
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dj-band__actions {
+  display: flex;
+  flex: none;
+  gap: 16px;
+}
+
+.dj-band__cancel,
+.dj-band__go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: var(--tap-main);
+  border-radius: 999px;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.dj-band__cancel {
+  padding: 0 24px;
+  border: 1.5px solid var(--border-field);
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.dj-band__cancel:hover {
+  border-color: var(--text);
+}
+
+.dj-band__go {
+  padding: 0 26px;
+  border: 0;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 800;
+}
+
+/* A computer that is not wide: the band keeps its buttons on one line and lets its text go under them. */
+@media (max-width: 1020px) and (min-width: 761px) {
+  .dj-band {
+    flex-wrap: wrap;
+    padding-block: 12px;
+  }
+
+  .dj-band__what {
+    flex-basis: calc(100% - 64px);
+  }
+
+  .dj-band__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+/* A phone: a sheet that rises from the bottom and almost fills the screen; one column that scrolls, under its tabs, and
+   "Ton morceau" kept at the bottom. */
 @media (max-width: 760px) {
   .dj-dialog {
     width: 100%;
@@ -329,29 +661,80 @@ html:has(.dj-dialog[open]) {
     height: calc(100dvh - 24px);
   }
 
-  .dj-dialog__header,
-  .dj-dialog__body {
-    padding-inline: 16px;
+  .dj-dialog__sheet {
+    gap: 12px;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
   }
 
-  .dj-dialog__body {
-    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  .dj-dialog__header h2 {
+    font-size: 1.35rem;
   }
 
-  .dj-dialog__field {
+  .dj-head {
+    grid-template-areas:
+      'titles close'
+      'rules rules';
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .dj-head__rules {
+    justify-content: flex-start;
+    max-width: none;
+    padding-top: 0;
+  }
+
+  .dj-head__close {
+    margin-left: 0;
+  }
+
+  .dj-cols {
+    display: flex;
     flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
   }
 
-  .dj-dialog__field .btn-primary {
-    min-height: var(--tap-main);
+  .dj-panel {
+    flex: none;
+    padding: 12px;
   }
 
-  .dj-dialog__leave button {
+  .dj-lineup__list {
+    overflow: visible;
+  }
+
+  .dj-feedback {
+    margin-top: -4px;
+  }
+
+  .dj-feedback:empty {
+    margin: 0 0 -12px;
+  }
+
+  .dj-band {
+    flex-wrap: wrap;
+    gap: 10px 12px;
+    padding: 10px 12px;
+  }
+
+  .dj-band__what {
+    flex-basis: calc(100% - 60px);
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+
+  .dj-band__actions {
     width: 100%;
+    gap: 10px;
   }
 
-  .dj-dialog__confirm button {
+  .dj-band__cancel {
+    padding: 0 18px;
+  }
+
+  .dj-band__go {
     flex: 1;
+    padding: 0 16px;
   }
 }
 

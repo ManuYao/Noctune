@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import type { DjQueue, QueuedTrack, RoomRules, Track } from '../../shared/protocol'
+import type { DjQueue, QueuedTrack, RoomRules, RoomStyle, Track } from '../../shared/protocol'
 import type { SendAddTrackResult, SendDjResult, SendPlaylistStatusResult } from '../realtime/useRoom'
 import DjDialogContent from './DjDialogContent'
 import './DjDialog.css'
@@ -14,6 +14,9 @@ interface DjDialogProps {
   nowPlaying: Track | null
   /** Milliseconds to add to the local clock to get the server clock. */
   clockOffsetMs: number
+  /** The room's name and styles: "Accepté dans …" and the chips of its rules. Without them the dialog says "cette room". */
+  roomName?: string
+  styles?: RoomStyle[]
   onAdd: (input: string) => Promise<SendAddTrackResult>
   onAddFromPlaylist: (playlistTrackId: string) => Promise<SendAddTrackResult>
   onPlaylistStatus: (playlistId: string) => Promise<SendPlaylistStatusResult>
@@ -22,7 +25,7 @@ interface DjDialogProps {
 }
 
 /**
- * "Passer DJ": a native modal dialog (focus trapped inside, Escape closes it, the page behind is inert). It is always
+ * "Passer DJ" (mock-up 3c): a native modal dialog (focus trapped inside, Escape closes it, the page behind is inert). It is always
  * in the page and only its content comes and goes, so that closing it gives the focus back to the button that opened it
  * and so that every opening starts with a clean form.
  */
@@ -48,8 +51,9 @@ export default function DjDialog({ open, onClose, ...content }: DjDialogProps) {
   return (
     <dialog
       ref={dialogRef}
-      className="dj-dialog"
+      className="dj-dialog dj-dialog--dj"
       aria-labelledby="dj-dialog-title"
+      aria-describedby="dj-dialog-sub"
       // Escape, and the close() above: the page's own state follows.
       onClose={onClose}
       // The sheet fills the whole dialog, so a press that lands on the dialog itself is a press on the backdrop.
