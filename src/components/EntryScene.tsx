@@ -2,6 +2,9 @@ import { memo } from 'react'
 import type { AvatarDef } from '../data/avatars'
 import { findAvatar } from '../data/avatars'
 import AvatarArt from './AvatarArt'
+import { DECORS } from './decor'
+import type { DecorKind } from './decor/decorKind'
+import { DecorDefs } from './decor/zones'
 import { approxTextWidth, cutText } from './sceneText'
 import './Scene.css'
 import './EntryScene.css'
@@ -70,6 +73,33 @@ const SELF = { x: 440, y: 690, size: 170 }
 const SELF_CX = SELF.x + SELF.size / 2
 const PILL = { top: 642, height: 38, fontSize: 15, padding: 18 }
 
+// The projectors of the entry screen, and their beams: the same four as the room's, laid out for 1440 x 900.
+interface Beam {
+  points: string
+  x: number
+  sway: 'mw-sway' | 'mw-sway2'
+  gradient: 'a' | 'b'
+}
+const BEAMS: Beam[] = [
+  { points: '470,44 330,470 520,470', x: 470, sway: 'mw-sway', gradient: 'a' },
+  { points: '640,44 570,470 770,470', x: 640, sway: 'mw-sway2', gradient: 'b' },
+  { points: '820,44 700,470 900,470', x: 820, sway: 'mw-sway', gradient: 'a' },
+  { points: '990,44 1030,470 1200,470', x: 990, sway: 'mw-sway2', gradient: 'b' },
+]
+// A rock gig: they cross over the stage.
+const CROSSED_BEAMS: Beam[] = [
+  { points: '470,44 540,470 690,470', x: 470, sway: 'mw-sway', gradient: 'a' },
+  { points: '640,44 900,470 1040,470', x: 640, sway: 'mw-sway2', gradient: 'b' },
+  { points: '820,44 560,470 700,470', x: 820, sway: 'mw-sway', gradient: 'a' },
+  { points: '990,44 820,470 960,470', x: 990, sway: 'mw-sway2', gradient: 'b' },
+]
+const PROJECTORS = [
+  { x: 470, tone: 'sc-accent' },
+  { x: 640, tone: 'sc-accent2' },
+  { x: 820, tone: 'sc-accent' },
+  { x: 990, tone: 'sc-accent2' },
+] as const
+
 function Person({ dancer }: { dancer: Dancer }) {
   const { shadow } = dancer
   return (
@@ -88,9 +118,17 @@ function Person({ dancer }: { dancer: Dancer }) {
  * The wall, the beams, the screen with its sunset, the speakers, the floor, the stage and the crowd. The screen names
  * what plays in the proposed room, when something does: drawn here, under the DJ's head, as in the mock-up.
  */
-const Club = memo(function Club({ title, artist }: { title: string | null; artist: string | null }) {
+const Club = memo(function Club({ title, artist, kind }: { title: string | null; artist: string | null; kind: DecorKind | null }) {
+  const decor = kind ? DECORS[kind] : null
+  const Wall = decor?.Wall
+  const Back = decor?.Back
+  const Floor = decor?.Floor
+  const mode = decor?.beams ?? 'standard'
+  const beams = mode === 'none' ? [] : mode === 'crossed' ? CROSSED_BEAMS : mode === 'outer' ? [BEAMS[0], BEAMS[3]] : BEAMS
+  const projectors = mode === 'none' ? [] : mode === 'outer' ? [PROJECTORS[0], PROJECTORS[3]] : PROJECTORS
   return (
     <>
+      <DecorDefs />
       <defs>
         <pattern id="entry-slats" width="56" height="10" patternUnits="userSpaceOnUse">
           <rect width="4" height="10" className="sc-wall2" />
@@ -130,25 +168,30 @@ const Club = memo(function Club({ title, artist }: { title: string | null; artis
 
       <rect x={-FAR} width={2 * FAR + 1440} height={BOTTOM + FAR} className="sc-bg" />
       <rect x={-FAR} width={2 * FAR + 1440} height="470" className="sc-wall" />
-      <rect x={-FAR} width={2 * FAR + 1440} height="470" fill="url(#entry-slats)" opacity="0.7" />
+      {decor?.slats !== false && <rect x={-FAR} width={2 * FAR + 1440} height="470" fill="url(#entry-slats)" opacity="0.7" />}
+      {Wall && <Wall frame="entry" />}
       <circle cx="730" cy="200" r="380" fill="url(#entry-halo)" />
+      {Back && <Back frame="entry" />}
 
-      <polygon className="mw-sway" style={{ transformOrigin: '470px 44px' }} points="470,44 330,470 520,470" fill="url(#entry-beam-a)" />
-      <polygon className="mw-sway2" style={{ transformOrigin: '640px 44px' }} points="640,44 570,470 770,470" fill="url(#entry-beam-b)" />
-      <polygon className="mw-sway" style={{ transformOrigin: '820px 44px' }} points="820,44 700,470 900,470" fill="url(#entry-beam-a)" />
-      <polygon className="mw-sway2" style={{ transformOrigin: '990px 44px' }} points="990,44 1030,470 1200,470" fill="url(#entry-beam-b)" />
+      <g opacity={mode === 'soft' ? 0.6 : undefined}>
+        {beams.map((beam) => (
+          <polygon key={beam.points} className={beam.sway} style={{ transformOrigin: `${beam.x}px 44px` }} points={beam.points} fill={beam.gradient === 'a' ? 'url(#entry-beam-a)' : 'url(#entry-beam-b)'} />
+        ))}
+      </g>
       <rect x="0" y="0" width="640" height="470" fill="url(#entry-scrim)" />
       <rect x={-FAR} y="0" width={FAR} height="470" className="entry-scene__scrim-far" />
 
-      <rect x="400" y="0" width="640" height="20" className="sc-stage" />
-      <rect x="456" y="20" width="28" height="26" rx="6" fill="#16142B" />
-      <circle cx="470" cy="46" r="8" className="sc-accent" filter="url(#entry-glow)" />
-      <rect x="626" y="20" width="28" height="26" rx="6" fill="#16142B" />
-      <circle cx="640" cy="46" r="8" className="sc-accent2" filter="url(#entry-glow)" />
-      <rect x="806" y="20" width="28" height="26" rx="6" fill="#16142B" />
-      <circle cx="820" cy="46" r="8" className="sc-accent" filter="url(#entry-glow)" />
-      <rect x="976" y="20" width="28" height="26" rx="6" fill="#16142B" />
-      <circle cx="990" cy="46" r="8" className="sc-accent2" filter="url(#entry-glow)" />
+      {projectors.length > 0 && (
+        <>
+          <rect x="400" y="0" width="640" height="20" className="sc-stage" />
+          {projectors.map((projector) => (
+            <g key={projector.x}>
+              <rect x={projector.x - 14} y="20" width="28" height="26" rx="6" fill="#16142B" />
+              <circle cx={projector.x} cy="46" r="8" className={projector.tone} filter="url(#entry-glow)" />
+            </g>
+          ))}
+        </>
+      )}
 
       {/* The screen: a drawing here (a sunset over hills), never a video. */}
       <rect className="mw-neon sc-stroke-accent" x="508" y="68" width="444" height="256" rx="22" fill="none" strokeWidth="5" filter="url(#entry-glow)" />
@@ -197,6 +240,7 @@ const Club = memo(function Club({ title, artist }: { title: string | null; artis
 
       <rect x={-FAR} y={FLOOR_TOP} width={2 * FAR + 1440} height={BOTTOM + FAR - FLOOR_TOP} className="sc-floor" />
       <ellipse cx="730" cy="482" rx="440" ry="44" className="sc-accent" opacity="0.16" />
+      {decor?.grid !== false && (
       <g className="sc-stroke-accent2" strokeWidth="1.5" opacity="0.22" fill="none">
         {FAN.map((line) => (
           <line key={line.top} x1={line.top} y1={FLOOR_TOP} x2={line.far} y2={BOTTOM + FAR} />
@@ -210,6 +254,8 @@ const Club = memo(function Club({ title, artist }: { title: string | null; artis
           <line key={y} x1={-FAR} y1={y} x2={FAR + 1440} y2={y} />
         ))}
       </g>
+      )}
+      {Floor && <Floor frame="entry" />}
 
       <polygon points="500,372 960,372 990,405 470,405" className="sc-stage-top" stroke="#16142B" strokeWidth="3" strokeLinejoin="round" />
       <rect x="470" y="405" width="520" height="52" className="sc-stage" stroke="#16142B" strokeWidth="3" />
@@ -243,20 +289,22 @@ interface EntrySceneProps {
   pseudo: string
   /** What plays in the proposed room right now, written on the screen; null: the screen shows its sunset only. */
   nowPlaying: { title: string; artist: string } | null
+  /** The genre of the proposed room: its decor and its colours (the same as on its card and inside the room); null: the generic club. */
+  decor: DecorKind | null
 }
 
 /**
  * The big illustrated club behind the entry screen (mock-up 1), with the visitor in front of the crowd. It fills the
  * window behind the page, scaled to fit it; nothing in it can be read or clicked (the form says it all).
  */
-export default function EntryScene({ avatar: selfAvatar, pseudo, nowPlaying }: EntrySceneProps) {
+export default function EntryScene({ avatar: selfAvatar, pseudo, nowPlaying, decor }: EntrySceneProps) {
   const pill = cutText(pseudo, 20) || 'Toi'
   const pillWidth = approxTextWidth(pill, PILL.fontSize) + 2 * PILL.padding
   const pillBottom = PILL.top + PILL.height
   return (
-    <div className="entry-scene" aria-hidden="true">
+    <div className="entry-scene" aria-hidden="true" data-decor={decor ?? undefined}>
       <svg className="entry-scene__art" viewBox="0 0 1440 900" focusable="false">
-        <Club title={nowPlaying?.title ?? null} artist={nowPlaying?.artist ?? null} />
+        <Club title={nowPlaying?.title ?? null} artist={nowPlaying?.artist ?? null} kind={decor} />
 
         <ellipse cx={SELF_CX} cy="850" rx="92" ry="20" className="sc-accent sc-stroke-accent scene__ring" strokeWidth="3" />
         <ellipse cx={SELF_CX} cy="848" rx="44" ry="9.4" fill="#000000" opacity="0.4" />

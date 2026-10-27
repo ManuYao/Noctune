@@ -56,7 +56,7 @@ export const ROOM_DEFS: RoomDef[] = [
     name: 'Hip-hop classics',
     description: 'Les classiques du rap : boom bap, samples et vieilles écoles.',
     styles: ['rap'],
-    theme: 'jungle',
+    theme: 'sunset',
     rules: { maxTrackSec: 6 * MINUTE, repeatDelaySec: 2 * HOUR, maxDjs: 12 },
   },
   {
@@ -64,7 +64,7 @@ export const ROOM_DEFS: RoomDef[] = [
     name: 'French touch',
     description: 'House filtrée et basses rondes, à la française.',
     styles: ['electro'],
-    theme: 'sunset',
+    theme: 'neon',
     rules: { maxTrackSec: 7 * MINUTE, repeatDelaySec: 2 * HOUR, maxDjs: 10 },
   },
 ]

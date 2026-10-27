@@ -1,0 +1,113 @@
+/* The animations of the decor, on top of the ones of Scene.css (mw-bob, mw-sway, mw-neon). All of them stop with
+   prefers-reduced-motion, and what stops is left in a pleasant, lit position. */
+@keyframes mw-flicker {
+  0%, 38%, 44%, 66%, 100% { opacity: 1; }
+  40% { opacity: 0.25; }
+  42% { opacity: 0.9; }
+  68% { opacity: 0.35; }
+  70% { opacity: 1; }
+  72% { opacity: 0.3; }
+}
+
+@keyframes mw-twinkle {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+@keyframes mw-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes mw-eq {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+@keyframes mw-sweep {
+  0%, 100% { transform: rotate(-8deg); }
+  50% { transform: rotate(8deg); }
+}
+
+@keyframes mw-sway-s {
+  0%, 100% { transform: rotate(-1.6deg); }
+  50% { transform: rotate(1.6deg); }
+}
+
+@keyframes mw-steam {
+  0% { transform: translateY(0); opacity: 0; }
+  30% { opacity: 0.8; }
+  100% { transform: translateY(-16px); opacity: 0; }
+}
+
+/* A meridian of the mirror ball seen from the side: its width follows the turn (a half turn is a full cycle). */
+@keyframes mw-meridian {
+  0%, 100% { transform: scaleX(1); }
+  25%, 75% { transform: scaleX(0.7); }
+  50% { transform: scaleX(0.05); }
+}
+
+@keyframes mw-tile {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.4; }
+}
+
+.mw-meridian {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mw-meridian 6s linear infinite;
+}
+
+.mw-flicker { animation: mw-flicker 6s linear infinite; }
+.mw-twinkle { animation: mw-twinkle 2.6s ease-in-out infinite; }
+.mw-tile { animation: mw-tile 2.2s ease-in-out infinite; }
+
+.mw-spin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mw-spin 26s linear infinite;
+}
+
+/* An equaliser bar: grows from its foot. Each one has its own duration and delay, inline. */
+.mw-eq {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: mw-eq 1s ease-in-out infinite;
+}
+
+.mw-sweep { animation: mw-sweep 4.5s ease-in-out infinite; }
+
+/* A hanging lamp, a palm: a breath, around its top. */
+.mw-sway-s {
+  transform-box: fill-box;
+  transform-origin: 50% 0%;
+  animation: mw-sway-s 7s ease-in-out infinite;
+}
+
+.mw-steam { animation: mw-steam 3.2s ease-out infinite; }
+
+/* The signs of the decor write in the fonts of the site. */
+.dc-sign {
+  font-family: var(--font-title);
+  font-weight: 800;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mw-flicker,
+  .mw-twinkle,
+  .mw-tile,
+  .mw-spin,
+  .mw-meridian,
+  .mw-eq,
+  .mw-sweep,
+  .mw-sway-s,
+  .mw-steam {
+    animation: none;
+  }
+
+  /* Steam only exists while it rises. */
+  .mw-steam {
+    opacity: 0;
+  }
+}
+
+.sc-stroke-wall2 { stroke: var(--wall-2); }

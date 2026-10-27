@@ -4,23 +4,14 @@ import type { RoomStyle, RoomTheme } from '../../shared/protocol'
 import { AVATARS, type AvatarDef } from '../data/avatars'
 import { themeAttribute } from '../rooms/roomLabels'
 import AvatarArt from './AvatarArt'
+import { decorKind, type DecorKind } from './decor/decorKind'
+import { frenchCardDecor } from './decor/french'
 import './RoomCardScene.css'
 
 const OUTLINE = '#16142B'
 
 /** The little scenes of mock-up 2, one per style, and the stage of mock-up 2b for the styles it does not draw. */
-type SceneKind = 'lofi' | 'rap' | 'electro' | 'rock' | 'jazz' | 'afro' | 'stage'
-
-const KIND_OF_STYLE: Record<RoomStyle, SceneKind> = {
-  lofi: 'lofi',
-  rap: 'rap',
-  electro: 'electro',
-  rock: 'rock',
-  jazz: 'jazz',
-  afro: 'afro',
-  pop: 'stage',
-  classique: 'stage',
-}
+type SceneKind = DecorKind | 'stage'
 
 const SHAPES = { a: 'antenna', e: 'ears', t: 'tuft', n: 'classic' } as const
 
@@ -88,6 +79,11 @@ const CROWDS: Record<Exclude<SceneKind, 'stage'>, Dancer[]> = {
     ['t', '#F2E55C', '#3A2A8C', 116, 76, 70, -0.2],
     ['e', '#FF7A59', '#FFE58A', 196, 70, 76, -0.55],
     ['n', '#5CC8FF', '#FF4F7B', 290, 76, 70, -0.9],
+  ],
+  french: [
+    ['a', '#FF6B9A', '#16142B', 100, 76, 70, -0.3],
+    ['e', '#FFD166', '#3A2A8C', 182, 70, 76, -0.7],
+    ['t', '#5CC8FF', '#FF4F7B', 274, 76, 70, -0.5],
   ],
 }
 
@@ -196,6 +192,8 @@ function decor(kind: Exclude<SceneKind, 'stage'>, ids: string): ReactNode {
           <rect x="372" y="108" width="14" height="14" rx="3" fill="#F4F1FF" stroke={OUTLINE} strokeWidth="2" />
         </>
       )
+    case 'french':
+      return frenchCardDecor(ids)
     case 'afro':
       return (
         <>
@@ -264,6 +262,8 @@ function stage(ids: string): ReactNode {
 }
 
 interface RoomCardSceneProps {
+  /** The room's id: the French touch of the team has a scene of its own though its style is "electro". */
+  roomId?: string
   /** The room's styles: the first one picks the scene. */
   styles: readonly RoomStyle[]
   /** The room's ambiance: it paints the stage drawn for the styles without a scene of their own. */
@@ -273,9 +273,9 @@ interface RoomCardSceneProps {
 }
 
 /** The illustration at the top of a card of the list of rooms. Decoration only: hidden from screen readers. */
-export default function RoomCardScene({ styles, theme, stageOnly = false }: RoomCardSceneProps) {
+export default function RoomCardScene({ roomId, styles, theme, stageOnly = false }: RoomCardSceneProps) {
   const ids = `scene${useId().replace(/[^\w-]/g, '')}`
-  const kind: SceneKind = stageOnly || styles.length === 0 ? 'stage' : KIND_OF_STYLE[styles[0]]
+  const kind: SceneKind = stageOnly ? 'stage' : (decorKind({ id: roomId, styles }) ?? 'stage')
 
   if (kind === 'stage') {
     return (

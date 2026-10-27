@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useParams } from 'react-router'
 import { useAccount } from '../auth/useAccount'
 import type { JoinError } from '../../shared/protocol'
 import DjBarAction from '../components/DjBarAction'
+import { decorKind } from '../components/decor/decorKind'
 import DjDialog from '../components/DjDialog'
 import DjNotices from '../components/DjNotices'
 import ModerationProvider from '../moderation/ModerationProvider'
@@ -207,6 +208,7 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
             queue={queue}
             messages={messages}
             compact={phone}
+            decor={decorKind({ id: roomId, styles: info?.styles ?? [] })}
             djAction={
               !phone && rules ? (
                 <DjBarAction

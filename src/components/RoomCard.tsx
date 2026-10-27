@@ -62,7 +62,7 @@ export default function RoomCard({ room, preview = false }: RoomCardProps) {
     <article className={preview ? 'room-card room-card--open' : 'room-card'}>
       <div className="room-card__frame">
         {/* The form's preview shows the stage of mock-up 2b, which wears the ambiance being picked. */}
-        <RoomCardScene styles={room.styles} theme={room.theme} stageOnly={preview} />
+        <RoomCardScene roomId={room.id} styles={room.styles} theme={room.theme} stageOnly={preview} />
 
         <div className="room-card__body">
           <Title className="room-card__name">{name}</Title>

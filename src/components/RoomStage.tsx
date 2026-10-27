@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { ChatMessage, DjQueue, MyReactions, Participant, Reactions, Track } from '../../shared/protocol'
+import type { DecorKind } from './decor/decorKind'
 import { useConsentDialog } from '../consent/consentContext'
 import { useYouTubeConsent } from '../consent/useYouTubeConsent'
 import { useVolume } from '../player/useVolume'
@@ -30,6 +31,8 @@ interface RoomStageProps {
   messages: ChatMessage[]
   /** A phone: the scene is the screen alone, the bar is pinned under it. */
   compact: boolean
+  /** The genre of the room, for the decor and the colours of the scene. */
+  decor: DecorKind | null
   /** "Passer DJ", at the right end of the bar; null where it is elsewhere (the queue tab of a phone). */
   djAction: ReactNode
   onLike: (value: boolean) => Promise<SendReactionResult>
@@ -65,6 +68,7 @@ export default function RoomStage({
   queue,
   messages,
   compact,
+  decor,
   djAction,
   onLike,
   onSkip,
@@ -115,6 +119,7 @@ export default function RoomStage({
         messages={messages}
         clockOffsetMs={clockOffsetMs}
         compact={compact}
+        decor={decor}
       >
         <VideoScreen
           hostRef={hostRef}

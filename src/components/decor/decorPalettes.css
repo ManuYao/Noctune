@@ -1,0 +1,85 @@
+/* The colours of the scene follow the genre of the room, not its ambiance: the same as the card of the list, so that the
+   room is the one you chose. Only the scene is repainted (the wall, the floor, the stage, the screen and the two neon
+   accents); the page around it keeps the room's ambiance. Without `data-decor` (pop, classical, no style) the scene wears
+   the ambiance, as before. The dark text of the viewer's pill and of the chips holds 4.5:1 on every accent below. */
+:is(.scene, .entry-scene)[data-decor] {
+  --on-accent: #16142b;
+  --on-accent-2: #16142b;
+}
+
+:is(.scene, .entry-scene)[data-decor='lofi'] {
+  --wall: #1b2a52;
+  --wall-2: #223463;
+  --floor: #121a38;
+  --stage: #2a3a78;
+  --stage-top: #3a4c94;
+  --screen-bg: #0b1230;
+  --accent: #ffd166;
+  --accent-2: #5cc8ff;
+}
+
+:is(.scene, .entry-scene)[data-decor='rock'] {
+  --wall: #2e1c2e;
+  --wall-2: #3f2640;
+  --floor: #1f121f;
+  --stage: #4a2a44;
+  --stage-top: #5e3858;
+  --screen-bg: #120a12;
+  --accent: #ff7a59;
+  --accent-2: #ffe58a;
+}
+
+:is(.scene, .entry-scene)[data-decor='electro'] {
+  --wall: #1e1448;
+  --wall-2: #2a1d63;
+  --floor: #140c34;
+  --stage: #30228a;
+  --stage-top: #4332a8;
+  --screen-bg: #0a0818;
+  --accent: #ff3d81;
+  --accent-2: #3de0ff;
+}
+
+:is(.scene, .entry-scene)[data-decor='jazz'] {
+  --wall: #3a2e14;
+  --wall-2: #4a3a1c;
+  --floor: #261d0c;
+  --stage: #5a4420;
+  --stage-top: #7a5c2c;
+  --screen-bg: #120d05;
+  --accent: #ffb347;
+  --accent-2: #ffd166;
+}
+
+:is(.scene, .entry-scene)[data-decor='rap'] {
+  --wall: #3a2418;
+  --wall-2: #5a3624;
+  --floor: #24150e;
+  --stage: #5a3a28;
+  --stage-top: #724a34;
+  --screen-bg: #140b07;
+  --accent: #ffb347;
+  --accent-2: #ff6b9a;
+}
+
+:is(.scene, .entry-scene)[data-decor='afro'] {
+  --wall: #8e3622;
+  --wall-2: #a8442c;
+  --floor: #4a2616;
+  --stage: #6e3a22;
+  --stage-top: #8a4c30;
+  --screen-bg: #1a0c08;
+  --accent: #ffd166;
+  --accent-2: #2dd4a7;
+}
+
+:is(.scene, .entry-scene)[data-decor='french'] {
+  --wall: #4b2262;
+  --wall-2: #5e2c78;
+  --floor: #231032;
+  --stage: #6a2e7e;
+  --stage-top: #84429a;
+  --screen-bg: #0b0614;
+  --accent: #ff6bc6;
+  --accent-2: #ffd166;
+}

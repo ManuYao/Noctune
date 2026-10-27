@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import Avatar from '../components/Avatar'
 import AvatarPicker from '../components/AvatarPicker'
 import EntryScene from '../components/EntryScene'
+import { decorKind } from '../components/decor/decorKind'
 import SiteHeader from '../components/SiteHeader'
 import { AVATARS, findAvatar } from '../data/avatars'
 import { readEntryDraft, saveEntryDraft } from '../data/entryDraft'
@@ -70,7 +71,7 @@ export default function EntryPage() {
 
   return (
     <div className="entry">
-      <EntryScene avatar={sceneAvatar} pseudo={scenePseudo} nowPlaying={suggested?.nowPlaying ?? null} />
+      <EntryScene avatar={sceneAvatar} pseudo={scenePseudo} nowPlaying={suggested?.nowPlaying ?? null} decor={suggested ? decorKind(suggested) : null} />
       <SiteHeader />
       <main className="entry__main">
         <section className="entry__hero">

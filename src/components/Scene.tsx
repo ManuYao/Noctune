@@ -4,6 +4,7 @@ import type { ChatMessage, DjQueueEntry, Participant } from '../../shared/protoc
 import { findAvatar, type AvatarDef } from '../data/avatars'
 import Avatar from './Avatar'
 import AvatarArt from './AvatarArt'
+import type { DecorKind } from './decor/decorKind'
 import SceneBackdrop from './SceneBackdrop'
 import { boxesMeet, layoutBubble, type BubbleAnchor, type BubbleLayout, type Box } from './bubbleGeometry'
 import SceneBubble from './SceneBubble'
@@ -28,6 +29,8 @@ interface SceneProps {
   clockOffsetMs: number
   /** A phone: the screen takes the whole width and the scene is reduced to it. */
   compact: boolean
+  /** The genre of the room: the decor and the colours of the scene. Null: the generic club in the room's ambiance. */
+  decor: DecorKind | null
   /** The video screen: it covers the scene's screen exactly, nothing is ever drawn over it. */
   children: ReactNode
 }
@@ -137,6 +140,7 @@ export default function Scene({
   messages,
   clockOffsetMs,
   compact,
+  decor,
   children,
 }: SceneProps) {
   const sceneRef = useRef<HTMLDivElement>(null)
@@ -223,10 +227,10 @@ export default function Scene({
   }
 
   return (
-    <div ref={sceneRef} className={narrow ? 'scene scene--narrow' : 'scene scene--art'}>
+    <div ref={sceneRef} className={narrow ? 'scene scene--narrow' : 'scene scene--art'} data-decor={decor ?? undefined}>
       {!narrow && (
         <svg className="scene__art" viewBox={viewBox} aria-hidden="true" focusable="false">
-          <SceneBackdrop />
+          <SceneBackdrop kind={decor} />
 
           {stagePeople.map((person) => {
             const avatar = findAvatar(person.avatarId)
