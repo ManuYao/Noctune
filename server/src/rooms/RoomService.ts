@@ -127,6 +127,7 @@ export class RoomService {
       theme: room.theme,
       rules: { ...room.rules },
       host: room.hostPseudo,
+      ...(room.createdAt !== null && { createdAt: room.createdAt }),
       mine: viewer !== undefined && room.hostAccountId !== null && room.hostAccountId === viewer,
     }
   }

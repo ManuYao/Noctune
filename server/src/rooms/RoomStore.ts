@@ -14,6 +14,8 @@ export interface StoredRoom {
   hostAccountId: string | null
   /** The host's pseudo, as their account has it. Null for the rooms of the team. */
   hostPseudo: string | null
+  /** When a member made the room, in milliseconds. Null for the rooms of the team: the date of their migration would say nothing. */
+  createdAt: number | null
 }
 
 /** What a host decides, already checked: name, description, styles, ambiance, rules, and the name key (see roomNameKey). */
@@ -72,6 +74,7 @@ export function seedRooms(): StoredRoom[] {
     rules: { ...def.rules },
     hostAccountId: null,
     hostPseudo: null,
+    createdAt: null,
   }))
 }
 

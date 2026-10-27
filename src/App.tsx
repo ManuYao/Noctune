@@ -11,6 +11,7 @@ import ProfilePage from './pages/ProfilePage'
 import RegisterPage from './pages/RegisterPage'
 import RulesPage from './pages/RulesPage'
 import RoomsPage from './pages/RoomsPage'
+import RoomInfoPage from './pages/RoomInfoPage'
 import RoomPage from './pages/RoomPage'
 
 export default function App() {
@@ -31,6 +32,8 @@ export default function App() {
         <Route path="/mentions-legales" element={<LegalNoticePage />} />
       </Route>
       <Route path="/room/:roomId" element={<RoomPage />} />
+      {/* Wears the ambiance of its room, so it holds its own footer and tab bar instead of PageShell's. */}
+      <Route path="/rooms/:roomId/infos" element={<RoomInfoPage />} />
     </Routes>
   )
 }

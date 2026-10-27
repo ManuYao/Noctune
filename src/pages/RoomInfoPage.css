@@ -1,0 +1,763 @@
+/* The details of a room (mock-up 4), measured on the source at 1440 x 900: rail 84 px, content 96 px from the left and 16 from
+   the right, top bar 12 to 72, banner 84 to 316 (232 px), panels 328 to 656 (420 / 452 / 432 px, 12 px apart), the title of
+   the neighbours at 668, their cards 700 to 884 (184 px). The page wears the ambiance of the room (data-theme). */
+.room-info {
+  background: var(--page-glow) no-repeat, var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.room-info p,
+.room-info ul,
+.room-info ol,
+.room-info dl,
+.room-info dd {
+  margin: 0;
+}
+
+.room-info ul,
+.room-info ol {
+  padding: 0;
+  list-style: none;
+}
+
+.room-info__body {
+  display: flex;
+  flex: 1;
+}
+
+.room-info__body > .room-rail {
+  flex: none;
+  width: 84px;
+}
+
+.room-info__col {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 16px 16px 12px;
+}
+
+.info-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.info-notice {
+  padding: 8px 16px;
+  border: 1.5px solid var(--accent-2);
+  border-radius: 14px;
+  color: var(--accent-2-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.info-message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px 12px 48px;
+}
+
+.info-message h1 {
+  font-size: clamp(24px, 5vw, 36px);
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+
+.info-message p {
+  color: var(--text-muted);
+  font-size: 17px;
+}
+
+.info-eq {
+  display: inline-flex;
+  flex: none;
+  align-items: flex-end;
+  gap: 2px;
+  width: 16px;
+  height: 14px;
+}
+
+.info-eq i {
+  display: block;
+  flex: 1;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent-2);
+  transform-origin: 50% 100%;
+  animation: info-eq 0.9s ease-in-out infinite;
+}
+
+.info-eq i:nth-child(2) { animation-delay: -0.3s; }
+.info-eq i:nth-child(3) { animation-delay: -0.6s; }
+
+@keyframes info-eq {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+
+/* ---- The banner ---- */
+.info-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 232px;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  background: var(--wall);
+}
+
+/* The scene of the room's genre on the right, fading into the wall on its left. Drawing only: no screen to read on it. */
+.info-banner__scene {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(640px, calc(100% - 520px));
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 38%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 38%);
+}
+
+.info-banner__scene .room-scene {
+  height: 100%;
+}
+
+.info-banner__text {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: min(640px, 100%);
+  min-width: 0;
+  padding: 24px 32px;
+}
+
+.info-banner h1 {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.info-banner__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.info-banner__chips ul {
+  display: contents;
+}
+
+.info-banner__chips li {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.info-banner__online {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--glass);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.info-banner__host {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.info-banner__host strong {
+  color: var(--text);
+}
+
+.info-banner__actions {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.info-enter,
+.info-share {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 15px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.info-enter {
+  border: 0;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 800;
+}
+
+.info-enter:hover {
+  filter: brightness(1.08);
+}
+
+.info-share {
+  gap: 8px;
+  padding: 0 20px;
+  border: 1.5px solid var(--border-field);
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.info-share:hover {
+  border-color: var(--text);
+}
+
+/* "Lien copié": under the buttons, so that the banner does not move. */
+.info-share__note {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  color: var(--accent-2-text);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.info-share__manual {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 480px;
+  font-size: 13px;
+}
+
+.info-share__manual p {
+  color: var(--text-muted);
+}
+
+.info-share__manual input {
+  width: 100%;
+  height: var(--tap);
+  padding: 0 14px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+}
+
+/* ---- The panels ---- */
+.info-panels {
+  display: grid;
+  grid-template-columns: 420fr 452fr 432fr;
+  gap: 12px;
+}
+
+.info-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  min-height: 328px;
+  padding: 16px 20px;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  background: var(--glass);
+}
+
+.info-panel h2,
+.info-similar__head h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.info-panel h3 {
+  color: var(--text-muted);
+  font-family: var(--font-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.info-about__text {
+  overflow-wrap: anywhere;
+  font-size: 15px;
+}
+
+.info-stats {
+  display: flex;
+  gap: 10px;
+}
+
+.info-stats > div {
+  display: flex;
+  flex: 1;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 2px;
+  min-width: 0;
+  padding: 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg);
+}
+
+.info-stats dd {
+  font-family: var(--font-title);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.info-stats dd.info-stats__text {
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.info-stats dt {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.info-team {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-team__member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.25;
+}
+
+.info-team__member > span:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.info-team__member strong {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.info-team__member > span:last-child > span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.info-team__initial {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 800;
+}
+
+.info-team__logo rect:first-child { fill: var(--accent); }
+.info-team__logo rect:not(:first-child) { fill: var(--on-accent); }
+
+/* Rules */
+.info-rules {
+  gap: 10px;
+}
+
+.info-rules h2 svg {
+  stroke: var(--accent-2);
+}
+
+.info-rules ol {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.info-rules li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 36px;
+  line-height: 1.3;
+}
+
+.info-rules li > span:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.info-rules li strong {
+  font-size: 14.5px;
+}
+
+.info-rules li > span:last-child > span {
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
+.info-rules__n {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.info-rules__sanctions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.info-rules__sanctions svg {
+  flex: none;
+  stroke: var(--accent);
+}
+
+.info-rules__sanctions circle {
+  fill: var(--accent);
+}
+
+.info-rules__sanctions a {
+  display: inline-block;
+  margin-block: -14px;
+  padding-block: 14px;
+  font-weight: 700;
+}
+
+/* Right now */
+.info-live__block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.info-live__block h3 {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.info-live__track {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.2;
+}
+
+.info-live__track > span:last-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+
+.info-live__track strong {
+  overflow-wrap: anywhere;
+  font-size: 15px;
+}
+
+.info-live__track > span:last-child > span {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.info-live__quiet {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* ---- The neighbours ---- */
+.info-similar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-similar__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 24px;
+  margin-top: 0;
+}
+
+/* The link is 44 px for a finger and 24 for the layout. */
+.info-similar__head a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  margin-block: -10px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.info-similar__head a:hover {
+  text-decoration: underline;
+}
+
+.info-similar__list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.info-similar__card {
+  display: flex;
+  height: 184px;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  border-radius: 24px;
+  background: var(--glass);
+}
+
+.info-similar__scene {
+  flex: none;
+  width: 180px;
+}
+
+.info-similar__scene .room-scene {
+  height: 100%;
+}
+
+.info-similar__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px 18px;
+}
+
+.info-similar__body h3 {
+  overflow: hidden;
+  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.info-similar__body ul {
+  display: flex;
+  gap: 6px;
+}
+
+.info-similar__body li {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.info-similar__now {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.info-similar__now .info-eq {
+  margin-top: 3px;
+}
+
+.info-similar__now > span:last-child {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.info-similar__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.info-similar__foot a {
+  display: inline-flex;
+  align-items: center;
+  height: var(--tap);
+  padding: 0 18px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.info-similar__foot a:hover {
+  filter: brightness(1.08);
+}
+
+/* ---- A narrower computer: two panels a row, the third under them ---- */
+@media (max-width: 1180px) {
+  .info-panels {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .info-live {
+    grid-column: 1 / -1;
+    min-height: 0;
+  }
+
+  .info-similar__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---- The banner stacked: the scene on top, then the text (a narrow window, a phone) ---- */
+@media (max-width: 900px) {
+  .info-banner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .info-banner__scene {
+    position: static;
+    width: auto;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .info-banner__scene .room-scene {
+    height: 160px;
+  }
+
+  .info-banner__text {
+    width: auto;
+    padding: 20px;
+  }
+
+  .info-banner h1 {
+    font-size: 28px;
+  }
+
+  .info-similar__list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---- A phone: one column, big targets, the tab bar below (mock-ups M2 and the profile) ---- */
+@media (max-width: 760px) {
+  .room-info__col {
+    padding: 0 16px 24px;
+  }
+
+  .info-main {
+    gap: 16px;
+    margin-top: 4px;
+  }
+
+  .info-banner__actions {
+    width: 100%;
+    gap: 10px;
+  }
+
+  .info-enter,
+  .info-share {
+    flex: 1 1 0;
+    height: var(--tap-main);
+    padding: 0 16px;
+    white-space: nowrap;
+  }
+
+  .info-panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .info-panel {
+    min-height: 0;
+  }
+
+  .info-stats {
+    flex-wrap: wrap;
+  }
+
+  .info-stats > div {
+    flex: 1 1 96px;
+  }
+
+  .info-similar__phone {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+}

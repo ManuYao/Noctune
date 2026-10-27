@@ -214,6 +214,8 @@ describe('reading rooms', () => {
     assert.deepEqual({ ...asBen, mine: true }, asAnn)
     const team = worked(await service.get('lofi-du-soir', ann.id)).room
     assert.deepEqual({ host: team.host, mine: team.mine }, { host: null, mine: false })
+    assert.equal('createdAt' in team, false, 'a team room has no opening date to tell')
+    assert.ok(typeof asVisitor.createdAt === 'number' && Math.abs(asVisitor.createdAt - Date.now()) < 60_000, 'a member room tells when it was made')
   })
 
   it('answers “not found” for an id that cannot be one, without asking the store', async () => {

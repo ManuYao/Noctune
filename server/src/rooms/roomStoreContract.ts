@@ -86,6 +86,7 @@ export function describeRoomStoreContract(name: string, open: () => Promise<Room
         )
         assert.equal(room.hostAccountId, null)
         assert.equal(room.hostPseudo, null)
+        assert.equal(room.createdAt, null, 'the date of a migration is not when a team room opened')
       }
     })
 
@@ -97,6 +98,7 @@ export function describeRoomStoreContract(name: string, open: () => Promise<Room
       )
       assert.equal(room.hostAccountId, ann.id)
       assert.equal(room.hostPseudo, ann.pseudo)
+      assert.ok(room.createdAt !== null && Math.abs(room.createdAt - Date.now()) < 60_000, `created at ${room.createdAt}`)
       assert.deepEqual(await store.get(room.id), room)
       assert.equal(await store.get('no-such-room'), null)
     })

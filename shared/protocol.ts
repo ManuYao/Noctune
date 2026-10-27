@@ -505,6 +505,8 @@ export interface RoomDetail extends RoomSettings {
   id: string
   /** Pseudo of the host; null for the rooms of the team. */
   host: string | null
+  /** When the member made it (ms since the epoch). Absent for the rooms of the team. */
+  createdAt?: number
   /** The viewer hosts it (always false for a visitor). */
   mine: boolean
 }

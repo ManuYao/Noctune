@@ -54,6 +54,7 @@ export class MemoryRoomStore implements RoomStore {
       rules: { ...input.rules },
       hostAccountId: host.accountId,
       hostPseudo: host.pseudo,
+      createdAt: Date.now(),
     }
     this.entries.set(id, { room, nameKey: input.nameKey, order: (this.order += 1) })
     return { ok: true, room: copy(room) }

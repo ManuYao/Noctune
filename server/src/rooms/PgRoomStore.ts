@@ -13,10 +13,12 @@ interface RoomRow {
   max_djs: number
   host_account_id: string | null
   host_pseudo: string | null
+  created_at: Date | null
 }
 
 const SELECT = `SELECT r.id, r.name, r.description, r.styles, r.theme, r.max_track_sec, r.repeat_delay_sec, r.max_djs,
-                       r.host_account_id, u.pseudo AS host_pseudo
+                       r.host_account_id, u.pseudo AS host_pseudo,
+                       CASE WHEN r.host_account_id IS NULL THEN NULL ELSE r.created_at END AS created_at
                   FROM rooms r LEFT JOIN users u ON u.id = r.host_account_id`
 // The rooms of the team come first, in their order; the others follow, oldest first.
 const ORDER = 'ORDER BY r.seed_position NULLS LAST, r.created_at, r.id'
@@ -31,6 +33,7 @@ const toRoom = (row: RoomRow): StoredRoom => ({
   rules: { maxTrackSec: row.max_track_sec, repeatDelaySec: row.repeat_delay_sec, maxDjs: row.max_djs },
   hostAccountId: row.host_account_id,
   hostPseudo: row.host_pseudo,
+  createdAt: row.created_at ? row.created_at.getTime() : null,
 })
 
 /** The constraint a unique violation was about (see migration 003). */

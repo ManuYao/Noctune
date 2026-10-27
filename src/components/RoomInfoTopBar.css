@@ -1,0 +1,144 @@
+/* The top of the room's details (mock-up 4): 60 px tall, the breadcrumb at 15 px, the viewer's pill 48 px, "Se connecter" 44 px. */
+.info-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 60px;
+}
+
+.info-top__end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+}
+
+.info-top__me {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 16px 0 8px;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--glass);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.info-top__me:hover {
+  border-color: var(--border-field);
+}
+
+.info-top__me > svg {
+  display: block;
+  flex: none;
+}
+
+.info-top__who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.2;
+}
+
+.info-top__pseudo {
+  max-width: 16ch;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.info-top__status {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.info-top__login {
+  display: inline-flex;
+  align-items: center;
+  height: var(--tap);
+  padding: 0 22px;
+  border: 1.5px solid var(--border-field);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.info-top__login:hover {
+  border-color: var(--text);
+}
+
+.info-crumbs {
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.info-crumbs ol {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.info-crumbs li {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.info-crumbs li + li::before {
+  content: '/';
+  padding: 0 0.4em;
+}
+
+.info-crumbs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.info-crumbs a:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.info-crumbs [aria-current='page'] {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.info-crumbs__room a {
+  max-width: 28ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The pill keeps its avatar alone when the window is narrow. */
+@media (max-width: 1000px) {
+  .info-top__who {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .info-top__me {
+    padding-right: 8px;
+  }
+}

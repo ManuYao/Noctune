@@ -171,7 +171,7 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
         note={note}
       >
         {/* A computer: the rail and the header of mock-ups 3 and 3b. A phone: the header of mock-up M3, with the room's name. */}
-        {!phone && <RoomRail />}
+        {!phone && <RoomRail roomId={roomId} />}
         {phone ? (
           <MobileRoomHeader
             roomId={roomId}
