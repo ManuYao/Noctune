@@ -408,6 +408,13 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
           : { ...prev, messages: [...prev.messages, message].slice(-MAX_MESSAGES_KEPT) },
       )
 
+    // A phone that was in the background has often lost the connection, and the timers of its reconnection were
+    // slowed down: coming back, try at once instead of waiting for the next retry.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && !socket.connected) socket.connect()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+
     socket.on('connect', onConnect)
     socket.on('disconnect', onDisconnect)
     socket.on('room:participant-joined', onParticipantJoined)
@@ -430,6 +437,7 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
     return () => {
       active = false
       window.clearTimeout(retryTimer)
+      document.removeEventListener('visibilitychange', onVisible)
       socket.off('connect', onConnect)
       socket.off('disconnect', onDisconnect)
       socket.off('room:participant-joined', onParticipantJoined)

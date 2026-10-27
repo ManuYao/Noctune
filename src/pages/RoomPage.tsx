@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useParams } from 'react-router'
 import { useAccount } from '../auth/useAccount'
 import { useYouTubeConsent } from '../consent/useYouTubeConsent'
 import { useVolume } from '../player/useVolume'
+import { useWakeLock } from '../player/useWakeLock'
 import type { JoinError } from '../../shared/protocol'
 import DjBarAction from '../components/DjBarAction'
 import { decorKind } from '../components/decor/decorKind'
@@ -94,6 +95,7 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
   const phone = useMediaQuery(PHONE_QUERY)
   // The volume is the page's: the bar of a computer has its slider, the header of a phone its mute button.
   const sound = useVolume()
+  const screenOn = useWakeLock()
   const { choice: playerChoice } = useYouTubeConsent()
   // Who the viewer is in the room, as the server sees this connection: member or visitor can differ for a moment from
   // the account of the page (signed in from another tab: the connection reopens a moment later).
@@ -184,6 +186,7 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
             silent={sound.muted || sound.volume === 0}
             noPlayer={playerChoice !== 'accepted'}
             onToggleMute={sound.toggleMute}
+            keepScreenOn={screenOn.supported ? { on: screenOn.on, toggle: screenOn.toggle } : null}
           />
         ) : (
           <RoomHeader

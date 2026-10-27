@@ -5,6 +5,7 @@ import type { DecorKind } from './decor/decorKind'
 import { useConsentDialog } from '../consent/consentContext'
 import { useYouTubeConsent } from '../consent/useYouTubeConsent'
 import { UNAVAILABLE_TEXT } from '../player/unavailable'
+import { useMediaSession } from '../player/useMediaSession'
 import { useYouTubePlayer, type PlayerStatus } from '../player/useYouTubePlayer'
 import { ownSkipHint } from '../realtime/djMessages'
 import { findMyPlace } from '../realtime/djQueue'
@@ -46,6 +47,7 @@ export interface Sound {
   volume: number
   muted: boolean
   setVolume: (volume: number) => void
+  setMuted: (muted: boolean) => void
   toggleMute: () => void
 }
 
@@ -85,7 +87,7 @@ export default function RoomStage({
   onSkip,
 }: RoomStageProps) {
   const hostRef = useRef<HTMLDivElement>(null)
-  const { volume, muted, setVolume, toggleMute } = sound
+  const { volume, muted, setVolume, setMuted, toggleMute } = sound
   // Nothing is requested from YouTube until the viewer accepted its player (the choice is asked on the entry screen).
   const { choice } = useYouTubeConsent()
   const { ask } = useConsentDialog()
@@ -97,6 +99,21 @@ export default function RoomStage({
     enabled: choice === 'accepted',
   })
   const playerOff = status === 'consent-needed'
+
+  // The lock screen and the headphones: "pause" mutes (the room's timeline goes on, nobody falls behind), "play" unmutes
+  // and realigns. Only with the player on: without it there is nothing to control.
+  useMediaSession({
+    track,
+    album: queue.current ? `Passé par ${queue.current.pseudo}` : 'Sélection de la room',
+    playing: (status === 'playing' || status === 'sound-blocked') && !muted && volume > 0,
+    active: choice === 'accepted',
+    clockOffsetMs,
+    onPause: () => setMuted(true),
+    onPlay: () => {
+      setMuted(false)
+      enableSound()
+    },
+  })
   // This viewer's player could not play the track (blocked in their country, forbidden by its owner, removed): they are
   // told on the screen, which has nothing else to show. The room does not skip the track for one person: the others
   // hear it, and this one goes on with the next.

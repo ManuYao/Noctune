@@ -159,6 +159,11 @@ export const privacy: LegalDocument = {
             est envoyée.
           </p>
           <p>
+            Sur un téléphone, la miniature de la vidéo peut apparaître sur l'écran de verrouillage ou dans les commandes
+            multimédia : ton appareil la télécharge alors sur le serveur d'images de YouTube (i.ytimg.com), et seulement
+            après ton accord.
+          </p>
+          <p>
             <strong>Avant de charger le lecteur, Noctune te demande ton accord.</strong> Tant que tu n'as pas accepté, aucune
             requête n'est envoyée à YouTube ni à Google. Si tu refuses, tu peux entrer dans les rooms, discuter, voter et passer
             DJ, mais tu n'entends pas la musique.

@@ -78,9 +78,33 @@ export function useYouTubePlayer(hostRef: RefObject<HTMLDivElement | null>, opti
   const soundBlocked = useRef(false)
   // Latest values for callbacks that outlive a render.
   const latest = useRef(options)
+  const statusRef = useRef(status)
   useEffect(() => {
     latest.current = options
+    statusRef.current = status
   })
+
+  // Waits for the video to start: browsers refuse to start one with sound before the visitor has interacted with the page,
+  // and phones are stricter. Muted playback is always allowed: keep the video moving, ask for one tap.
+  const watchStart = useCallback((player: YouTubePlayer) => {
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(() => {
+      if (isActive(player)) return
+      // In the background a browser may well refuse to start: that says nothing about sound. The watch starts again when
+      // the page comes back (see resync).
+      if (document.visibilityState === 'hidden') return
+      if (soundBlocked.current) {
+        setStatus('tap-needed')
+        return
+      }
+      soundBlocked.current = true
+      player.mute()
+      player.playVideo()
+      timer.current = window.setTimeout(() => {
+        if (!isActive(player)) setStatus('tap-needed')
+      }, AUTOPLAY_WAIT_MS)
+    }, AUTOPLAY_WAIT_MS)
+  }, [])
 
   // Create the player once the visitor accepted it, and destroy it with the screen (or when they take the consent back
   // in another tab). Without the consent nothing is loaded: no script, no iframe, no request to YouTube or Google.
@@ -205,27 +229,14 @@ export function useYouTubePlayer(hostRef: RefObject<HTMLDivElement | null>, opti
     player.loadVideoById({ videoId: track.videoId, startSeconds: trackPositionSec(track, serverNow) })
     hideCaptions(player)
 
-    // Browsers refuse to start a video with sound before the visitor has interacted with the page, and
-    // phones are stricter. Muted playback is always allowed: keep the video moving, ask for one tap.
-    timer.current = window.setTimeout(() => {
-      if (isActive(player)) return
-      if (soundBlocked.current) {
-        setStatus('tap-needed')
-        return
-      }
-      soundBlocked.current = true
-      player.mute()
-      player.playVideo()
-      timer.current = window.setTimeout(() => {
-        if (!isActive(player)) setStatus('tap-needed')
-      }, AUTOPLAY_WAIT_MS)
-    }, AUTOPLAY_WAIT_MS)
+    watchStart(player)
 
     return () => window.clearTimeout(timer.current)
     // `track` is tracked through trackKey: a new object with the same content must not reload the video.
-  }, [ready, trackKey])
+  }, [ready, trackKey, watchStart])
 
-  // Drift correction while playing, and realignment when the page comes back from the background.
+  // Drift correction while playing, and realignment when the page comes back from the background. Nothing is ever paused
+  // when the page is hidden: a browser that lets a video play behind the screen lock is left to do so.
   useEffect(() => {
     if (!ready) return
 
@@ -237,23 +248,42 @@ export function useYouTubePlayer(hostRef: RefObject<HTMLDivElement | null>, opti
       }
     }
 
-    function onVisibilityChange() {
-      if (document.visibilityState !== 'visible') return
+    // Back in the foreground (or thawed): a phone may have paused or frozen the video. A paused video would restart where it
+    // stopped, minutes behind the room, so it goes to the server's second first; a video that still plays is only realigned.
+    function resync() {
+      if (document.visibilityState === 'hidden') return
       const player = playerRef.current
-      if (player && latest.current.track && player.getPlayerState() === PLAYER_STATE.PAUSED) {
-        resumeAttempts.current = 0
-        player.playVideo()
+      const { track: playing, clockOffsetMs } = latest.current
+      const current = statusRef.current
+      if (!player || !playing || current === 'video-unavailable' || current === 'idle' || current === 'consent-needed') return
+      const serverNow = Date.now() + clockOffsetMs
+      if (isTrackOver(playing, serverNow)) return // the server is about to send the next track
+      const state = player.getPlayerState()
+      if (state === PLAYER_STATE.PLAYING || state === PLAYER_STATE.BUFFERING) {
+        realign(FIRST_SYNC_TOLERANCE_SEC)
+        return
       }
-      realign(FIRST_SYNC_TOLERANCE_SEC)
+      resumeAttempts.current = 0
+      firstSyncDone.current = false
+      player.seekTo(trackPositionSec(playing, serverNow), true)
+      player.playVideo()
+      watchStart(player)
     }
 
     const interval = window.setInterval(() => realign(DRIFT_TOLERANCE_SEC), DRIFT_CHECK_MS)
-    document.addEventListener('visibilitychange', onVisibilityChange)
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) resync()
+    }
+    document.addEventListener('visibilitychange', resync)
+    document.addEventListener('resume', resync)
+    window.addEventListener('pageshow', onPageShow)
     return () => {
       window.clearInterval(interval)
-      document.removeEventListener('visibilitychange', onVisibilityChange)
+      document.removeEventListener('visibilitychange', resync)
+      document.removeEventListener('resume', resync)
+      window.removeEventListener('pageshow', onPageShow)
     }
-  }, [ready])
+  }, [ready, watchStart])
 
   /** To call from a tap or click: that gesture is what lets the browser play with sound. */
   const enableSound = useCallback(() => {

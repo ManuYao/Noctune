@@ -37,5 +37,5 @@ export function useVolume() {
 
   const toggleMute = useCallback(() => setMuted((current) => !current), [])
 
-  return { volume, muted, setVolume, toggleMute }
+  return { volume, muted, setVolume, setMuted, toggleMute }
 }

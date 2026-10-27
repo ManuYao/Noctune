@@ -14,7 +14,23 @@ export default defineConfig({
         theme_color: '#0e0b1f',
         background_color: '#0e0b1f',
         display: 'standalone',
-        icons: [{ src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
+        orientation: 'any',
+        lang: 'fr',
+        id: '/',
+        start_url: '/',
+        scope: '/',
+        categories: ['music', 'entertainment'],
+        icons: [
+          { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+        ],
+      },
+      workbox: {
+        // The worker only serves the page shell: the API, the realtime connection and the health check always reach the
+        // server (a navigation to /api/auth/export must download the file, not get index.html).
+        navigateFallbackDenylist: [/^\/api\//, /^\/socket\.io\//, /^\/healthz/],
       },
     }),
   ],
