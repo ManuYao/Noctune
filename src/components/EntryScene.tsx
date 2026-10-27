@@ -86,13 +86,6 @@ const BEAMS: Beam[] = [
   { points: '820,44 700,470 900,470', x: 820, sway: 'mw-sway', gradient: 'a' },
   { points: '990,44 1030,470 1200,470', x: 990, sway: 'mw-sway2', gradient: 'b' },
 ]
-// A rock gig: they cross over the stage.
-const CROSSED_BEAMS: Beam[] = [
-  { points: '470,44 540,470 690,470', x: 470, sway: 'mw-sway', gradient: 'a' },
-  { points: '640,44 900,470 1040,470', x: 640, sway: 'mw-sway2', gradient: 'b' },
-  { points: '820,44 560,470 700,470', x: 820, sway: 'mw-sway', gradient: 'a' },
-  { points: '990,44 820,470 960,470', x: 990, sway: 'mw-sway2', gradient: 'b' },
-]
 const PROJECTORS = [
   { x: 470, tone: 'sc-accent' },
   { x: 640, tone: 'sc-accent2' },
@@ -123,9 +116,9 @@ const Club = memo(function Club({ title, artist, kind }: { title: string | null;
   const Wall = decor?.Wall
   const Back = decor?.Back
   const Floor = decor?.Floor
-  const mode = decor?.beams ?? 'standard'
-  const beams = mode === 'none' ? [] : mode === 'crossed' ? CROSSED_BEAMS : mode === 'outer' ? [BEAMS[0], BEAMS[3]] : BEAMS
-  const projectors = mode === 'none' ? [] : mode === 'outer' ? [PROJECTORS[0], PROJECTORS[3]] : PROJECTORS
+  // Mock-up 1: the same four pink and cyan beams whatever the genre; it is their light on the wall that makes it violet.
+  const beams = BEAMS
+  const projectors = PROJECTORS
   return (
     <>
       <DecorDefs />
@@ -173,7 +166,7 @@ const Club = memo(function Club({ title, artist, kind }: { title: string | null;
       <circle cx="730" cy="200" r="380" fill="url(#entry-halo)" />
       {Back && <Back frame="entry" />}
 
-      <g opacity={mode === 'soft' ? 0.6 : undefined}>
+      <g>
         {beams.map((beam) => (
           <polygon key={beam.points} className={beam.sway} style={{ transformOrigin: `${beam.x}px 44px` }} points={beam.points} fill={beam.gradient === 'a' ? 'url(#entry-beam-a)' : 'url(#entry-beam-b)'} />
         ))}

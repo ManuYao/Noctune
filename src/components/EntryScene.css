@@ -9,6 +9,13 @@
   pointer-events: none;
 }
 
+/* The accents of mock-up 1 (pink and cyan) whatever the genre of the proposed room: the genre only changes the objects.
+   Their light (halo, beams) is what turns the wall violet; the yellow of lo-fi made it brown-blue. */
+div.entry-scene[data-decor] {
+  --accent: #ff3d81;
+  --accent-2: #3de0ff;
+}
+
 /* The mock-up's 1440 x 900 as large as the window holds it, at the top, centred. What is drawn past it (the wall and the
    floor going on) shows on the sides of a wider window and under it in a taller one. */
 .entry-scene__art {
