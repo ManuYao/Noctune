@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router'
+import PendingLink from './PendingLink'
 import { useConsentDialog } from '../consent/consentContext'
 import './SiteFooter.css'
 
@@ -12,8 +13,8 @@ export default function SiteFooter() {
     <footer className="site-footer">
       <nav aria-label="Informations légales">
         <NavLink to="/regles">Règles de la communauté</NavLink>
-        <NavLink to="/mentions-legales">Mentions légales</NavLink>
-        <NavLink to="/confidentialite">Confidentialité</NavLink>
+        <PendingLink page="mentions-legales">Mentions légales</PendingLink>
+        <PendingLink page="confidentialite">Confidentialité</PendingLink>
         {/* The answer about YouTube's player can be changed at any time, from any page that has a footer. */}
         <button type="button" onClick={() => ask({ intent: 'manage' })}>
           Gérer le lecteur YouTube

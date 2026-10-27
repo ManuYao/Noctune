@@ -5,7 +5,9 @@ import EditRoomPage from './pages/EditRoomPage'
 import EntryPage from './pages/EntryPage'
 import LegalNoticePage from './pages/LegalNoticePage'
 import LoginPage from './pages/LoginPage'
+import PendingLegalPage from './pages/PendingLegalPage'
 import PrivacyPage from './pages/PrivacyPage'
+import { PENDING_LEGAL_PAGES } from './legal/pending'
 import PlaylistPage from './pages/PlaylistPage'
 import ProfilePage from './pages/ProfilePage'
 import RegisterPage from './pages/RegisterPage'
@@ -27,9 +29,9 @@ export default function App() {
         <Route path="/inscription" element={<RegisterPage />} />
         <Route path="/playlist" element={<PlaylistPage />} />
         <Route path="/profil" element={<ProfilePage />} />
-        <Route path="/confidentialite" element={<PrivacyPage />} />
+        <Route path="/confidentialite" element={PENDING_LEGAL_PAGES.has('confidentialite') ? <PendingLegalPage /> : <PrivacyPage />} />
         <Route path="/regles" element={<RulesPage />} />
-        <Route path="/mentions-legales" element={<LegalNoticePage />} />
+        <Route path="/mentions-legales" element={PENDING_LEGAL_PAGES.has('mentions-legales') ? <PendingLegalPage /> : <LegalNoticePage />} />
       </Route>
       <Route path="/room/:roomId" element={<RoomPage />} />
       {/* Wears the ambiance of its room, so it holds its own footer and tab bar instead of PageShell's. */}

@@ -1,5 +1,5 @@
+import PendingLink from '../components/PendingLink'
 import { useEffect, useRef } from 'react'
-import { Link } from 'react-router'
 import type { ConsentIntent, ConsentRequest } from './consentContext'
 import { getConsentDate, type ConsentChoice } from './consentStore'
 import { useYouTubeConsent } from './useYouTubeConsent'
@@ -69,9 +69,7 @@ export default function ConsentDialog({ request, onChoose, onDismiss }: ConsentD
             </p>
             <p>
               {/* On its own line: a link as tall as a touch target inside a sentence would stretch the line it sits on. */}
-              <Link to="/confidentialite" target="_blank" rel="noopener noreferrer">
-                Politique de confidentialité<span className="visually-hidden"> (nouvel onglet)</span>
-              </Link>
+              <PendingLink page="confidentialite" newTab>Politique de confidentialité<span className="visually-hidden"> (nouvel onglet)</span></PendingLink>
             </p>
             {request.intent === 'manage' && (
               <p className="consent-dialog__current" role="status">

@@ -1,3 +1,4 @@
+import PendingLink from '../components/PendingLink'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
@@ -235,9 +236,7 @@ export default function EntryPage() {
                 Règles<span className="visually-hidden"> de la communauté (nouvel onglet)</span>
               </Link>{' '}
               ·{' '}
-              <Link to="/confidentialite" target="_blank" rel="noopener noreferrer">
-                Confidentialité<span className="visually-hidden"> (nouvel onglet)</span>
-              </Link>
+              <PendingLink page="confidentialite" newTab>Confidentialité<span className="visually-hidden"> (nouvel onglet)</span></PendingLink>
             </p>
           </div>
 

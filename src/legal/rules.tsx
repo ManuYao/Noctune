@@ -1,4 +1,4 @@
-import { Link } from 'react-router'
+import PendingLink from '../components/PendingLink'
 import ToComplete from './ToComplete'
 import type { LegalDocument } from './types'
 
@@ -114,8 +114,8 @@ export const rules: LegalDocument = {
           </p>
           <p className="legal__note">
             Pour joindre l'équipe Noctune : <ToComplete what="adresse e-mail ou formulaire de contact de l'équipe" />. Voir
-            aussi la <Link to="/confidentialite">politique de confidentialité</Link> et les{' '}
-            <Link to="/mentions-legales">mentions légales</Link>.
+            aussi la <PendingLink page="confidentialite">politique de confidentialité</PendingLink> et les{' '}
+            <PendingLink page="mentions-legales">mentions légales</PendingLink>.
           </p>
         </>
       ),

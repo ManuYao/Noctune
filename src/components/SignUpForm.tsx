@@ -1,3 +1,4 @@
+import PendingLink from './PendingLink'
 import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import { Link } from 'react-router'
@@ -132,9 +133,9 @@ export default function SignUpForm({ pseudo, avatarId, pseudoInputId, renderIden
             règles de la communauté<span className="visually-hidden"> (nouvel onglet)</span>
           </Link>{' '}
           et tu as lu la{' '}
-          <Link to="/confidentialite" target="_blank" rel="noopener noreferrer">
+          <PendingLink page="confidentialite" newTab>
             politique de confidentialité<span className="visually-hidden"> (nouvel onglet)</span>
-          </Link>
+          </PendingLink>
           .
         </p>
       </div>

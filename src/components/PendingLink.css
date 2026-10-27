@@ -1,0 +1,10 @@
+/* A button that reads as a link inside a sentence. */
+.pending-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

@@ -1,3 +1,4 @@
+import PendingLink from '../components/PendingLink'
 import { Link } from 'react-router'
 import ToComplete from './ToComplete'
 import type { LegalDocument } from './types'
@@ -83,7 +84,7 @@ export const notice: LegalDocument = {
       body: (
         <p>
           La façon dont le site utilise tes informations est expliquée dans la{' '}
-          <Link to="/confidentialite">politique de confidentialité</Link>.
+          <PendingLink page="confidentialite">politique de confidentialité</PendingLink>.
         </p>
       ),
     },
