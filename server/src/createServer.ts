@@ -2,6 +2,7 @@ import { createServer, type Server as HttpServer } from 'node:http'
 import { Server } from 'socket.io'
 import type { AccountLifecycle } from './accounts/AccountLifecycle'
 import { ActivityRecorder } from './activity/ActivityRecorder'
+import { BadgeAnnouncer } from './activity/BadgeAnnouncer'
 import type { ActivityStore } from './activity/ActivityStore'
 import { assembleProfile } from './activity/profile'
 import { createApiHandler } from './http/apiHandler'
@@ -71,9 +72,12 @@ export function createNoctuneServer(options: ServerOptions): {
     writable: Boolean(options.roomStore) && Boolean(options.accounts),
   })
 
+  // Looks at a member's badges after something is counted for them; filled in once the lifecycle and the realtime side exist.
+  const badgeWatch: { announcer?: BadgeAnnouncer } = {}
   const activity = options.activityStore
     ? new ActivityRecorder(options.activityStore, {
         hostedRoomIds: async (accountId) => (await roomStore.listByHost(accountId)).map((room) => room.id),
+        onActivity: (accountId) => badgeWatch.announcer?.touch(accountId),
       })
     : null
 
@@ -118,6 +122,7 @@ export function createNoctuneServer(options: ServerOptions): {
         live.realtime?.endAccount(accountId, { forget: true })
         // After the connections are cut (their departures are counted): the counters waiting in memory go too.
         activity?.forget(accountId)
+        badgeWatch.announcer?.forget(accountId)
       }
     },
     sessionsEnded: (accountId, exceptSessionKey) => live.realtime?.endAccount(accountId, { exceptSessionKey }),
@@ -159,6 +164,16 @@ export function createNoctuneServer(options: ServerOptions): {
   })
   const realtime = registerRoomHandlers(io, { ...options, lookupBudget, playlists, activityRecorder: activity })
   live.realtime = realtime
+  const accountsService = options.accounts
+  if (options.activityStore && accountsService) {
+    badgeWatch.announcer = new BadgeAnnouncer(options.activityStore, {
+      profileOf: async (accountId) => {
+        const since = await accountsService.createdAtOf(accountId)
+        return since ? lifecycle.profileOf(accountId, since) : null
+      },
+      send: (accountId, badges) => realtime.sendBadges(accountId, badges),
+    })
+  }
   sessionEnded.handler = realtime.endSession
   roomListener.created = realtime.roomCreated
   roomListener.updated = realtime.roomUpdated

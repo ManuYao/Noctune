@@ -152,8 +152,27 @@ export class PgActivityStore implements ActivityStore {
     )
   }
 
+  async announcedBadges(accountId: string): Promise<Map<string, number>> {
+    const { rows } = await this.pool.query<{ badge_id: string; level: number }>(
+      'SELECT badge_id, level FROM member_badges_announced WHERE user_id = $1',
+      [accountId],
+    )
+    return new Map(rows.map((row) => [row.badge_id, row.level]))
+  }
+
+  async markBadgesAnnounced(accountId: string, levels: ReadonlyMap<string, number>): Promise<void> {
+    if (levels.size === 0) return
+    await this.pool.query(
+      `INSERT INTO member_badges_announced (user_id, badge_id, level)
+       SELECT $1::uuid, t.badge_id, t.level FROM unnest($2::text[], $3::smallint[]) AS t(badge_id, level)
+       WHERE EXISTS (SELECT 1 FROM users WHERE id = $1::uuid)
+       ON CONFLICT (user_id, badge_id) DO UPDATE SET level = GREATEST(member_badges_announced.level, EXCLUDED.level)`,
+      [accountId, [...levels.keys()], [...levels.values()]],
+    )
+  }
+
   async deleteAll(accountId: string): Promise<void> {
-    for (const table of ['member_activity', 'member_activity_days', 'member_activity_styles', 'member_activity_rooms']) {
+    for (const table of ['member_badges_announced', 'member_activity', 'member_activity_days', 'member_activity_styles', 'member_activity_rooms']) {
       await this.pool.query(`DELETE FROM ${table} WHERE user_id = $1`, [accountId])
     }
   }

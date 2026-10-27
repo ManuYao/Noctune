@@ -16,6 +16,10 @@ export interface ActivityStore {
   mostMembersIn(roomIds: readonly string[], exceptAccountId: string): Promise<number>
   /** Raises the "most members in one of my rooms" mark to at least `count`. */
   raiseBestRoomMembers(accountId: string, count: number): Promise<void>
+  /** The highest level of each badge the member was already told about (badge id to level). */
+  announcedBadges(accountId: string): Promise<Map<string, number>>
+  /** Remembers that these levels were announced. A level never goes down; an account that does not exist is ignored. */
+  markBadgesAnnounced(accountId: string, levels: ReadonlyMap<string, number>): Promise<void>
   /** Everything kept for the account: the end of the account (in the database the cascade already did it). */
   deleteAll(accountId: string): Promise<void>
 }

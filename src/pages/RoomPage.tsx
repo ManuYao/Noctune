@@ -8,6 +8,7 @@ import type { JoinError } from '../../shared/protocol'
 import DjBarAction from '../components/DjBarAction'
 import { decorKind } from '../components/decor/decorKind'
 import DjDialog from '../components/DjDialog'
+import BadgeToasts from '../components/BadgeToasts'
 import DjNotices from '../components/DjNotices'
 import ModerationProvider from '../moderation/ModerationProvider'
 import MobileRoomHeader from '../components/MobileRoomHeader'
@@ -253,6 +254,7 @@ function JoinedRoom({ roomId, pseudo, avatarId }: EntryState & { roomId: string 
           />
         </main>
         <DjNotices notices={notices} onDismiss={dismissNotice} />
+        <BadgeToasts newTab />
         {rules && isMember && (
           <DjDialog
             open={djOpen}

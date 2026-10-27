@@ -22,6 +22,8 @@ export interface ActivityRecorderOptions {
   now?: () => number
   /** The ids of the rooms a member hosts, to find how many members came into them. */
   hostedRoomIds?: (hostAccountId: string) => Promise<string[]>
+  /** Something that can earn a badge was counted for this member (not the passing of time: that is not an event). */
+  onActivity?: (accountId: string) => void
   /** The longest a stretch of presence counts in one go (a machine that slept, a clock that jumped). */
   accrualCapSec?: number
 }
@@ -107,6 +109,7 @@ export class ActivityRecorder {
         this.presence.set(`${room.id}:${participantId}`, { accountId, roomId: room.id, styles, since: now })
         const host = room.hostAccountId()
         if (host && host !== accountId) this.hostsToCheck.add(host)
+        this.options.onActivity?.(accountId)
       }),
       left: safe((accountId, participantId) => {
         const key = `${room.id}:${participantId}`
@@ -119,6 +122,7 @@ export class ActivityRecorder {
         const delta = this.deltaOf(djAccountId)
         delta.tracksPlayed += 1
         for (const style of room.styles()) this.addStyle(delta, style, { played: true })
+        this.options.onActivity?.(djAccountId)
       }),
       likeChanged: safe(({ djAccountId, likerAccountId, delta: change, trackLikes }) => {
         // Nobody who is not a member counts, for the liker or for the DJ.
@@ -128,10 +132,13 @@ export class ActivityRecorder {
           const djDelta = this.deltaOf(djAccountId)
           djDelta.likesReceived += change
           if (change > 0) djDelta.bestTrackLikes = Math.max(djDelta.bestTrackLikes, trackLikes)
+          this.options.onActivity?.(djAccountId)
         }
+        this.options.onActivity?.(likerAccountId)
       }),
       messageSent: safe((accountId) => {
         this.deltaOf(accountId).messagesSent += 1
+        this.options.onActivity?.(accountId)
       }),
     }
   }

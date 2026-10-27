@@ -129,12 +129,25 @@ export function describeActivityStoreContract(name: string, open: () => Promise<
       assert.equal((await store.read(ann)).bestRoomMembers, 7)
     })
 
+    test('remembers the announced badge levels, which only rise, per account', async (store, ann, ben) => {
+      assert.equal((await store.announcedBadges(ann)).size, 0)
+      await store.markBadgesAnnounced(ann, new Map([['premier-son', 1], ['crowd-pleaser', 2]]))
+      await store.markBadgesAnnounced(ann, new Map([['crowd-pleaser', 1], ['bienvenue', 1]]))
+      assert.deepEqual([...(await store.announcedBadges(ann))].sort(), [['bienvenue', 1], ['crowd-pleaser', 2], ['premier-son', 1]])
+      assert.equal((await store.announcedBadges(ben)).size, 0, 'the other member was told nothing')
+      await store.markBadgesAnnounced(ann, new Map())
+    })
+
     test('deleteAll removes everything of the account and only of the account', async (store, ann, ben) => {
       const full = delta({ tracksPlayed: 1, days: ['2026-10-01'], styles: { rock: { visited: true } }, rooms: { r: { visits: 1 } } })
       await store.add(ann, full)
       await store.add(ben, full)
+      await store.markBadgesAnnounced(ann, new Map([['premier-son', 1]]))
+      await store.markBadgesAnnounced(ben, new Map([['premier-son', 1]]))
       await store.deleteAll(ann)
       assert.deepEqual(await store.read(ann), emptyActivity())
+      assert.equal((await store.announcedBadges(ann)).size, 0)
+      assert.equal((await store.announcedBadges(ben)).size, 1)
       assert.equal((await store.read(ben)).tracksPlayed, 1)
     })
   })

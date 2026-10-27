@@ -485,6 +485,20 @@ export const ROOM_THEMES = ['neon', 'sunset', 'vinyl', 'jungle'] as const
 export type RoomTheme = (typeof ROOM_THEMES)[number]
 
 export const ROOM_NAME_MIN = 3
+/**
+ * A badge (or a new level of one) the member has just earned, pushed to their open connections as `badge:earned`.
+ * `id` is a `BadgeId` of shared/badges.ts. `level` and `levels` are 1 and 1 for a badge earned once.
+ */
+export interface BadgeEarned {
+  id: string
+  name: string
+  kind: 'tiered' | 'unique' | 'rare' | 'hidden'
+  level: number
+  levels: number
+  /** The short label of the level reached ("50", "6 mois"); empty for a badge earned once. */
+  tierLabel: string
+}
+
 export const ROOM_NAME_MAX = 40
 export const ROOM_DESCRIPTION_MAX = 200
 export const ROOM_STYLES_MAX = 3
@@ -619,3 +633,5 @@ export interface ServerToClientEvents {
   'track:reactions': (reactions: Reactions) => void
   'chat:message': (message: ChatMessage) => void
 }
+  /** To every open connection of a member: badges they have just earned (all of them at once if several), once each. */
+  'badge:earned': (badges: BadgeEarned[]) => void

@@ -6,6 +6,7 @@ import {
   REPORT_REASONS,
   type AddTrackResult,
   type AvatarId,
+  type BadgeEarned,
   type ClientToServerEvents,
   type DjFailure,
   type DjResult,
@@ -91,6 +92,8 @@ export interface Realtime {
    * too, whether it was present or not.
    */
   endAccount: (accountId: string, options?: { exceptSessionKey?: string; forget?: boolean }) => void
+  /** Pushes badges the member has earned to their open connections; how many connections got them (0: not connected). */
+  sendBadges: (accountId: string, badges: BadgeEarned[]) => number
   /** A host made a room: it can be joined, and the list shows it. */
   roomCreated: (room: StoredRoom) => void
   /** A host changed a room: the people in it are told, the list is updated, the new rules count from now on. */
@@ -887,6 +890,16 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
         socket.disconnect(true)
       }
       if (forget) for (const room of rooms.values()) room.forgetAccount(accountId)
+    },
+
+    sendBadges(accountId, badges) {
+      let sent = 0
+      for (const socket of io.sockets.sockets.values()) {
+        if (socket.data.account?.id !== accountId) continue
+        socket.emit('badge:earned', badges)
+        sent += 1
+      }
+      return sent
     },
 
     roomCreated(def) {

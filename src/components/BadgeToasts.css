@@ -1,0 +1,91 @@
+/* Top right on a computer (under the header, over the right column: the video is at the left and is never covered), under
+   the tabs on a phone like the room notices. Only the toasts themselves catch clicks. */
+.badge-toasts {
+  position: fixed;
+  z-index: 55;
+  top: 72px;
+  right: 16px;
+  width: min(360px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.badge-toasts ul {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.badge-toasts__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 8px 12px 12px;
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-s);
+  background: var(--wall);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.45), 0 0 18px rgb(255 61 129 / 0.25);
+  pointer-events: auto;
+  animation: badge-toast-in 0.35s ease-out;
+}
+
+.badge-toasts__item svg:first-child {
+  flex: none;
+}
+
+.badge-toasts__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.badge-toasts__text strong {
+  display: block;
+  font-family: var(--font-display, inherit);
+  font-size: 0.95rem;
+}
+
+.badge-toasts__text p {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.badge-toasts__text a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  color: var(--accent-2-text);
+  font-weight: 600;
+}
+
+.badge-toasts__item button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  align-self: flex-start;
+  width: var(--tap);
+  height: var(--tap);
+  margin-block: -4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+@keyframes badge-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+  }
+}
+
+@media (max-width: 760px) {
+  .badge-toasts {
+    top: calc(var(--m-pin-h, 0px) + 48px + 8px);
+    right: 16px;
+    left: 16px;
+    width: auto;
+  }
+}

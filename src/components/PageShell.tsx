@@ -1,4 +1,5 @@
 import { Outlet, useLocation } from 'react-router'
+import BadgeToasts from './BadgeToasts'
 import MobileTabBar from './MobileTabBar'
 import SiteFooter from './SiteFooter'
 
@@ -11,6 +12,7 @@ export default function PageShell() {
   return (
     <div className="app-shell">
       <Outlet />
+      <BadgeToasts />
       <SiteFooter />
       {!onEntry && <MobileTabBar />}
     </div>
