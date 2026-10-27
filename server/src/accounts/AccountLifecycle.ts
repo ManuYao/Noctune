@@ -2,7 +2,7 @@
  * What the accounts API needs from the rest of the server when an account changes under it: the rooms and playlists of
  * a member live in other stores, and the rooms are live in memory. Wired in createServer.ts.
  */
-import type { AvatarId, RoomRules, RoomStyle, RoomTheme } from '../../../shared/protocol'
+import type { AvatarId, ProfileData, RoomRules, RoomStyle, RoomTheme } from '../../../shared/protocol'
 
 export interface ExportedPlaylist {
   name: string
@@ -23,13 +23,17 @@ export interface ExportedData {
   account: { email: string; pseudo: string; avatarId: AvatarId; createdAt: string }
   playlists: ExportedPlaylist[]
   rooms: ExportedRoom[]
+  /** What the server counted about the member (profile and badges), or null without a database. */
+  activity: ProfileData | null
 }
 
 export interface AccountLifecycle {
   /** The ids of the rooms the account hosts. Asked BEFORE the account goes: afterwards the database cannot say. */
   hostedRoomIds(accountId: string): Promise<string[]>
-  /** The member's playlists and hosted rooms, for the export. */
-  exportData(accountId: string): Promise<Pick<ExportedData, 'playlists' | 'rooms'>>
+  /** The member's playlists, hosted rooms and counted activity, for the export. */
+  exportData(accountId: string, memberSince: Date): Promise<Pick<ExportedData, 'playlists' | 'rooms' | 'activity'>>
+  /** The member's activity for the profile page, or null when nothing is counted (no database). */
+  profileOf(accountId: string, memberSince: Date): Promise<ProfileData | null>
   /**
    * The account is gone from the database (its sessions, playlists and rooms with it): the same must be true of what the
    * server holds in memory. The stores that live in memory drop their copies, the rooms it hosted are closed (everybody in

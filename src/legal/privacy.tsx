@@ -117,6 +117,11 @@ export const privacy: LegalDocument = {
             why="Faire exister ta room : son nom, sa description, ses styles, son ambiance et ses règles."
             keptFor="Avec ton compte, et supprimées avec lui. Les rooms de l'équipe Noctune ne sont pas des données personnelles."
           />
+          <DataCard
+            name="Tes statistiques d'activité (membres)"
+            why="Afficher ton profil et tes badges : le nombre de morceaux passés, de J'aime reçus et donnés, ton temps d'écoute, les rooms et les styles visités, les jours où tu es venu et le nombre de messages envoyés (comptés, jamais leur texte). Rien de tout cela ne change les votes ni la file."
+            keptFor="Avec ton compte, supprimées avec lui, et incluses dans le fichier de « Télécharger mes données ». Un visiteur sans compte n'a aucune statistique."
+          />
         </ul>
       ),
     },
@@ -126,7 +131,7 @@ export const privacy: LegalDocument = {
       body: (
         <>
           <p>
-            Pour ton compte, tes playlists et tes rooms : parce que tu as demandé ce service (c'est l'exécution du contrat
+            Pour ton compte, tes playlists, tes rooms et tes statistiques : parce que tu as demandé ce service (c'est l'exécution du contrat
             entre toi et le site).
           </p>
           <p>
@@ -172,7 +177,7 @@ export const privacy: LegalDocument = {
         <ul>
           <li>
             <strong>Voir et récupérer tes données (accès, portabilité) :</strong> le bouton « Télécharger mes données » de ton{' '}
-            <Link to="/profil">profil</Link> te donne un fichier avec ton compte, tes playlists et tes rooms.
+            <Link to="/profil">profil</Link> te donne un fichier avec ton compte, tes playlists, tes rooms et tes statistiques.
           </li>
           <li>
             <strong>Corriger (rectification) :</strong> ton pseudo et ton avatar se changent dans ton{' '}
@@ -180,7 +185,7 @@ export const privacy: LegalDocument = {
           </li>
           <li>
             <strong>Supprimer (effacement) :</strong> le bouton « Supprimer mon compte » de ton <Link to="/profil">profil</Link>{' '}
-            supprime ton compte, tes playlists et tes rooms, et met fin à toutes tes sessions.
+            supprime ton compte, tes playlists, tes rooms et tes statistiques, et met fin à toutes tes sessions.
           </li>
           <li>
             <strong>T'opposer ou limiter un usage :</strong> écris-nous : <ToComplete what="adresse e-mail de contact" />.

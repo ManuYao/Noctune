@@ -23,6 +23,7 @@ import {
 import { isStaffLookalike, normalizePseudo } from '../../shared/validation'
 import type { AccountService } from './accounts/AccountService'
 import { hashToken, readSessionToken } from './accounts/sessionToken'
+import type { ActivityRecorder } from './activity/ActivityRecorder'
 import { clientIp } from './http/origin'
 import { Lobby, LOBBY_CHANNEL, summarize } from './Lobby'
 import { MinInterval } from './MinInterval'
@@ -60,6 +61,8 @@ export interface HandlerOptions extends RoomOptions {
   initialRooms?: StoredRoom[]
   /** How many reverse proxies stand in front of the server: the address of a visitor (what their sanctions stick to) comes from it. */
   trustedProxies?: number
+  /** Counts what members do (profile and badges). Null or absent: nothing is counted. */
+  activityRecorder?: ActivityRecorder | null
 }
 
 interface SocketData {
@@ -95,6 +98,8 @@ export interface Realtime {
    * account lifecycle (createServer.ts) calls this for each of them, or the live rooms would outlive their host.
    */
   roomDeleted: (id: string) => void
+  /** The name of a room that is open now, or undefined (never opened, or deleted). */
+  openRoomName: (id: string) => string | undefined
 }
 
 // A connection that asks to join more often than this is a script: each join may cost a database round trip.
@@ -155,7 +160,16 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
           onLineupChange: (participantId, lineup) => io.to(participantId).emit('dj:lineup', lineup),
           onNotice: (participantId, notice) => io.to(participantId).emit('dj:notice', notice),
         },
-        { ...options, rules: options.rules ?? def.rules },
+        {
+          ...options,
+          rules: options.rules ?? def.rules,
+          // Read from the live record at each event: the host may change the styles of the room while it lives.
+          activity: options.activityRecorder?.forRoom({
+            id: def.id,
+            styles: () => stored.get(def.id)?.styles ?? def.styles,
+            hostAccountId: () => stored.get(def.id)?.hostAccountId ?? null,
+          }),
+        },
       ),
     )
   }
@@ -841,6 +855,7 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
       if (!result.ok) return ack(result)
 
       io.to(room.id).emit('chat:message', result.message)
+      room.recordMessage(author.id)
       ack({ ok: true })
     })
 
@@ -887,6 +902,10 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
         rules: room.rules,
       })
       lobby.changed()
+    },
+
+    openRoomName(id) {
+      return stored.get(id)?.name
     },
 
     roomDeleted(id) {

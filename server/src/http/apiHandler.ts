@@ -1,14 +1,16 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import type { Account, AuthDone, AuthError, AuthResult, SessionResult } from '../../../shared/protocol'
+import type { Account, AuthDone, AuthError, AuthResult, ProfileReply, SessionResult } from '../../../shared/protocol'
 import type { AccountLifecycle, ExportedData } from '../accounts/AccountLifecycle'
 import type { AccountService, Granted, Refusal } from '../accounts/AccountService'
 import type { AccountSummary } from '../accounts/AccountStore'
+import { AttemptLimiter } from '../accounts/AttemptLimiter'
 import { clearedSessionCookie, hashToken, readSessionToken, sessionCookie } from '../accounts/sessionToken'
 import { clientIp, originAllowed } from './origin'
 
 // An e-mail, a password, a pseudo and an avatar fit in a small fraction of this.
 const MAX_BODY_BYTES = 4096
 const BODY_TIMEOUT_MS = 10_000
+const PROFILE_READS_PER_MINUTE = 30
 
 const STATUS: Record<AuthError, number> = {
   'invalid-email': 400,
@@ -237,9 +239,32 @@ export function createApiHandler(service: AccountService | null, options: ApiOpt
     if (!member) return
     const profile = await member.service.exportProfile(member.account.id)
     if (!profile.ok) return refused(res, profile)
-    const data = (await options.lifecycle?.exportData(member.account.id)) ?? { playlists: [], rooms: [] }
+    const data = (await options.lifecycle?.exportData(member.account.id, new Date(profile.profile.createdAt))) ?? { playlists: [], rooms: [], activity: null }
     const body: ExportedData = { exportedAt: new Date().toISOString(), account: profile.profile, ...data }
     send(res, 200, body, { 'Content-Disposition': 'attachment; filename="noctune-mes-donnees.json"' })
+  }
+
+  // Reading the profile costs a few queries: a page that is open does not need it more than once in a while.
+  const profileReads = new AttemptLimiter(PROFILE_READS_PER_MINUTE, 60_000)
+
+  /** What the server counted about the member, and nothing about anybody else: the account comes from the session. */
+  async function handleProfile(req: IncomingMessage, res: ServerResponse) {
+    const member = await memberOf(req, res)
+    if (!member) return
+    const now = Date.now()
+    const wait = profileReads.retryAfterMs(member.account.id, now)
+    if (wait > 0) {
+      const retryAfterSec = Math.max(1, Math.ceil(wait / 1000))
+      const limited: ProfileReply = { ok: false, error: 'rate-limited', retryAfterSec }
+      return send(res, STATUS['rate-limited'], limited, { 'Retry-After': String(retryAfterSec) })
+    }
+    profileReads.record(member.account.id, now)
+    const since = await member.service.createdAtOf(member.account.id)
+    if (!since) return refused(res, fail('not-signed-in'))
+    const profile = await options.lifecycle?.profileOf(member.account.id, since)
+    if (!profile) return refused(res, fail('unavailable'))
+    const reply: ProfileReply = { ok: true, profile }
+    send(res, 200, reply)
   }
 
   type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE'
@@ -252,6 +277,7 @@ export function createApiHandler(service: AccountService | null, options: ApiOpt
     '/api/auth/password': { POST: handleChangePassword },
     '/api/auth/logout-all': { POST: handleLogoutEverywhere },
     '/api/auth/export': { GET: handleExport },
+    '/api/auth/profile': { GET: handleProfile },
   }
 
   async function handle(req: IncomingMessage, res: ServerResponse, path: string) {

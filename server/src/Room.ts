@@ -20,6 +20,7 @@ import {
   type VideoInfo,
 } from '../../shared/protocol'
 import { pseudoKey } from '../../shared/validation'
+import type { RoomActivity } from './activity/ActivityRecorder'
 import { TEST_TRACKS } from './catalog'
 import { ChatLog } from './ChatLog'
 import { DjBooth, type DjEntry, type DropReason, type TurnContext, type TurnEvent } from './DjBooth'
@@ -74,6 +75,8 @@ export interface RoomOptions {
   queueBroadcastMs?: number
   /** Lengths of the sanctions and limits of the reports (tests shorten them). */
   moderation?: ModerationOptions
+  /** Counts what members do in the room (profile and badges). Never changes the room: see RoomActivity. */
+  activity?: RoomActivity
 }
 
 type Refusal = { reason: 'too-long'; maxSec: number } | { reason: 'recently-played'; retryAfterSec: number | null }
@@ -91,7 +94,12 @@ export class Room {
   /** When each video last started in this room (house selection included). Insertion order is time order. */
   private playedAt = new Map<string, number>()
   /** The play that is in the memory but that nobody may have heard yet, and what the memory held for it before. */
-  private lastPlay: { videoId: string; startedAt: number; durationSec: number; before: number | undefined } | null = null
+  private lastPlay: { videoId: string; startedAt: number; durationSec: number; before: number | undefined; djAccountId?: string } | null = null
+  /** The account of the DJ whose track plays; undefined for the room's own selection. */
+  private currentDj: string | undefined
+  /** Accounts whose like counts for this track (once each, whichever connection they like from) and the likes it earned the DJ. */
+  private likeAccounts = new Set<string>()
+  private earnedLikes = 0
   private trackIndex = 0
   private timer: NodeJS.Timeout | undefined
   private likes = new Set<string>()
@@ -102,6 +110,7 @@ export class Room {
   private readonly skipProtectedSec: number
   private readonly ownSkipMinSec: number
   private readonly queueBroadcastMs: number
+  private readonly activity: RoomActivity | undefined
   /** What the room asks of its DJs. The host may change it while the room lives: see setRules. */
   rules: RoomRules
   /** Set once the room is deleted: nobody can come in any more, and nothing is left running. */
@@ -123,6 +132,7 @@ export class Room {
     this.queueBroadcastMs = options.queueBroadcastMs ?? QUEUE_BROADCAST_MS
     this.rules = options.rules ?? DEFAULT_RULES
     this.moderation = new Moderation(options.moderation)
+    this.activity = options.activity
   }
 
   get size() {
@@ -172,6 +182,7 @@ export class Room {
   close() {
     if (this.closed) return
     this.closed = true
+    for (const [participantId, accountId] of this.accountOf) this.activity?.left(accountId, participantId)
     this.participants.clear()
     this.accountOf.clear()
     this.participantOf.clear()
@@ -209,6 +220,7 @@ export class Room {
     if (accountId) {
       this.accountOf.set(participant.id, accountId)
       this.participantOf.set(accountId, participant.id)
+      this.activity?.entered(accountId, participant.id)
       place = this.booth.find(accountId)
       if (place) {
         // A DJ who comes back keeps their place, under the name their account has now.
@@ -234,6 +246,7 @@ export class Room {
     if (removed) {
       const accountId = this.accountOf.get(participantId)
       this.accountOf.delete(participantId)
+      if (accountId) this.activity?.left(accountId, participantId)
       if (accountId && this.participantOf.get(accountId) === participantId) this.participantOf.delete(accountId)
       this.sanctionKeys.delete(participantId)
       this.chat.forget(participantId)
@@ -272,11 +285,41 @@ export class Room {
     if (!gate.ok) return gate
     // A refused like does not use up the turn either.
     if (this.isOnDecks(participantId)) return { ok: false, error: 'own-track' }
+    const had = this.likes.has(participantId)
     if (value) this.likes.add(participantId)
     else this.likes.delete(participantId)
+    this.countLike(participantId, value, had)
     this.reactionLimit.record(participantId, now)
     this.scheduleReactionsBroadcast()
     return { ok: true }
+  }
+
+  /**
+   * A like, for counting: once per person and track, a person being an account for a member (so a member who comes back
+   * under another connection cannot like the same track twice) and a connection for a visitor. A visitor's like still
+   * counts for the DJ; only a member's counts as given.
+   */
+  private countLike(participantId: string, value: boolean, had: boolean) {
+    if (!this.activity) return
+    const likerAccountId = this.accountOf.get(participantId)
+    let change: 1 | -1 | 0 = 0
+    if (likerAccountId) {
+      if (value && !this.likeAccounts.has(likerAccountId)) change = 1
+      else if (!value && this.likeAccounts.has(likerAccountId)) change = -1
+      if (change === 1) this.likeAccounts.add(likerAccountId)
+      if (change === -1) this.likeAccounts.delete(likerAccountId)
+    } else {
+      change = value && !had ? 1 : !value && had ? -1 : 0
+    }
+    if (change === 0) return
+    this.earnedLikes = Math.max(0, this.earnedLikes + change)
+    this.activity.likeChanged({ djAccountId: this.currentDj, likerAccountId, delta: change, trackLikes: this.earnedLikes })
+  }
+
+  /** An accepted chat message, for counting (members only). */
+  recordMessage(participantId: string) {
+    const accountId = this.accountOf.get(participantId)
+    if (accountId) this.activity?.messageSent(accountId)
   }
 
   /**
@@ -530,7 +573,11 @@ export class Room {
     const play = this.lastPlay
     this.lastPlay = null
     if (!play) return
-    if (now - play.startedAt >= Math.min(MIN_HEARD_MS, play.durationSec * 1000)) return
+    if (now - play.startedAt >= Math.min(MIN_HEARD_MS, play.durationSec * 1000)) {
+      // Heard: it counts as played, for the anti-doublon memory and for the DJ's profile, once.
+      if (play.djAccountId) this.activity?.trackPlayed(play.djAccountId)
+      return
+    }
     if (this.playedAt.get(play.videoId) !== play.startedAt) return // a later play already took its place
 
     this.playedAt.delete(play.videoId)
@@ -627,6 +674,8 @@ export class Room {
 
   private resetReactions() {
     this.likes.clear()
+    this.likeAccounts.clear()
+    this.earnedLikes = 0
     this.skipVotes.clear()
     // An update about the previous track must not reach the room after the new one started.
     clearTimeout(this.reactionsTimer)
@@ -668,7 +717,8 @@ export class Room {
   private start(track: QueuedTrack, djAccountId?: string) {
     const startedAt = Date.now()
     this.nowPlaying = { ...track, startedAt }
-    this.lastPlay = { videoId: track.videoId, startedAt, durationSec: track.durationSec, before: this.playedAt.get(track.videoId) }
+    this.lastPlay = { videoId: track.videoId, startedAt, durationSec: track.durationSec, before: this.playedAt.get(track.videoId), djAccountId }
+    this.currentDj = djAccountId
     this.remember(track.videoId, startedAt)
     this.resetReactions()
     // The queue goes out with the track.
@@ -686,6 +736,7 @@ export class Room {
     clearTimeout(this.queueTimer)
     this.queueTimer = undefined
     this.nowPlaying = null
+    this.currentDj = undefined
     // The DJ who was on the decks goes to the back, as if the track had ended. Everybody keeps their place.
     this.booth.endCurrent()
     this.resetReactions()

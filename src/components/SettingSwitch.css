@@ -1,0 +1,66 @@
+.setting-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+}
+
+.setting-switch__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.setting-switch__label {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.setting-switch__hint {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.setting-switch__button {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  cursor: pointer;
+}
+
+.setting-switch__track {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--border-field);
+}
+
+.setting-switch__knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg);
+  transition: left 0.15s;
+}
+
+.setting-switch__button[aria-checked='true'] .setting-switch__track {
+  background: var(--accent);
+}
+
+.setting-switch__button[aria-checked='true'] .setting-switch__knob {
+  left: 23px;
+  background: var(--on-accent);
+}

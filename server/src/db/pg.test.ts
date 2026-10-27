@@ -7,6 +7,9 @@ import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { after, describe, it, type TestContext } from 'node:test'
 import pg from 'pg'
 import { describeAccountStoreContract } from '../accounts/accountStoreContract'
+import { emptyActivity } from '../activity/activity'
+import { describeActivityStoreContract } from '../activity/activityStoreContract'
+import { PgActivityStore } from '../activity/PgActivityStore'
 import { PgAccountStore } from '../accounts/PgAccountStore'
 import { describePlaylistStoreContract } from '../playlists/playlistStoreContract'
 import { PgPlaylistStore } from '../playlists/PgPlaylistStore'
@@ -44,6 +47,23 @@ describePlaylistStoreContract('postgres playlist store', async () => {
       const { rows } = await pool.query<{ id: string }>(
         "INSERT INTO users (email, password_hash, pseudo, pseudo_key, avatar_id) VALUES ($1, 'h', $2, $2, 'pulse') RETURNING id",
         [`member${memberCount}@example.com`, `m${memberCount}`],
+      )
+      return rows[0].id
+    },
+  }
+})
+
+describeActivityStoreContract('postgres activity store', async () => {
+  const pool = await openTestPool()
+  if (!pool) return null
+  return {
+    store: new PgActivityStore(pool),
+    reset: async () => void (await clearMembers(pool)),
+    newAccount: async () => {
+      memberCount += 1
+      const { rows } = await pool.query<{ id: string }>(
+        "INSERT INTO users (email, password_hash, pseudo, pseudo_key, avatar_id) VALUES ($1, 'h', $2, $2, 'pulse') RETURNING id",
+        [`act${memberCount}@example.com`, `a${memberCount}`],
       )
       return rows[0].id
     },
@@ -283,7 +303,7 @@ describe('migrations', () => {
   withPool('are all applied, and applying them again does nothing', async (pool) => {
     assert.deepEqual(await migrate(pool), [])
     const { rows } = await pool.query<{ name: string }>('SELECT name FROM schema_migrations ORDER BY name')
-    assert.deepEqual(rows.map((row) => row.name), ['001_accounts.sql', '002_playlists.sql', '003_rooms.sql', '004_room_name_keys.sql', '005_team_rooms_dark.sql', '006_team_room_themes.sql', '007_team_rooms_neon.sql', '008_afro_caribbean_rooms.sql'])
+    assert.deepEqual(rows.map((row) => row.name), ['001_accounts.sql', '002_playlists.sql', '003_rooms.sql', '004_room_name_keys.sql', '005_team_rooms_dark.sql', '006_team_room_themes.sql', '007_team_rooms_neon.sql', '008_afro_caribbean_rooms.sql', '009_account_activity.sql'])
   })
 
   it('apply in order, once each, and a failing one leaves no trace and stops the rest', async (t: TestContext) => {
@@ -342,5 +362,43 @@ describe('migrations', () => {
       await admin.query('DROP SCHEMA IF EXISTS migration_race CASCADE')
       await rm(directory, { recursive: true, force: true })
     }
+  })
+})
+
+describe('the schema of the activity', () => {
+  withPool('refuses a negative counter itself, and removes everything with the account', async (pool) => {
+    await clearMembers(pool)
+    const { rows } = await pool.query<{ id: string }>(
+      "INSERT INTO users (email, password_hash, pseudo, pseudo_key, avatar_id) VALUES ('z@example.com', 'h', 'Z', 'z', 'pulse') RETURNING id",
+    )
+    const id = rows[0].id
+    await assert.rejects(
+      pool.query('INSERT INTO member_activity (user_id, likes_given) VALUES ($1, -1)', [id]),
+      (error: { code?: string }) => error.code === '23514',
+    )
+    await assert.rejects(
+      pool.query("INSERT INTO member_activity_rooms (user_id, room_id, listen_seconds) VALUES ($1, 'r', -5)", [id]),
+      (error: { code?: string }) => error.code === '23514',
+    )
+    await pool.query('INSERT INTO member_activity (user_id, tracks_played) VALUES ($1, 2)', [id])
+    await pool.query("INSERT INTO member_activity_days (user_id, day) VALUES ($1, '2026-10-01')", [id])
+    await pool.query("INSERT INTO member_activity_styles (user_id, style, visited) VALUES ($1, 'rock', true)", [id])
+    await pool.query("INSERT INTO member_activity_rooms (user_id, room_id, visits) VALUES ($1, 'r', 1)", [id])
+    await pool.query('DELETE FROM users WHERE id = $1', [id])
+    for (const table of ['member_activity', 'member_activity_days', 'member_activity_styles', 'member_activity_rooms']) {
+      assert.equal((await pool.query(`SELECT 1 FROM ${table}`)).rowCount, 0, `${table} is emptied by the cascade`)
+    }
+  })
+
+  withPool('ignores an account that does not exist instead of failing the batch', async (pool) => {
+    const store = new PgActivityStore(pool)
+    const gone = '00000000-0000-4000-8000-000000000001'
+    const delta = emptyActivity()
+    delta.tracksPlayed = 1
+    delta.days.add('2026-10-01')
+    delta.rooms.set('r', { visits: 1, seconds: 1 })
+    await store.add(gone, delta)
+    await store.raiseBestRoomMembers(gone, 3)
+    assert.deepEqual(await store.read(gone), emptyActivity())
   })
 })

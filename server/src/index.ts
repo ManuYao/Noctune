@@ -1,5 +1,7 @@
 import { AccountService } from './accounts/AccountService'
 import { PgAccountStore } from './accounts/PgAccountStore'
+import { PgActivityStore } from './activity/PgActivityStore'
+import type { ActivityStore } from './activity/ActivityStore'
 import { createNoctuneServer } from './createServer'
 import { createPool } from './db/pool'
 import { loadLocalEnv } from './env'
@@ -43,7 +45,7 @@ const trustedProxies = setting(() => {
 const secureCookies = process.env.NODE_ENV === 'production' || allowedOrigins.every((origin) => origin.startsWith('https://'))
 
 /** Accounts, playlists and rooms of members need a database. Without DATABASE_URL the server still runs, for visitors only. */
-async function openDatabase(): Promise<{ accounts: AccountService; playlistStore: PlaylistStore; roomStore: RoomStore } | null> {
+async function openDatabase(): Promise<{ accounts: AccountService; playlistStore: PlaylistStore; roomStore: RoomStore; activityStore: ActivityStore } | null> {
   const url = process.env.DATABASE_URL
   if (!url) {
     console.log('[base] DATABASE_URL absent : le serveur tourne sans comptes ni playlists (visiteurs seulement). Voir npm run db:setup.')
@@ -55,13 +57,19 @@ async function openDatabase(): Promise<{ accounts: AccountService; playlistStore
     await pool.query('SELECT 1 FROM users LIMIT 1')
     await pool.query('SELECT 1 FROM playlists LIMIT 1')
     await pool.query('SELECT 1 FROM rooms LIMIT 1')
+    await pool.query('SELECT 1 FROM member_activity LIMIT 1')
   } catch (error) {
     console.error(`[base] base inaccessible ou pas à jour : ${(error as Error).message}. Essaie npm run db:migrate.`)
     await pool.end()
     process.exit(1)
   }
   console.log('[base] comptes, playlists et rooms de membres activés.')
-  return { accounts: new AccountService(new PgAccountStore(pool)), playlistStore: new PgPlaylistStore(pool), roomStore: new PgRoomStore(pool) }
+  return {
+    accounts: new AccountService(new PgAccountStore(pool)),
+    playlistStore: new PgPlaylistStore(pool),
+    roomStore: new PgRoomStore(pool),
+    activityStore: new PgActivityStore(pool),
+  }
 }
 
 const database = await openDatabase()
@@ -91,10 +99,11 @@ const resolver = openResolver()
 // the team alone (served from memory, by the server itself).
 const initialRooms = database ? await database.roomStore.list() : undefined
 
-const { httpServer, playlists, rooms } = createNoctuneServer({
+const { httpServer, playlists, rooms, activity } = createNoctuneServer({
   accounts,
   playlistStore: database?.playlistStore ?? null,
   roomStore: database?.roomStore ?? null,
+  activityStore: database?.activityStore ?? null,
   initialRooms,
   resolver,
   allowedOrigins,
@@ -104,4 +113,20 @@ const { httpServer, playlists, rooms } = createNoctuneServer({
 // The counters of requests to the playlists are cleaned every minute, like those of the accounts.
 if (playlists) setInterval(() => playlists.sweep(), MINUTE_MS).unref()
 setInterval(() => rooms.sweep(), MINUTE_MS).unref()
+// What members did is written by batches while the server runs, and once more when it is asked to stop.
+activity?.start()
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.once(signal, () => {
+    // A database that does not answer must not keep the server from stopping.
+    const giveUp = setTimeout(() => process.exit(0), 5000)
+    activity
+      ?.stop()
+      .catch(() => undefined)
+      .finally(() => {
+        clearTimeout(giveUp)
+        process.exit(0)
+      })
+    if (!activity) process.exit(0)
+  })
+}
 httpServer.listen(PORT, () => console.log(`Serveur temps réel sur :${PORT}`))

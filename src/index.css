@@ -60,6 +60,12 @@ button, input { font: inherit; }
   cursor: not-allowed;
 }
 
+/* Reduced motion, from the system or from the profile setting (data-motion on <html>): the same rule. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+:root[data-motion='calm'] *, :root[data-motion='calm'] *::before, :root[data-motion='calm'] *::after {
+  animation: none !important;
+  transition: none !important;
 }

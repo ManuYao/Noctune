@@ -1,6 +1,9 @@
 import { createServer, type Server as HttpServer } from 'node:http'
 import { Server } from 'socket.io'
 import type { AccountLifecycle } from './accounts/AccountLifecycle'
+import { ActivityRecorder } from './activity/ActivityRecorder'
+import type { ActivityStore } from './activity/ActivityStore'
+import { assembleProfile } from './activity/profile'
 import { createApiHandler } from './http/apiHandler'
 import { originAllowed } from './http/origin'
 import { createPlaylistHandler } from './http/playlistApi'
@@ -31,6 +34,8 @@ export interface ServerOptions extends HandlerOptions {
   roomStore?: RoomStore | null
   /** Limits and clock of the rooms (tests). */
   roomOptions?: RoomServiceOptions
+  /** Where what members do is counted (profile and badges). Without it (no database) nothing is counted and the profile route says so. */
+  activityStore?: ActivityStore | null
 }
 
 /**
@@ -43,6 +48,8 @@ export function createNoctuneServer(options: ServerOptions): {
   realtime: Realtime
   playlists: PlaylistService | null
   rooms: RoomService
+  /** Null without an activity store. The caller starts its clock (`start`) and stops it (`stop`); tests `flush` by hand. */
+  activity: ActivityRecorder | null
 } {
   // One budget of YouTube lookups per account, for every door a lookup comes through (a link pasted by a DJ, a playlist
   // being filled): the quota is the whole site's.
@@ -61,6 +68,12 @@ export function createNoctuneServer(options: ServerOptions): {
     writable: Boolean(options.roomStore) && Boolean(options.accounts),
   })
 
+  const activity = options.activityStore
+    ? new ActivityRecorder(options.activityStore, {
+        hostedRoomIds: async (accountId) => (await roomStore.listByHost(accountId)).map((room) => room.id),
+      })
+    : null
+
   // The API ends sessions, the realtime side holds the connections they opened: each needs the other, one comes first.
   const sessionEnded: { handler?: (token: string) => void } = {}
   const live: { realtime?: Realtime } = {}
@@ -68,7 +81,19 @@ export function createNoctuneServer(options: ServerOptions): {
   // rooms. In the database the deletion of the account takes the rows with it; the memory stores must do the same.
   const lifecycle: AccountLifecycle = {
     hostedRoomIds: async (accountId) => (await roomStore.listByHost(accountId)).map((room) => room.id),
-    exportData: async (accountId) => ({
+    profileOf: async (accountId, memberSince) => {
+      if (!activity) return null
+      const counted = await activity.read(accountId)
+      const playlistTracks = (await options.playlistStore?.list(accountId))?.reduce((sum, playlist) => sum + playlist.trackCount, 0) ?? 0
+      return assembleProfile(counted, {
+        memberSince,
+        roomsHosted: (await roomStore.listByHost(accountId)).length,
+        playlistTracks,
+        roomName: (id) => live.realtime?.openRoomName(id),
+      })
+    },
+    exportData: async (accountId, memberSince) => ({
+      activity: await lifecycle.profileOf(accountId, memberSince),
       playlists: playlists ? await playlists.exportOf(accountId) : [],
       rooms: (await roomStore.listByHost(accountId)).map(({ name, description, styles, theme, rules }) => ({
         name,
@@ -82,11 +107,14 @@ export function createNoctuneServer(options: ServerOptions): {
       try {
         await roomStore.deleteByHost(accountId)
         await options.playlistStore?.deleteAll(accountId)
+        await options.activityStore?.deleteAll(accountId)
       } finally {
         // Whatever the stores did, nothing of the account may stay alive: a store that fails must not leave its rooms
         // open, its connections up and its DJ places taken until the process restarts.
         for (const roomId of hostedRoomIds) live.realtime?.roomDeleted(roomId)
         live.realtime?.endAccount(accountId, { forget: true })
+        // After the connections are cut (their departures are counted): the counters waiting in memory go too.
+        activity?.forget(accountId)
       }
     },
     sessionsEnded: (accountId, exceptSessionKey) => live.realtime?.endAccount(accountId, { exceptSessionKey }),
@@ -119,11 +147,11 @@ export function createNoctuneServer(options: ServerOptions): {
     // Every payload is tiny (a pseudo, a chat line): refuse anything bigger before parsing it.
     maxHttpBufferSize: 10_000,
   })
-  const realtime = registerRoomHandlers(io, { ...options, lookupBudget, playlists })
+  const realtime = registerRoomHandlers(io, { ...options, lookupBudget, playlists, activityRecorder: activity })
   live.realtime = realtime
   sessionEnded.handler = realtime.endSession
   roomListener.created = realtime.roomCreated
   roomListener.updated = realtime.roomUpdated
   roomListener.deleted = realtime.roomDeleted
-  return { httpServer, io, realtime, playlists, rooms }
+  return { httpServer, io, realtime, playlists, rooms, activity }
 }

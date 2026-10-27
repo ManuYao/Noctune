@@ -340,6 +340,11 @@ export class AccountService {
     return { ok: true, profile: { email: account.email, pseudo: account.pseudo, avatarId: account.avatarId, createdAt: account.createdAt.toISOString() } }
   }
 
+  /** When the account was made, or null if it is gone. */
+  async createdAtOf(accountId: string): Promise<Date | null> {
+    return (await this.store.findById(accountId))?.createdAt ?? null
+  }
+
   /** True when a member has this pseudo: a visitor may not use it. */
   isPseudoReserved(pseudo: string): Promise<boolean> {
     return this.store.isPseudoTaken(pseudo)

@@ -10,136 +10,6 @@
   color: var(--accent-text);
 }
 
-/* The band: the little stage on the left, who the member is in the middle, four tiles on the right. */
-.profile__band {
-  flex-direction: row;
-  gap: 0;
-  min-height: 200px;
-  padding: 0;
-  overflow: hidden;
-}
-
-.profile__band-scene {
-  flex: none;
-  width: 300px;
-}
-
-.profile__who {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  justify-content: center;
-  gap: 10px;
-  min-width: 0;
-  padding: 18px 28px;
-}
-
-.profile__who h1 {
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-  overflow-wrap: anywhere;
-}
-
-.profile__line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 14px;
-  overflow-wrap: anywhere;
-}
-
-.profile__line strong {
-  color: var(--text);
-}
-
-.profile__fact svg {
-  flex: none;
-  stroke: var(--accent);
-}
-
-.profile__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0;
-}
-
-.profile__chip {
-  display: inline-flex;
-  align-items: center;
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  color: var(--accent-text);
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.profile__welcome {
-  margin: 0;
-  color: var(--accent-2-text);
-  font-weight: 700;
-}
-
-.profile__tiles {
-  display: grid;
-  flex: none;
-  grid-template-columns: 1fr 1fr;
-  align-self: center;
-  gap: 12px;
-  width: 384px;
-  margin: 18px 28px 18px 0;
-}
-
-.profile__tile {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 2px;
-  min-width: 0;
-  min-height: 72px;
-  padding: 12px 14px;
-  border: 1.5px solid var(--border);
-  border-radius: 16px;
-  background: var(--bg);
-  color: var(--text);
-  text-decoration: none;
-}
-
-.profile__tile-big {
-  font-family: var(--font-title);
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.2;
-  white-space: nowrap;
-}
-
-.profile__tile-big--small {
-  font-size: 14px;
-  white-space: normal;
-}
-
-.profile__tile-label {
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-/* The two tiles that lead somewhere: an arrow, and the accent when pointed at. */
-.profile__tile--link .profile__tile-big::after {
-  /* Glued to the last word: the arrow never goes to a line of its own. */
-  content: '\00a0→';
-  color: var(--accent-text);
-}
-
-.profile__tile--link:hover {
-  border-color: var(--accent);
-}
-
 /* The three columns. */
 .profile__columns {
   display: grid;
@@ -224,23 +94,8 @@
   align-self: flex-start;
 }
 
-/* Narrower windows: the tiles go under the band's text, then the columns stack. */
+/* Narrower windows: the columns stack. */
 @media (max-width: 1199px) {
-  .profile__band {
-    flex-wrap: wrap;
-  }
-
-  .profile__who {
-    flex: 1 1 320px;
-  }
-
-  .profile__tiles {
-    flex: 1 1 100%;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    width: auto;
-    margin: 0 20px 20px;
-  }
-
   .profile__columns {
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
   }
@@ -251,24 +106,6 @@
 }
 
 @media (max-width: 640px) {
-  .profile__band-scene {
-    width: 100%;
-    height: 180px;
-  }
-
-  .profile__who {
-    padding: 16px 20px 4px;
-  }
-
-  .profile__who h1 {
-    font-size: 26px;
-  }
-
-  .profile__tiles {
-    grid-template-columns: 1fr 1fr;
-    margin: 12px 16px 16px;
-  }
-
   .profile__more-grid .kit-btn {
     align-self: stretch;
   }

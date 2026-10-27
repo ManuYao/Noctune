@@ -1,4 +1,4 @@
-import type { AuthDone, AuthResult } from '../../shared/protocol'
+import type { AuthDone, AuthResult, ProfileReply } from '../../shared/protocol'
 
 /** What the server answered, or a failure that never got an answer (offline, server down). */
 export type AccountCallResult = AuthResult | { ok: false; error: 'network' }
@@ -32,6 +32,18 @@ export async function fetchExport(): Promise<ExportResult> {
     const response = await fetch('/api/auth/export')
     if (response.ok) return { ok: true, blob: await response.blob() }
     return (await response.json()) as Extract<AccountDoneResult, { ok: false }>
+  } catch {
+    return { ok: false, error: 'network' }
+  }
+}
+
+export type ProfileResult = ProfileReply | { ok: false; error: 'network' }
+
+/** What the server counted about the member (statistics, genres, rooms listened to). */
+export async function fetchProfile(): Promise<ProfileResult> {
+  try {
+    const response = await fetch('/api/auth/profile', { cache: 'no-store' })
+    return (await response.json()) as ProfileReply
   } catch {
     return { ok: false, error: 'network' }
   }

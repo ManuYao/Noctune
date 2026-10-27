@@ -5,6 +5,9 @@ import type { AddressInfo } from 'node:net'
 import { io as connect, type Socket } from 'socket.io-client'
 import type { ClientToServerEvents, ServerToClientEvents } from '../../../shared/protocol'
 import { AccountService, type AccountServiceOptions } from '../accounts/AccountService'
+import type { ActivityRecorder } from '../activity/ActivityRecorder'
+import type { ActivityStore } from '../activity/ActivityStore'
+import { MemoryActivityStore } from '../activity/MemoryActivityStore'
 import type { AccountStore } from '../accounts/AccountStore'
 import { MemoryAccountStore } from '../accounts/MemoryAccountStore'
 import { createNoctuneServer, type ServerOptions } from '../createServer'
@@ -39,6 +42,10 @@ export interface Started {
   /** Where the rooms of members are kept: memory by default (null when started without accounts or with `roomStore: null`). */
   roomStore: RoomStore | null
   rooms: RoomService
+  /** Where activity is counted: memory by default (null when started without accounts or with `activityStore: null`). */
+  activityStore: ActivityStore | null
+  /** Counts activity; tests `flush` it by hand (its clock is not started). */
+  activity: ActivityRecorder | null
   io: IoServer
   httpServer: HttpServer
   /** A connection to the realtime server. `cookie` is what the browser would send along. */
@@ -51,7 +58,8 @@ export async function startServer(options: StartOptions = {}): Promise<Started> 
   const service = options.withoutAccounts ? null : new AccountService(store, { cost: CHEAP_COST, ...options.service })
   const playlistStore = options.withoutAccounts ? null : 'playlistStore' in options ? (options.playlistStore ?? null) : new MemoryPlaylistStore()
   const roomStore = options.withoutAccounts ? null : 'roomStore' in options ? (options.roomStore ?? null) : new MemoryRoomStore()
-  const { httpServer, io, playlists, rooms } = createNoctuneServer({
+  const activityStore = options.withoutAccounts ? null : 'activityStore' in options ? (options.activityStore ?? null) : new MemoryActivityStore()
+  const { httpServer, io, playlists, rooms, activity } = createNoctuneServer({
     skipProtectedSec: 0,
     lobbyDelayMs: 20,
     queueBroadcastMs: 20,
@@ -68,6 +76,7 @@ export async function startServer(options: StartOptions = {}): Promise<Started> 
     accounts: service,
     playlistStore,
     roomStore,
+    activityStore,
   })
   await new Promise<void>((resolve) => httpServer.listen(0, '127.0.0.1', resolve))
   const url = `http://127.0.0.1:${(httpServer.address() as AddressInfo).port}`
@@ -102,6 +111,8 @@ export async function startServer(options: StartOptions = {}): Promise<Started> 
     playlists,
     roomStore,
     rooms,
+    activityStore,
+    activity,
     io,
     httpServer,
     connect: open,

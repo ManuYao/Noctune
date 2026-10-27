@@ -1,0 +1,134 @@
+/* The badges of mock-up 9: cards of 256 x 184 on a 1440 px page, five to a row; a panel's glass, 20 px corners. */
+.profile-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.profile-badges__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+}
+
+.profile-badges__title {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.profile-badges__count {
+  margin: 0;
+  color: var(--accent-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.profile-badges__note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.profile-badges__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 230px), 1fr));
+  gap: 14px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 1200px) {
+  .profile-badges__grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.badge-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  min-height: 196px;
+  padding: 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  background: var(--glass);
+}
+
+.badge-card__icons {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.badge-card__icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.badge-card__icon span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badge-card__name {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.badge-card__text {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+/* The foot of a card: where the next level is, or that there is nothing more to reach. */
+.badge-card__progress,
+.badge-card__done {
+  margin: auto 0 0;
+  padding-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.badge-card__progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--text);
+}
+
+.badge-card__bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.badge-card__bar div {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+.badge-card__done {
+  color: var(--text-muted);
+}
+
+.badge-card--earned .badge-card__done {
+  color: var(--accent-text);
+}
+
+.badge-card--secret {
+  border-style: dashed;
+}

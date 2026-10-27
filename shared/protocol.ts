@@ -410,6 +410,59 @@ export type AuthDone = { ok: true } | { ok: false; error: Exclude<AuthError, 'ra
 /** The account behind the session cookie, or null for a visitor. */
 export type SessionResult = { ok: true; account: Account | null }
 
+// ---- The member's activity (profile, mock-up 5b, and badges, mock-up 9)
+//
+//   GET    /api/auth/profile                                           -> ProfileReply        signed in; same protections as /me
+//
+// Counted by the server for members only (a visitor has nothing). Badges are not stored: `computeBadges` (shared/badges.ts)
+// derives them from `ProfileStats`. Nothing here changes votes, the queue or any right.
+
+/** What the server counts about a member. Every number is >= 0. */
+export interface ProfileStats {
+  /** Tracks played as DJ (a track counts once it has played 10 s, like the "already played" rule). */
+  tracksPlayed: number
+  /** Likes received on their DJ tracks (one per person and track; a removed like is taken back). */
+  likesReceived: number
+  /** Likes given to other people's tracks (a track of the room's own selection counts too; own tracks cannot be liked). */
+  likesGiven: number
+  /** Time spent in rooms, in seconds (every room they are in at the same time counts). */
+  listenSeconds: number
+  /** Distinct rooms entered. */
+  roomsVisited: number
+  /** Distinct styles of the rooms entered. */
+  stylesVisited: number
+  /** Distinct styles of the rooms where their tracks played. */
+  stylesPlayed: number
+  /** Most likes one of their tracks got. */
+  bestTrackLikes: number
+  /** Distinct calendar days (Europe/Paris) on which they entered a room. */
+  daysActive: number
+  messagesSent: number
+  /** Rooms they host now. */
+  roomsHosted: number
+  /** Most distinct members (themselves excluded) who entered one of the rooms they host(ed). Visitors are not counted. */
+  membersInBestRoom: number
+  /** Tracks in their playlists, all playlists together. */
+  playlistTracks: number
+  /** Entered a room between 02:00 and 05:00 (Europe/Paris), at least once. */
+  nightOwl: boolean
+  /** Account creation, ISO 8601. */
+  memberSince: string
+}
+
+export interface ProfileData {
+  stats: ProfileStats
+  /** The styles (up to 3) of the rooms they listened to the longest, longest first. */
+  topStyles: RoomStyle[]
+  /** The rooms (up to 2, still open) they listened to the longest, longest first. */
+  topRooms: { id: string; name: string }[]
+}
+
+export type ProfileReply =
+  | { ok: true; profile: ProfileData }
+  | { ok: false; error: Exclude<AuthError, 'rate-limited'> }
+  | { ok: false; error: 'rate-limited'; retryAfterSec: number }
+
 // ---- Rooms made by members (HTTP, under /api/rooms; the list and the room itself stay on the realtime connection)
 //
 //   GET    /api/rooms/mine                        -> RoomReply<{ rooms: RoomDetail[] }>   the rooms the member hosts (signed in)

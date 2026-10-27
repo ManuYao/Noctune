@@ -1,0 +1,173 @@
+/* The band of mock-up 5b, measured at 1440 x 900: 1328 x 200 px, the stage 300 px wide, four tiles in a 384 px grid. */
+.profile-band {
+  flex-direction: row;
+  gap: 0;
+  min-height: 200px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.profile-band__scene {
+  flex: none;
+  width: 300px;
+}
+
+.profile-band__who {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 18px 28px;
+}
+
+.profile-band__who h1 {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+.profile-band__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.profile-band__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.profile-band__chips li {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.profile-band__rooms svg {
+  flex: none;
+  fill: var(--accent);
+}
+
+.profile-band__room {
+  /* A 44 px target that takes no more room in the line than the words. */
+  display: inline-block;
+  margin: -12px 0;
+  padding: 12px 0;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.profile-band__error {
+  color: var(--accent-text);
+}
+
+.profile-band__retry {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.profile-band__welcome {
+  margin: 0;
+  color: var(--accent-2-text);
+  font-weight: 700;
+}
+
+.profile-band__tiles {
+  display: grid;
+  flex: none;
+  grid-template-columns: 1fr 1fr;
+  align-self: center;
+  gap: 12px;
+  width: 384px;
+  margin: 18px 28px 18px 0;
+}
+
+.profile-band__tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: 72px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg);
+}
+
+.profile-band__tile-big {
+  font-family: var(--font-title);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.profile-band__tile-label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* Narrower windows: the tiles go under the band's text. */
+@media (max-width: 1199px) {
+  .profile-band {
+    flex-wrap: wrap;
+  }
+
+  .profile-band__who {
+    flex: 1 1 320px;
+  }
+
+  .profile-band__tiles {
+    flex: 1 1 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: auto;
+    margin: 0 20px 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .profile-band__scene {
+    width: 100%;
+    height: 180px;
+  }
+
+  .profile-band__who {
+    padding: 16px 20px 4px;
+  }
+
+  .profile-band__who h1 {
+    font-size: 26px;
+  }
+
+  .profile-band__tiles {
+    grid-template-columns: 1fr 1fr;
+    margin: 12px 16px 16px;
+  }
+}

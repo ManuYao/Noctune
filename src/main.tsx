@@ -4,7 +4,10 @@ import { BrowserRouter } from 'react-router'
 import App from './App'
 import AccountProvider from './auth/AccountProvider'
 import ConsentProvider from './consent/ConsentProvider'
+import { startCalmMotion } from './settings/calmMotion'
 import './index.css'
+
+startCalmMotion()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

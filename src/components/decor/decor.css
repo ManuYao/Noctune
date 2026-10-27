@@ -110,4 +110,8 @@
   }
 }
 
+:root[data-motion='calm'] .mw-steam {
+  opacity: 0;
+}
+
 .sc-stroke-wall2 { stroke: var(--wall-2); }
