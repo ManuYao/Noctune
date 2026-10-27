@@ -154,12 +154,19 @@ describe('tracks, likes and messages', () => {
 
   it('a like goes to the DJ (received) and to the liker (given); taking it back takes it back', async () => {
     hooks.likeChanged({ djAccountId: 'dj', likerAccountId: 'ann', delta: 1, trackLikes: 1 })
-    hooks.likeChanged({ djAccountId: 'dj', delta: 1, trackLikes: 2 }) // a visitor
+    hooks.likeChanged({ djAccountId: 'dj', likerAccountId: 'ben', delta: 1, trackLikes: 2 })
     hooks.likeChanged({ djAccountId: 'dj', likerAccountId: 'ann', delta: -1, trackLikes: 1 })
     const dj = await recorder.read('dj')
     assert.equal(dj.likesReceived, 1)
     assert.equal(dj.bestTrackLikes, 2, 'the best a track reached, not what it ended with')
     assert.equal((await recorder.read('ann')).likesGiven, 0)
+  })
+
+  it('a like with no member behind it counts for nobody, the DJ included', async () => {
+    hooks.likeChanged({ djAccountId: 'dj', delta: 1, trackLikes: 9 } as never) // a visitor
+    const dj = await recorder.read('dj')
+    assert.equal(dj.likesReceived, 0)
+    assert.equal(dj.bestTrackLikes, 0)
   })
 
   it('a like on the room’s own selection counts as given and nobody receives it', async () => {
@@ -204,8 +211,42 @@ describe('writing by batches', () => {
     hooks.messageSent('ann') // counting goes on while the store is down
     assert.equal((await recorder.read('ann')).messagesSent, 2, 'what is waiting still shows in the profile')
     flaky.down = false
+    clock += 11 * SECOND // past the pause after a failed batch
     await recorder.flush()
     assert.equal((await flaky.read('ann')).messagesSent, 2)
+  })
+
+  it('gives up the whole batch at the first failure: one try, everything kept, a pause before the next', async () => {
+    const flaky = new FlakyStore()
+    setup({ store: flaky })
+    for (let i = 0; i < 40; i++) hooks.messageSent(`acc-${i}`)
+    flaky.down = true
+    await recorder.flush()
+    assert.equal(writes, 1, 'the store was asked once, not once per account')
+    assert.equal(((recorder as unknown) as { pending: Map<string, Activity> }).pending.size, 40, 'all of it is kept')
+    hooks.messageSent('acc-0') // counting goes on, merged with what was kept
+    await recorder.flush()
+    assert.equal(writes, 1, 'in the pause the store is left alone')
+    clock += 11 * SECOND
+    await recorder.flush()
+    assert.equal(writes, 2, 'after the pause it is tried again, once')
+    flaky.down = false
+    clock += 11 * SECOND
+    await recorder.flush()
+    assert.equal(writes, 2 + 40)
+    assert.equal((await flaky.read('acc-0')).messagesSent, 2)
+    assert.equal((await flaky.read('acc-39')).messagesSent, 1)
+  })
+
+  it('stop tries to write even during the pause', async () => {
+    const flaky = new FlakyStore()
+    setup({ store: flaky })
+    hooks.messageSent('ann')
+    flaky.down = true
+    await recorder.flush()
+    flaky.down = false
+    await recorder.stop()
+    assert.equal((await flaky.read('ann')).messagesSent, 1)
   })
 
   it('logs a failure without the account in it', async () => {

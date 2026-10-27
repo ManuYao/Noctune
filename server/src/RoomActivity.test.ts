@@ -148,19 +148,34 @@ describe('likes', () => {
     assert.deepEqual(named('likeChanged')[1], [{ djAccountId: undefined, likerAccountId: 'acc-ben', delta: -1, trackLikes: 0 }])
   })
 
-  it('a like on a DJ’s track goes to that DJ, a visitor’s included, and the best of the track is what it reached', () => {
-    enter(ann, ben, vic)
+  it('a like on a DJ’s track goes to that DJ, and the best of the track is what it reached', () => {
+    enter(ann, ben)
     lineUp(ann, 'one')
     like('p-ben', true)
-    like('p-vic', true)
     like('p-ben', false)
+    like('p-ben', true)
     assert.deepEqual(
       named('likeChanged').map(([change]) => change),
       [
         { djAccountId: 'acc-ann', likerAccountId: 'acc-ben', delta: 1, trackLikes: 1 },
-        { djAccountId: 'acc-ann', likerAccountId: undefined, delta: 1, trackLikes: 2 },
-        { djAccountId: 'acc-ann', likerAccountId: 'acc-ben', delta: -1, trackLikes: 1 },
+        { djAccountId: 'acc-ann', likerAccountId: 'acc-ben', delta: -1, trackLikes: 0 },
+        { djAccountId: 'acc-ann', likerAccountId: 'acc-ben', delta: 1, trackLikes: 1 },
       ],
+    )
+  })
+
+  it('a visitor’s like is shown in the room but counted for nobody: not for the DJ, not in the track’s best', () => {
+    const more = Array.from({ length: 5 }, (_, i): Participant => ({ id: `p-v${i}`, pseudo: `V${i}`, avatarId: 'cloud', member: false }))
+    enter(ann, ben, ...more)
+    lineUp(ann, 'one')
+    for (const visitor of more) like(visitor.id, true)
+    assert.equal(room.reactions().likes, 5, 'the room shows them')
+    assert.deepEqual(named('likeChanged'), [], 'nothing is counted')
+    like('p-ben', true)
+    assert.deepEqual(
+      named('likeChanged').map(([change]) => change),
+      [{ djAccountId: 'acc-ann', likerAccountId: 'acc-ben', delta: 1, trackLikes: 1 }],
+      'and a member’s like after theirs is the first one counted',
     )
   })
 

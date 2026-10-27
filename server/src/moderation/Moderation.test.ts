@@ -34,6 +34,16 @@ describe('mutes and exclusions', () => {
     assert.equal(moderation.mutedFor('v:abc', START), 0)
   })
 
+  it('take several keys: written on all of them, and one hit is enough', () => {
+    const moderation = new Moderation()
+    moderation.mute(['m:ann', 'a:xyz'], START)
+    moderation.exclude(['m:ann', 'a:xyz'], START)
+    assert.equal(moderation.mutedFor(['m:ben', 'a:xyz'], START) > 0, true, 'by the second key')
+    assert.equal(moderation.excludedFor(['v:zzz', 'm:ann'], START) > 0, true, 'by the first key')
+    assert.equal(moderation.mutedFor(['m:ben', 'v:zzz'], START), 0)
+    assert.equal(moderation.excludedFor([], START), 0)
+  })
+
   it('are told apart: a mute does not keep anybody out, an exclusion does not silence', () => {
     const moderation = new Moderation()
     moderation.mute('m:ann', START)
@@ -102,6 +112,34 @@ describe('reports', () => {
     assert.deepEqual(moderation.list(START + 3).map((report) => report.target.kind === 'chat' && report.target.messageId), ['2', '3'])
     assert.equal(moderation.list(START + 10 * SECOND + 1).length, 1, 'the first of the two ended')
     assert.equal(moderation.list(START + 20 * SECOND).length, 0)
+  })
+
+  it('a full inbox gives up its least corroborated report, never one more people made than the new one', () => {
+    const moderation = new Moderation({ maxReports: 3 })
+    moderation.file('m:a', 'chat:real', 'harassment', chatTarget('real'), START)
+    moderation.file('m:b', 'chat:real', 'harassment', chatTarget('real'), START + 1) // corroborated: count 2
+    moderation.file('m:a', 'chat:1', 'spam', chatTarget('1'), START + 2)
+    moderation.file('m:a', 'chat:2', 'spam', chatTarget('2'), START + 3)
+    // Full. New reports push out the oldest of the single-person ones, never the corroborated (and oldest) one.
+    assert.ok(moderation.file('m:c', 'chat:3', 'spam', chatTarget('3'), START + 4).ok)
+    assert.ok(moderation.file('m:c', 'chat:4', 'spam', chatTarget('4'), START + 5).ok)
+    const left = moderation.list(START + 6).map((report) => report.target.kind === 'chat' && report.target.messageId)
+    assert.deepEqual(left, ['real', '3', '4'])
+  })
+
+  it('refuses a new report when the inbox is full of reports that more people made', () => {
+    const moderation = new Moderation({ maxReports: 2 })
+    for (const target of ['1', '2']) {
+      moderation.file('m:a', `chat:${target}`, 'spam', chatTarget(target), START)
+      moderation.file('m:b', `chat:${target}`, 'spam', chatTarget(target), START + 1)
+    }
+    const refused = moderation.file('m:c', 'chat:3', 'spam', chatTarget('3'), START + 2)
+    assert.equal(!refused.ok && refused.error, 'inbox-full')
+    assert.ok(!refused.ok && refused.error === 'inbox-full' && refused.retryAfterMs > 0)
+    assert.equal(moderation.list(START + 3).length, 2, 'nothing was pushed out')
+    assert.equal(moderation.reportWait('m:c', START + 3), 0, 'a refused report does not use up the allowance')
+    // Joining a report already there is still possible when the inbox is full.
+    assert.ok(moderation.file('m:c', 'chat:1', 'spam', chatTarget('1'), START + 4).ok)
   })
 
   it('give out copies: what the host does with them cannot change what is kept', () => {
@@ -235,5 +273,26 @@ describe('the keys sanctions stick to', () => {
     assert.equal(keys.visitor('203.0.113.7'), visitor, 'the same address, the same key')
     assert.notEqual(keys.visitor('203.0.113.8'), visitor)
     assert.notEqual(new SanctionKeys(Buffer.from('another secret')).visitor('203.0.113.7'), visitor, 'and the secret changes every key')
+  })
+
+  it('give a member two keys (account and address) and a visitor one, checked crosswise', () => {
+    const keys = new SanctionKeys(Buffer.from('a-secret-for-the-test'))
+    const member = keys.identity('account-1', '203.0.113.7')
+    const visitor = keys.identity(undefined, '203.0.113.7')
+    const neighbour = keys.identity('account-2', '203.0.113.7')
+    assert.equal(member.primary, 'm:account-1')
+    assert.equal(visitor.primary, keys.visitor('203.0.113.7'))
+    const moderation = new Moderation()
+    // A member's sanction keeps a visitor of the same address out, but not another member of it.
+    moderation.exclude(member.mark, START)
+    assert.ok(moderation.excludedFor(visitor.check, START) > 0)
+    assert.equal(moderation.excludedFor(neighbour.check, START), 0)
+    assert.ok(moderation.excludedFor(member.check, START) > 0)
+    // A visitor's sanction keeps any member of the same address out.
+    const other = new Moderation()
+    other.mute(visitor.mark, START)
+    assert.ok(other.mutedFor(member.check, START) > 0)
+    assert.ok(other.mutedFor(neighbour.check, START) > 0)
+    assert.equal(other.mutedFor(keys.identity(undefined, '203.0.113.8').check, START), 0, 'another address')
   })
 })

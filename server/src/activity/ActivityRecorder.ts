@@ -11,10 +11,10 @@ export interface RoomActivity {
   /** A track of this DJ counts as played (heard for 10 s, the room's own rule). */
   trackPlayed(djAccountId: string): void
   /**
-   * A like was given (+1) or taken back (-1), once per person and track. `trackLikes` is the likes the track has now
-   * (visitors' included). The DJ is absent for the room's own selection, the liker for a visitor.
+   * A member's like was given (+1) or taken back (-1), once per account and track. `trackLikes` is the members' likes the
+   * track has now (visitors' are not counted). The DJ is absent for the room's own selection.
    */
-  likeChanged(change: { djAccountId?: string; likerAccountId?: string; delta: 1 | -1; trackLikes: number }): void
+  likeChanged(change: { djAccountId?: string; likerAccountId: string; delta: 1 | -1; trackLikes: number }): void
   messageSent(accountId: string): void
 }
 
@@ -42,6 +42,8 @@ interface Presence {
 
 const FLUSH_MS = 45_000
 const ACCRUAL_CAP_SEC = 10 * 60
+// How long the store is left alone after a failed batch.
+const RETRY_PAUSE_MS = 10_000
 
 /**
  * Counts what members do, in memory, and writes it to the store by batches: never one write per event. A failing store
@@ -54,6 +56,8 @@ export class ActivityRecorder {
   private timer: NodeJS.Timeout | undefined
   private flushing: Promise<void> = Promise.resolve()
   private lastError: Error | undefined
+  /** No batch is written before this time (set after a failure). */
+  private retryAt = 0
   private readonly now: () => number
   private readonly accrualCapMs: number
 
@@ -72,11 +76,11 @@ export class ActivityRecorder {
     this.timer.unref()
   }
 
-  /** Stops the clock and writes what is left (the end of the server). */
+  /** Stops the clock and writes what is left (the end of the server), pause or not. */
   async stop() {
     clearInterval(this.timer)
     this.timer = undefined
-    await this.flush()
+    await this.flush(true)
   }
 
   /** The hooks of one room. Each is safe: whatever goes wrong inside is logged, never thrown into the room. */
@@ -117,7 +121,9 @@ export class ActivityRecorder {
         for (const style of room.styles()) this.addStyle(delta, style, { played: true })
       }),
       likeChanged: safe(({ djAccountId, likerAccountId, delta: change, trackLikes }) => {
-        if (likerAccountId) this.deltaOf(likerAccountId).likesGiven += change
+        // Nobody who is not a member counts, for the liker or for the DJ.
+        if (!likerAccountId) return
+        this.deltaOf(likerAccountId).likesGiven += change
         if (djAccountId) {
           const djDelta = this.deltaOf(djAccountId)
           djDelta.likesReceived += change
@@ -146,43 +152,58 @@ export class ActivityRecorder {
   }
 
   /** Writes what is waiting. Never throws; calls follow each other, so that two batches never overlap. */
-  flush(): Promise<void> {
-    const run = this.flushing.then(() => this.writeBatch()).catch((error: Error) => console.error(`[activite] ${error.message}`))
+  flush(force = false): Promise<void> {
+    const run = this.flushing.then(() => this.writeBatch(force)).catch((error: Error) => console.error(`[activite] ${error.message}`))
     this.flushing = run
     return run
   }
 
-  private async writeBatch() {
+  private async writeBatch(force: boolean) {
     const now = this.now()
+    // After a failure the store gets a pause: counting goes on in memory (one entry per account at most), nothing is lost.
+    if (!force && now < this.retryAt) return
     for (const here of this.presence.values()) this.accrue(here, now)
-    const batch = this.pending
+    const batch = [...this.pending]
     this.pending = new Map()
     const hosts = [...this.hostsToCheck]
     this.hostsToCheck.clear()
 
+    // The first error of a batch ends it: what is left goes back as it is, instead of waiting for the store's timeout once
+    // per account (a batch of a thousand accounts would block every flush behind it for hours).
     let failed = 0
-    for (const [accountId, delta] of batch) {
+    let next = 0
+    for (; next < batch.length; next++) {
       try {
-        await this.store.add(accountId, delta)
+        await this.store.add(batch[next][0], batch[next][1])
       } catch (error) {
-        failed += 1
-        // Kept for the next batch (merged with what came in since), unless the account went in the meantime.
-        const since = this.pending.get(accountId)
-        this.pending.set(accountId, since ? combine(delta, since) : delta)
         this.lastError = error as Error
+        break
       }
     }
-    for (const host of hosts) {
-      try {
-        const rooms = (await this.options.hostedRoomIds?.(host)) ?? []
-        const members = await this.store.mostMembersIn(rooms, host)
-        if (members > 0) await this.store.raiseBestRoomMembers(host, members)
-      } catch (error) {
-        failed += 1
-        this.hostsToCheck.add(host)
-        this.lastError = error as Error
+    let nextHost = 0
+    if (next >= batch.length) {
+      for (; nextHost < hosts.length; nextHost++) {
+        try {
+          const rooms = (await this.options.hostedRoomIds?.(hosts[nextHost])) ?? []
+          const members = await this.store.mostMembersIn(rooms, hosts[nextHost])
+          if (members > 0) await this.store.raiseBestRoomMembers(hosts[nextHost], members)
+        } catch (error) {
+          this.lastError = error as Error
+          break
+        }
       }
     }
+    // Kept for the next batch, merged with what came in since.
+    for (const [accountId, delta] of batch.slice(next)) {
+      const since = this.pending.get(accountId)
+      this.pending.set(accountId, since ? combine(delta, since) : delta)
+      failed += 1
+    }
+    for (const host of hosts.slice(nextHost)) {
+      this.hostsToCheck.add(host)
+      failed += 1
+    }
+    if (failed > 0) this.retryAt = this.now() + RETRY_PAUSE_MS
     // One line per batch, with no account in it.
     if (failed > 0) console.error(`[activite] ${failed} écriture(s) reportée(s) : ${this.lastError?.message ?? 'erreur'}`)
   }

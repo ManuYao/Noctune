@@ -207,6 +207,21 @@ describe('a report', () => {
     assert.equal(host.inbox.at(-1)![0].reason, 'spam', 'the first reason stays')
   })
 
+  it('does not push a corroborated report out of a full inbox: the new one is turned away as rate-limited', async () => {
+    await start({ moderation: { reportGapMs: 0, maxReports: 1 } })
+    const { host, ann, vic } = await crowd()
+    const ben = await inRoom(host.snapshot.roomId, { cookie: await signUp('Ben') })
+    const real = await saidBy(vic, ann, 'really bad')
+    assert.ok((await report(ann, { kind: 'chat', messageId: real })).ok)
+    assert.ok((await report(ben, { kind: 'chat', messageId: real })).ok)
+    const noise = await saidBy(host, ann, 'noise')
+    const refused = await report(ann, { kind: 'chat', messageId: noise })
+    assert.equal(!refused.ok && refused.error, 'rate-limited')
+    assert.ok(!refused.ok && refused.error === 'rate-limited' && refused.retryAfterMs > 0)
+    await until(() => host.inbox.at(-1)?.[0]?.count === 2, 'the corroborated report to be what the host sees')
+    assert.equal(host.inbox.at(-1)!.length, 1)
+  })
+
   it('cannot be filed again by the same person after the host set it aside', async () => {
     await start()
     const { host, ann, vic } = await crowd()
@@ -488,6 +503,43 @@ describe('the ladder', () => {
     assert.ok((await joinResult(annElsewhere, otherRoom)).ok, 'and the same member can enter another room')
   })
 
+  it('a member excluded from a room cannot come back as a visitor from the same address, but a neighbour member can', async () => {
+    await start()
+    const { host, roomId } = await crowd()
+    const bob = await inRoom(roomId, { cookie: await signUp('Bob'), ip: '10.0.0.60' })
+    assert.ok((await act(host, 'exclude', bob.snapshot.selfId)).ok)
+    const asVisitor = await connectAs({ ip: '10.0.0.60' })
+    assert.deepEqual(await joinResult(asVisitor, roomId, 'Robert'), { ok: false, error: 'excluded' }, 'same address, other status')
+    const neighbour = await connectAs({ cookie: await signUp('Zed'), ip: '10.0.0.60' })
+    assert.ok((await joinResult(neighbour, roomId)).ok, 'another member of that address is not touched')
+  })
+
+  it('a visitor excluded from a room cannot come back as a member from the same address', async () => {
+    await start()
+    const { host, vic, roomId } = await crowd()
+    assert.ok((await act(host, 'exclude', vic.snapshot.selfId)).ok)
+    const asMember = await connectAs({ cookie: await signUp('Victor'), ip: '10.0.0.1' })
+    assert.deepEqual(await joinResult(asMember, roomId), { ok: false, error: 'excluded' })
+    const elsewhere = await connectAs({ cookie: await signUp('Wanda'), ip: '10.0.0.9' })
+    assert.ok((await joinResult(elsewhere, roomId)).ok, 'another address')
+  })
+
+  it('a member who is muted stays muted as a visitor, and a muted visitor stays muted as a member', async () => {
+    await start()
+    const { host, vic, roomId } = await crowd()
+    const ann = await inRoom(roomId, { cookie: await signUp('Anna'), ip: '10.0.0.70' })
+    assert.ok((await act(host, 'mute', ann.snapshot.selfId)).ok)
+    const asVisitor = await inRoom(roomId, { ip: '10.0.0.70', pseudo: 'Annie' })
+    assert.equal((await say(asVisitor, 'hello again')).ok, false, 'member then visitor')
+
+    assert.ok((await act(host, 'mute', vic.snapshot.selfId)).ok)
+    const asMember = await inRoom(roomId, { cookie: await signUp('Vicky'), ip: '10.0.0.1' })
+    const refused = await say(asMember, 'hello again')
+    assert.equal(!refused.ok && refused.error, 'muted', 'visitor then member')
+    const other = await inRoom(roomId, { cookie: await signUp('Wilma'), ip: '10.0.0.9' })
+    assert.ok((await say(other, 'fine')).ok)
+  })
+
   it('an exclusion ends by itself', async () => {
     await start({ moderation: { reportGapMs: 0, excludeMs: 200 } })
     const { host, vic, roomId } = await crowd()
@@ -611,10 +663,10 @@ describe('what a room forgets', () => {
 
   it('forgets what a participant\'s sanctions stick to as soon as they leave', () => {
     const room = new Room('r', 'R', events)
-    room.add(person, undefined, 'v:abc')
-    assert.equal(room.sanctionKeyOf('p1'), 'v:abc')
+    room.add(person, undefined, ['m:acc', 'a:abc'])
+    assert.deepEqual(room.sanctionKeysOf('p1'), ['m:acc', 'a:abc'])
     room.remove('p1')
-    assert.equal(room.sanctionKeyOf('p1'), undefined)
+    assert.equal(room.sanctionKeysOf('p1'), undefined)
     room.close()
   })
 })

@@ -88,8 +88,8 @@ export class Room {
   private accountOf = new Map<string, string>()
   /** The other way round: which participant an account is right now. A member is in a room once. */
   private participantOf = new Map<string, string>()
-  /** What each participant's sanctions stick to (account or hashed address): see SanctionKeys. Never sent anywhere. */
-  private sanctionKeys = new Map<string, string>()
+  /** What each participant's sanctions are written on (account and/or hashed address): see SanctionKeys. Never sent anywhere. */
+  private sanctionKeys = new Map<string, readonly string[]>()
   private readonly booth = new DjBooth()
   /** When each video last started in this room (house selection included). Insertion order is time order. */
   private playedAt = new Map<string, number>()
@@ -206,16 +206,16 @@ export class Room {
     return this.participantOf.get(accountId)
   }
 
-  /** What this participant's sanctions stick to (set when they came in). */
-  sanctionKeyOf(participantId: string): string | undefined {
+  /** What this participant's sanctions are written on (set when they came in); the first is their own key. */
+  sanctionKeysOf(participantId: string): readonly string[] | undefined {
     return this.sanctionKeys.get(participantId)
   }
 
-  add(participant: Participant, accountId?: string, sanctionKey?: string) {
+  add(participant: Participant, accountId?: string, sanctionKeys?: string | readonly string[]) {
     // A join that was waiting for the database while the host deleted the room must not bring it back to life.
     if (this.closed) throw new Error('room closed')
     this.participants.set(participant.id, participant)
-    if (sanctionKey) this.sanctionKeys.set(participant.id, sanctionKey)
+    if (sanctionKeys && sanctionKeys.length > 0) this.sanctionKeys.set(participant.id, typeof sanctionKeys === 'string' ? [sanctionKeys] : sanctionKeys)
     let place: DjEntry | undefined
     if (accountId) {
       this.accountOf.set(participant.id, accountId)
@@ -285,32 +285,28 @@ export class Room {
     if (!gate.ok) return gate
     // A refused like does not use up the turn either.
     if (this.isOnDecks(participantId)) return { ok: false, error: 'own-track' }
-    const had = this.likes.has(participantId)
     if (value) this.likes.add(participantId)
     else this.likes.delete(participantId)
-    this.countLike(participantId, value, had)
+    this.countLike(participantId, value)
     this.reactionLimit.record(participantId, now)
     this.scheduleReactionsBroadcast()
     return { ok: true }
   }
 
   /**
-   * A like, for counting: once per person and track, a person being an account for a member (so a member who comes back
-   * under another connection cannot like the same track twice) and a connection for a visitor. A visitor's like still
-   * counts for the DJ; only a member's counts as given.
+   * A like, for counting: members only, once per account and track (so a member who comes back under another connection
+   * cannot like the same track twice). A visitor's like shows in the room but counts for nobody: visitors cost nothing to
+   * make, so sixty connections of one address would be sixty likes on a DJ's profile.
    */
-  private countLike(participantId: string, value: boolean, had: boolean) {
+  private countLike(participantId: string, value: boolean) {
     if (!this.activity) return
     const likerAccountId = this.accountOf.get(participantId)
+    if (!likerAccountId) return
     let change: 1 | -1 | 0 = 0
-    if (likerAccountId) {
-      if (value && !this.likeAccounts.has(likerAccountId)) change = 1
-      else if (!value && this.likeAccounts.has(likerAccountId)) change = -1
-      if (change === 1) this.likeAccounts.add(likerAccountId)
-      if (change === -1) this.likeAccounts.delete(likerAccountId)
-    } else {
-      change = value && !had ? 1 : !value && had ? -1 : 0
-    }
+    if (value && !this.likeAccounts.has(likerAccountId)) change = 1
+    else if (!value && this.likeAccounts.has(likerAccountId)) change = -1
+    if (change === 1) this.likeAccounts.add(likerAccountId)
+    if (change === -1) this.likeAccounts.delete(likerAccountId)
     if (change === 0) return
     this.earnedLikes = Math.max(0, this.earnedLikes + change)
     this.activity.likeChanged({ djAccountId: this.currentDj, likerAccountId, delta: change, trackLikes: this.earnedLikes })

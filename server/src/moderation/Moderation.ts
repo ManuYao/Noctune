@@ -28,6 +28,10 @@ export interface ModerationOptions {
 
 type ReportTargetInfo = Report['target']
 
+/** One key, or the several a person's sanctions stick to. */
+type Keys = string | readonly string[]
+const asList = (keys: Keys): readonly string[] => (typeof keys === 'string' ? [keys] : keys)
+
 interface FiledReport {
   report: Report
   /** Who reported it (their sanction keys): one person, one report per target. Never sent anywhere. */
@@ -36,7 +40,14 @@ interface FiledReport {
   targetKey: string
 }
 
-export type FileResult = { ok: true; report: Report; created: boolean } | { ok: false; error: 'already-reported' }
+export type FileResult =
+  | { ok: true; report: Report; created: boolean }
+  | { ok: false; error: 'already-reported' }
+  /** The inbox is full of reports that more people made than this one: it is not taken. */
+  | { ok: false; error: 'inbox-full'; retryAfterMs: number }
+
+// When the inbox is full and refuses a report, it says to come back in a minute (the host may have made room).
+const INBOX_FULL_RETRY_MS = 60_000
 
 /** The text of a reported message, cut to what the host needs to recognise it. */
 export function excerpt(text: string): string {
@@ -79,24 +90,24 @@ export class Moderation {
 
   // ---- Sanctions
 
-  /** Silences the key for the length of a mute. Returns how long, in ms. */
-  mute(key: string, now: number): number {
-    this.remember(this.muted, key, now + this.muteMs, now)
+  /** Silences the keys (all of them) for the length of a mute. Returns how long, in ms. */
+  mute(keys: Keys, now: number): number {
+    for (const key of asList(keys)) this.remember(this.muted, key, now + this.muteMs, now)
     return this.muteMs
   }
 
-  /** Milliseconds the key still cannot write: 0 when it can. */
-  mutedFor(key: string, now: number): number {
-    return this.left(this.muted, key, now)
+  /** Milliseconds the keys still cannot write (the longest of them): 0 when they can. */
+  mutedFor(keys: Keys, now: number): number {
+    return Math.max(0, ...asList(keys).map((key) => this.left(this.muted, key, now)))
   }
 
-  exclude(key: string, now: number): void {
-    this.remember(this.excluded, key, now + this.excludeMs, now)
+  exclude(keys: Keys, now: number): void {
+    for (const key of asList(keys)) this.remember(this.excluded, key, now + this.excludeMs, now)
   }
 
-  /** Milliseconds the key is still kept out of the room: 0 when it may come in. */
-  excludedFor(key: string, now: number): number {
-    return this.left(this.excluded, key, now)
+  /** Milliseconds the keys are still kept out of the room (the longest of them): 0 when they may come in. */
+  excludedFor(keys: Keys, now: number): number {
+    return Math.max(0, ...asList(keys).map((key) => this.left(this.excluded, key, now)))
   }
 
   /** Counts a warning given to the key, and returns how many it has now (for the host's choice of the next step). */
@@ -143,10 +154,17 @@ export class Moderation {
       this.reportHourly.record(reporter, now)
       return { ok: true, report: { ...known.report }, created: false }
     }
+    // A full inbox gives up its least corroborated report (the oldest of them), never one that more people made than this
+    // one: a few accounts cannot push a real report out by filing many.
+    let evicted: FiledReport | undefined
+    if (this.filed.length >= this.maxReports) {
+      for (const item of this.filed) if (!evicted || item.reporters.size < evicted.reporters.size) evicted = item
+      if (!evicted || evicted.reporters.size > 1) return { ok: false, error: 'inbox-full', retryAfterMs: INBOX_FULL_RETRY_MS }
+    }
     const report: Report = { id: randomUUID(), reason, at: now, count: 1, target }
     this.remember(this.reportedBy, pair, now + this.reportTtlMs, now)
+    if (evicted) this.filed = this.filed.filter((item) => item !== evicted)
     this.filed.push({ report, reporters: new Set([reporter]), targetKey })
-    if (this.filed.length > this.maxReports) this.filed.shift()
     this.reportGap.record(reporter, now)
     this.reportHourly.record(reporter, now)
     return { ok: true, report: { ...report }, created: true }
