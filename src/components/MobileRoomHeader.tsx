@@ -1,5 +1,7 @@
 import { Link } from 'react-router'
 import ReportsButton from '../moderation/ReportsButton'
+import InstallButton from '../pwa/InstallButton'
+import { useInstallPrompt } from '../pwa/installPrompt'
 import SpeakerIcon from './SpeakerIcon'
 import './MobileRoomHeader.css'
 
@@ -30,6 +32,8 @@ interface MobileRoomHeaderProps {
  * host's two tools (the inbox of reports, the settings) get a row of their own under it.
  */
 export default function MobileRoomHeader({ roomId, name, online, host, isHost, connecting, muted, silent, noPlayer, onToggleMute, keepScreenOn }: MobileRoomHeaderProps) {
+  // Not installed yet: the phone icon invites to install. Installed: it keeps the screen on instead.
+  const { installed } = useInstallPrompt()
   return (
     <header className="mroom-head">
       <div className="mroom-head__bar">
@@ -58,7 +62,8 @@ export default function MobileRoomHeader({ roomId, name, online, host, isHost, c
             <circle cx="12" cy="7.5" r="0.6" fill="currentColor" />
           </svg>
         </Link>
-        {keepScreenOn && !noPlayer && (
+        {!installed && <InstallButton className="mroom-head__button" />}
+        {installed && keepScreenOn && !noPlayer && (
           <button
             type="button"
             className="mroom-head__button"
