@@ -1,7 +1,8 @@
 import type { ProfileStats } from './protocol'
 
-/** Accounts created before this instant earn "Fondateur" (a date to confirm before launch). */
-export const FOUNDER_BEFORE = '2027-01-01T00:00:00Z'
+/** Accounts created in [FOUNDER_FROM, FOUNDER_UNTIL) earn "Fondateur": one year from 3 Nov 2026 (the owner's decision, 27/10/2026). */
+export const FOUNDER_FROM = '2026-11-03T00:00:00Z'
+export const FOUNDER_UNTIL = '2027-11-03T00:00:00Z'
 
 export const BADGE_IDS = [
   'premier-son',
@@ -71,8 +72,11 @@ export const BADGES: readonly BadgeDef[] = [
   unique(
     'fondateur',
     'Fondateur',
-    'Un des premiers comptes, créé avant le 1er janvier 2027. Gagné une seule fois.',
-    (s) => (new Date(s.memberSince).getTime() < new Date(FOUNDER_BEFORE).getTime() ? 1 : 0),
+    'Un des premiers comptes, créé entre le 3 novembre 2026 et le 3 novembre 2027. Gagné une seule fois.',
+    (s) => {
+      const created = new Date(s.memberSince).getTime()
+      return created >= new Date(FOUNDER_FROM).getTime() && created < new Date(FOUNDER_UNTIL).getTime() ? 1 : 0
+    },
     'rare',
   ),
   {

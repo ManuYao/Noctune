@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { BADGES, FOUNDER_BEFORE, computeBadges, topBadges, type BadgeId } from '../../shared/badges'
+import { BADGES, FOUNDER_FROM, FOUNDER_UNTIL, computeBadges, topBadges, type BadgeId } from '../../shared/badges'
 import type { ProfileStats } from '../../shared/protocol'
 
 const NOW = new Date('2026-10-27T12:00:00Z')
@@ -28,7 +28,7 @@ describe('badges', () => {
   it('a brand new member has no level anywhere, and the night owl stays a secret', () => {
     const all = computeBadges(stats({ memberSince: '2028-01-01T00:00:00Z' }), NOW)
     assert.equal(all.length, BADGES.length)
-    assert.deepEqual(all.filter((b) => b.level > 0).map((b) => b.id), [], 'nothing earned (not even Fondateur, after the date)')
+    assert.deepEqual(all.filter((b) => b.level > 0).map((b) => b.id), [], 'nothing earned (not even Fondateur, after the window)')
     assert.deepEqual(all.filter((b) => b.secret).map((b) => b.id), ['oiseau-de-nuit'])
     assert.deepEqual(topBadges(all, 3), [])
   })
@@ -61,12 +61,14 @@ describe('badges', () => {
     assert.equal(badge(since('2025-10-27T12:00:00Z'), 'veteran').next, null)
   })
 
-  it('Fondateur goes to accounts made before the date only, and is rare', () => {
-    const early = badge({ memberSince: '2026-12-31T23:59:59Z' }, 'fondateur')
-    const late = badge({ memberSince: FOUNDER_BEFORE }, 'fondateur')
-    assert.equal(early.level, 1)
-    assert.equal(early.kind, 'rare')
-    assert.equal(late.level, 0)
+  it('Fondateur goes to accounts made in the one-year window only, and is rare', () => {
+    const level = (memberSince: string) => badge({ memberSince }, 'fondateur').level
+    assert.equal(level('2026-11-02T23:59:59Z'), 0, 'a second before the window')
+    assert.equal(level(FOUNDER_FROM), 1, 'the window opens')
+    assert.equal(level('2027-06-15T10:00:00Z'), 1)
+    assert.equal(level('2027-11-02T23:59:59Z'), 1, 'the last second')
+    assert.equal(level(FOUNDER_UNTIL), 0, 'the window is closed')
+    assert.equal(badge({ memberSince: FOUNDER_FROM }, 'fondateur').kind, 'rare')
   })
 
   it('Oiseau de nuit is hidden until earned, then shows with its name', () => {
@@ -98,7 +100,7 @@ describe('badges', () => {
   })
 
   it('topBadges ranks hidden and rare first, then a top level, then one-shot badges', () => {
-    const top = topBadges(computeBadges(stats({ nightOwl: true, memberSince: '2026-01-01T00:00:00Z', likesReceived: 100, tracksPlayed: 5 }), NOW), 3)
+    const top = topBadges(computeBadges(stats({ nightOwl: true, memberSince: '2026-11-10T00:00:00Z', likesReceived: 100, tracksPlayed: 5 }), NOW), 3)
     assert.deepEqual(top.map((b) => b.id), ['oiseau-de-nuit', 'fondateur', 'crowd-pleaser'])
   })
 })
