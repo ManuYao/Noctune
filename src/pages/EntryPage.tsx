@@ -7,6 +7,7 @@ import AvatarPicker from '../components/AvatarPicker'
 import EntryScene from '../components/EntryScene'
 import EntrySceneMobile from '../components/EntrySceneMobile'
 import { decorKind } from '../components/decor/decorKind'
+import InstallNudge from '../pwa/InstallNudge'
 import SiteHeader from '../components/SiteHeader'
 import { useIsPhone } from '../components/useIsPhone'
 import { AVATARS, findAvatar } from '../data/avatars'
@@ -89,6 +90,7 @@ export default function EntryPage() {
         <EntryScene avatar={sceneAvatar} pseudo={scenePseudo} nowPlaying={suggested?.nowPlaying ?? null} decor={suggested ? decorKind(suggested) : null} />
       )}
       <SiteHeader />
+      {phone && <InstallNudge />}
       {phone && <EntrySceneMobile avatar={sceneAvatar} nowPlaying={suggested?.nowPlaying ?? null} decor={suggested ? decorKind(suggested) : null} />}
       <main className="entry__main">
         <section className="entry__hero">

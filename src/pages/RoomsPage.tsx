@@ -5,6 +5,7 @@ import { useAccount } from '../auth/useAccount'
 import RoomCard from '../components/RoomCard'
 import RoomCardPhone from '../components/RoomCardPhone'
 import SiteHeader from '../components/SiteHeader'
+import InstallNudge from '../pwa/InstallNudge'
 import { useIsPhone } from '../components/useIsPhone'
 import { useRooms } from '../realtime/useRooms'
 import { STYLE_LABELS, djPlace, fold } from '../rooms/roomLabels'
@@ -77,6 +78,7 @@ export default function RoomsPage() {
   return (
     <div className="rooms-page">
       <SiteHeader />
+      {phone && <InstallNudge />}
       <main className="rooms">
         <div className="rooms__head">
           <div className="rooms__intro">
