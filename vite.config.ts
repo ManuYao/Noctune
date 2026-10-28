@@ -6,7 +6,9 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt': the page decides when to switch to a new version (src/pwa/updateWatcher.ts): at once outside a room, with
+      // a banner in a room (a reload there would cut the music and the place).
+      registerType: 'prompt',
       manifest: {
         name: 'Noctune',
         short_name: 'Noctune',

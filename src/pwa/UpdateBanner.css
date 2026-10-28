@@ -1,0 +1,44 @@
+.update-banner:empty {
+  display: none;
+}
+
+.update-banner {
+  position: fixed;
+  z-index: 70;
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 460px;
+  margin-inline: auto;
+  padding: 10px 12px 10px 16px;
+  border: 1.5px solid var(--accent-2);
+  border-radius: 999px;
+  background: var(--wall);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.update-banner button {
+  min-height: var(--tap);
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent-2);
+  color: var(--on-accent-2);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* A phone in a room: above the bar of the track and the tabs' field, never over the video. */
+@media (max-width: 760px) {
+  .update-banner {
+    bottom: calc(76px + env(safe-area-inset-bottom));
+  }
+}

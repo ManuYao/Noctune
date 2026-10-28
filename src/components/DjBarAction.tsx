@@ -135,7 +135,7 @@ export default function DjBarAction({
       </button>
       <p id="dj-cta-note" className="dj-cta__note">
         {noTrack ? (
-          <span className="dj-cta__warn">Dernier morceau : ajoutes-en un pour rester DJ</span>
+          <span className="dj-cta__warn">Dernier morceau : ajoutes-en un</span>
         ) : place.onDecks ? (
           'À la console'
         ) : (

@@ -10,7 +10,7 @@ import { boxesMeet, layoutBubble, type BubbleAnchor, type BubbleLayout, type Box
 import SceneBubble from './SceneBubble'
 import SceneConsole from './SceneConsole'
 import { approxTextWidth, cutText } from './sceneText'
-import { CENTER_FIRST, DJ_SLOT, SELF_SLOT, STAGE_SLOTS, assignSlots, type StageSlot } from './stageSlots'
+import { CENTER_FIRST, DJ_SLOT, SELF_SLOT, STAGE_SLOTS, WAITING_DJ_SLOTS, assignSlots, type StageSlot } from './stageSlots'
 import { useBoxSize } from './useBoxSize'
 import { useHearts } from './useHearts'
 import { useSceneBubbles } from './useSceneBubbles'
@@ -45,10 +45,12 @@ const SCREEN = { x: 230, y: 20, width: 480, height: 270, radius: 12 }
 const MIN_SCALE = 200 / SCREEN.height
 // A narrow scene has no room for the crowd: one short row of it.
 const NARROW_MAX_PEOPLE = 7
-// The first two places of STAGE_SLOTS are on the stage beside the console: the DJs waiting stand there, nobody else.
+// The podium: the DJ on the decks is number 1, the next two DJs stand on the stage beside the console (WAITING_DJ_SLOTS: numbers
+// 2 and 3), nobody else. The first two places of STAGE_SLOTS are on the stage too and are never the audience's.
 const STAGE_DJS_MAX = 2
+const STAGE_SLOT_COUNT = 2
 // The audience has the rest, the ones nearest the middle first.
-const FLOOR_ORDER = CENTER_FIRST.filter((index) => index >= STAGE_DJS_MAX)
+const FLOOR_ORDER = CENTER_FIRST.filter((index) => index >= STAGE_SLOT_COUNT)
 // Faceless heads for the people who do not fit on the floor.
 const SILHOUETTES_MAX = 15
 // The hearts of the mock-ups, where they float up from (x, y, width of a heart 24 x 22).
@@ -124,8 +126,10 @@ export default function Scene({
   const deckLeaving = dj?.leaving === true
   const deckAwayAvatar = dj && (dj.participantId === null || deckLeaving) ? findAvatar(dj.avatarId) : undefined
   const atDecks = !narrow && deckPerson !== undefined && deckAvatar !== undefined
-  const stageDjs = narrow ? [] : waiting.slice(0, STAGE_DJS_MAX)
-  const moreDjs = narrow ? 0 : Math.max(0, waiting.length - STAGE_DJS_MAX)
+  // Only the DJs who are here: one who left the page is passed over at their turn, and is not drawn at all.
+  const presentWaiting = waiting.filter((entry) => entry.participantId !== null)
+  const stageDjs = narrow ? [] : presentWaiting.slice(0, STAGE_DJS_MAX)
+  const moreDjs = narrow ? 0 : Math.max(0, presentWaiting.length - STAGE_DJS_MAX)
   const stagedIds = stageDjs.flatMap((entry) => (entry.participantId ? [entry.participantId] : []))
   const stageKey = stagedIds.join()
   const self = participants.find((p) => p.id === selfId)
@@ -179,8 +183,6 @@ export default function Scene({
   const floorPeople = others.filter((p) => slots.has(p.id)).sort((a, b) => (slots.get(a.id) ?? 0) - (slots.get(b.id) ?? 0))
   // Who does not fit on the floor is still counted: faceless heads behind the front row, and the "+N".
   const silhouettes = narrow ? 0 : Math.min(hidden, SILHOUETTES_MAX)
-  /** Rank said on the stage: the DJs ahead who are here (an absent DJ is passed over, so they take no number). */
-  const stageRank = (index: number) => stageDjs.slice(0, index).filter((entry) => entry.participantId !== null).length
 
   /** Where somebody who just wrote has their bubble, and whether a tag names them (the viewer and the DJ need none). */
   function bubbleSpot(authorId: string): { anchor: BubbleAnchor; name: string | null } | null {
@@ -191,7 +193,7 @@ export default function Scene({
     }
     const stageIndex = stageDjs.findIndex((entry) => entry.participantId === authorId)
     if (stageIndex !== -1) {
-      return { anchor: bubbleAnchor(STAGE_SLOTS[stageIndex]), name: authorId === self?.id ? null : stageDjs[stageIndex].pseudo }
+      return { anchor: bubbleAnchor(WAITING_DJ_SLOTS[stageIndex]), name: authorId === self?.id ? null : stageDjs[stageIndex].pseudo }
     }
     const index = slots.get(authorId)
     const person = others.find((p) => p.id === authorId)
@@ -227,22 +229,23 @@ export default function Scene({
             </g>
           ))}
 
-          {/* The stage: the DJs waiting, in line order. Only the viewer's has the ring. */}
+          {/* The stage: the three DJs whose track plays next, in line order (1er, 2e, 3e). A DJ who left the page is not there:
+              only the DJ on the decks stays, in grey. Only the viewer's has the ring. */}
           {stageDjs.map((entry, index) => {
             const avatar = findAvatar(entry.avatarId)
-            const slot = STAGE_SLOTS[index]
+            const slot = WAITING_DJ_SLOTS[index]
             if (!avatar) return null
-            const away = entry.participantId === null
-            const isSelf = entry.participantId !== null && entry.participantId === selfId
-            const label = away ? 'hors ligne' : `${ordinal(stageRank(index) + 1)}${isSelf ? ' · toi' : ''}`
+            const isSelf = entry.participantId === selfId
+            // The DJ on the decks is number 1: the first of the line is number 2, the second number 3.
+            const label = `${index + 2}${isSelf ? ' · toi' : ''}`
             const width = approxTextWidth(label, 12) + 20
             const middle = slot.x + slot.size / 2
             return (
               <g key={entry.id}>
-                {isSelf && <ellipse cx={middle} cy={slot.shadow.cy} rx="34" ry="8" className="sc-accent sc-stroke-accent scene__ring" strokeWidth="2.5" />}
-                {renderPerson(entry.id, avatar, slot, away)}
-                <rect x={middle - width / 2} y={slot.y + slot.size + 8} width={width} height="22" rx="11" className={away ? 'scene__pill--away' : 'sc-accent2'} />
-                <text x={middle} y={slot.y + slot.size + 23} textAnchor="middle" className={away ? 'scene__text scene__text--away' : 'scene__text scene__text--chip'}>
+                {isSelf && <ellipse cx={middle} cy={slot.shadow.cy} rx="32" ry="7" className="sc-accent sc-stroke-accent scene__ring" strokeWidth="2.5" />}
+                {renderPerson(entry.id, avatar, slot)}
+                <rect x={middle - width / 2} y={slot.y + slot.size + 8} width={width} height="22" rx="11" className="sc-accent2" />
+                <text x={middle} y={slot.y + slot.size + 23} textAnchor="middle" className="scene__text scene__text--chip">
                   {label}
                 </text>
               </g>
@@ -250,8 +253,8 @@ export default function Scene({
           })}
           {moreDjs > 0 && (
             <g>
-              <rect x={653 - (approxTextWidth(`+${moreDjs} DJ`, 12) + 20) / 2} y="391" width={approxTextWidth(`+${moreDjs} DJ`, 12) + 20} height="22" rx="11" className="sc-accent2" />
-              <text x="653" y="406" textAnchor="middle" className="scene__text scene__text--chip">
+              <rect x={690 - (approxTextWidth(`+${moreDjs} DJ`, 12) + 20) / 2} y="334" width={approxTextWidth(`+${moreDjs} DJ`, 12) + 20} height="22" rx="11" className="sc-accent2" />
+              <text x="690" y="349" textAnchor="middle" className="scene__text scene__text--chip">
                 +{moreDjs} DJ
               </text>
             </g>
@@ -266,6 +269,15 @@ export default function Scene({
                 {deckLeaving ? 'son morceau joue' : 'hors ligne · son morceau joue'}
               </text>
             </>
+          )}
+          {/* Number 1 of the podium: the DJ on the decks (in grey too when they left). */}
+          {dj && !narrow && (atDecks || deckAwayAvatar) && (
+            <g>
+              <rect x="524" y="318" width="26" height="22" rx="11" className="sc-accent2" />
+              <text x="537" y="333" textAnchor="middle" className="scene__text scene__text--chip">
+                1
+              </text>
+            </g>
           )}
           <SceneConsole djName={dj ? dj.pseudo : null} />
 

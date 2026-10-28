@@ -34,6 +34,15 @@ export const STAGE_SLOTS: StageSlot[] = [
   { x: 180, y: 575, size: 126, shadow: { cx: 243, cy: 693, rx: 33, ry: 7, opacity: 0.45 }, delay: -0.75 },
 ]
 
+/**
+ * The podium: the DJ on the decks is number 1 (behind the console), the next two DJs stand beside the console, number 2 on
+ * its left and number 3 on its right. Nobody else stands there. Between the speakers (the stage is 210-730 wide) and clear of the console's plate (370-570).
+ */
+export const WAITING_DJ_SLOTS: StageSlot[] = [
+  { x: 287, y: 306, size: 56, shadow: { cx: 315, cy: 361, rx: 15, ry: 3.2, opacity: 0.3 }, delay: -0.8, bubbleSide: 'left' },
+  { x: 597, y: 306, size: 56, shadow: { cx: 625, cy: 361, rx: 15, ry: 3.2, opacity: 0.3 }, delay: -0.6, bubbleSide: 'right' },
+]
+
 /** The viewer: always in front, in the middle, on a ring of the accent colour. */
 export const SELF_SLOT: StageSlot = {
   x: 400,

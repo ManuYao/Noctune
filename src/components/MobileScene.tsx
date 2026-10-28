@@ -49,7 +49,9 @@ const CROWD_DEPTH = [0, 0, 0, 0, 0, 0]
 // Where the viewer stands when somebody else has the decks: the place of the crowd's third slot.
 const SELF_ASIDE = 2
 // The DJs waiting stand level with the console, one on each side (fractions of the width), the first two only.
-const STAGE_DJ_X = [0.22, 0.78]
+const STAGE_DJ_X = [0.18, 0.76]
+// The podium: the DJ on the decks is number 1 (behind the console), the next two stand beside it: number 2 on the left,
+// number 3 on the right.
 const STAGE_DJS_MAX = 2
 // Under this much floor (a short window) the crowd would not fit in front of the stage: only the drawing remains.
 const MIN_FLOOR_FOR_PEOPLE = 36
@@ -160,8 +162,10 @@ export default function MobileScene({ participants, selfId, dj, waiting, likePul
   const self = participants.find((p) => p.id === selfId)
   const selfAvatar = self && findAvatar(self.avatarId)
   const selfAtDecks = deckPerson !== undefined && self !== undefined && deckPerson.id === self.id
-  const stageDjs = waiting.slice(0, STAGE_DJS_MAX)
-  const moreDjs = Math.max(0, waiting.length - STAGE_DJS_MAX)
+  // The three DJs whose track plays next, the ones who are here: one who left the page is not drawn at all.
+  const presentWaiting = waiting.filter((entry) => entry.participantId !== null)
+  const stageDjs = presentWaiting.slice(0, STAGE_DJS_MAX)
+  const moreDjs = Math.max(0, presentWaiting.length - STAGE_DJS_MAX)
   const stagedIds = stageDjs.flatMap((entry) => (entry.participantId ? [entry.participantId] : []))
   const stageKey = stagedIds.join()
   const selfOnStage = self !== undefined && stagedIds.includes(self.id)
@@ -336,19 +340,32 @@ export default function MobileScene({ participants, selfId, dj, waiting, likePul
           </>
         )}
 
-        {/* The DJs waiting, level with the console, one on each side: smaller, with a cyan ring (the viewer's is the accent
-            one). No numbers on a phone. */}
+        {/* The podium, numbered: 1 is the DJ on the decks, 2 and 3 the next two DJs, level with the console, one on each side:
+            smaller, with a cyan ring (the viewer's is the accent one). */}
+        {showPeople && (deckAvatar !== undefined || deckAwayAvatar !== undefined) && (
+          <g>
+            <circle cx={middle + deckSize * 0.5 + 6} cy={deckFeet - deckSize + 6} r="7.5" className="sc-accent2" />
+            <text x={middle + deckSize * 0.5 + 6} y={deckFeet - deckSize + 9.5} textAnchor="middle" className="scene__text scene__text--chip" fontSize="10">
+              1
+            </text>
+          </g>
+        )}
         {showPeople &&
           stageDjs.map((entry, index) => {
             const avatar = findAvatar(entry.avatarId)
             if (!avatar) return null
             const x = W * STAGE_DJ_X[index]
-            const size = Math.min(38, deckSize * 0.72)
-            const isSelf = entry.participantId !== null && entry.participantId === selfId
+            // Small enough for the third (at 14 %) to stay clear of the speaker.
+            const size = Math.min(32, deckSize * 0.66)
+            const isSelf = entry.participantId === selfId
             return (
               <g key={entry.id}>
                 <ellipse cx={x} cy={deckFeet + 3} rx={size * 0.5} ry={size * 0.09} fill="none" className={isSelf ? 'sc-stroke-accent' : 'sc-stroke-accent2'} strokeWidth="2" />
-                <Person avatar={avatar} x={x} feetY={deckFeet} size={size} delay={-0.3 * index} away={entry.participantId === null} />
+                <Person avatar={avatar} x={x} feetY={deckFeet} size={size} delay={-0.3 * index} />
+                <circle cx={x + size * 0.5 + 3} cy={deckFeet - size + 5} r="7.5" className="sc-accent2" />
+                <text x={x + size * 0.5 + 3} y={deckFeet - size + 8.5} textAnchor="middle" className="scene__text scene__text--chip" fontSize="10">
+                  {index + 2}
+                </text>
               </g>
             )
           })}

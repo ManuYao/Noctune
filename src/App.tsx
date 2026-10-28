@@ -15,8 +15,18 @@ import RulesPage from './pages/RulesPage'
 import RoomsPage from './pages/RoomsPage'
 import RoomInfoPage from './pages/RoomInfoPage'
 import RoomPage from './pages/RoomPage'
+import UpdateBanner from './pwa/UpdateBanner'
 
 export default function App() {
+  return (
+    <>
+      <UpdateBanner />
+      <AppRoutes />
+    </>
+  )
+}
+
+function AppRoutes() {
   return (
     <Routes>
       {/* Every page that scrolls ends with the footer of the legal pages; the room fits the window and has none. */}

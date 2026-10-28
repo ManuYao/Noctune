@@ -6,9 +6,11 @@ import AccountProvider from './auth/AccountProvider'
 import ConsentProvider from './consent/ConsentProvider'
 import { startCalmMotion } from './settings/calmMotion'
 import './pwa/installPrompt'
+import { startUpdateWatcher } from './pwa/updateWatcher'
 import './index.css'
 
 startCalmMotion()
+startUpdateWatcher()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

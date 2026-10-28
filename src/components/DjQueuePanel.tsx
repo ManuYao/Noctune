@@ -131,8 +131,6 @@ export default function DjQueuePanel({
   // The order to come, as the server plays it. The "⋯" sits on the first track of each waiting DJ: that is the one a report
   // or the host's action points at. An absent DJ is not in it: they are passed over, so the times are what will happen.
   const remainingSec = nowPlaying ? Math.max(0, nowPlaying.durationSec - trackPositionSec(nowPlaying, serverNow)) : 0
-  // DJs who left the room keep their place for a few minutes but are passed over: they are not in the order above.
-  const absent = queue.waiting.filter((entry) => entry.participantId === null)
   const upcomingRows: ReactNode[] = []
   {
     const seen = new Set<string>()
@@ -208,11 +206,6 @@ export default function DjQueuePanel({
           )}
           {queue.upcoming.length >= UPCOMING_MAX && (
             <p className="dj-queue__note">Seuls les {UPCOMING_MAX} prochains morceaux sont affichés.</p>
-          )}
-          {absent.length > 0 && (
-            <p className="dj-queue__note">
-              Hors ligne, place gardée quelques minutes : {absent.map((entry) => entry.pseudo).join(', ')}.
-            </p>
           )}
         </div>
       )}
