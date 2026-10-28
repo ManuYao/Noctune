@@ -70,7 +70,7 @@ export default function DjDock({ variant, rules, queue, selfId, isMember, lineup
   if (variant === 'pill') {
     return (
       <button type="button" className={`${classes} dj-dock--mine`} aria-haspopup="dialog" onClick={onOpen}>
-        {place.onDecks ? 'À la console' : `${ordinal((place.position ?? 0) + 1)} dans la file`} · Mes morceaux ({lineup.length})
+        {place.onDecks ? 'À la console' : `${ordinal((place.rank ?? 0) + 1)} dans la file`} · Mes morceaux ({lineup.length})
       </button>
     )
   }

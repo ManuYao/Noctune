@@ -2,14 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
 import { UPCOMING_MAX } from '../../shared/protocol'
-import type { DjQueue, QueuedTrack, RoomRules, Track } from '../../shared/protocol'
+import type { DjQueue, RoomRules, Track } from '../../shared/protocol'
 import { trackPositionSec } from '../../shared/clock'
 import { formatWaitShort } from '../data/duration'
 import { useServerNow } from '../player/useServerNow'
 import { djCount, estimateWaitSec, findMyPlace } from '../realtime/djQueue'
 import { turnMessage } from '../realtime/djMessages'
 import DjQueueRow from './DjQueueRow'
-import TrackCover from './TrackCover'
 import UpcomingRow from './UpcomingRow'
 import '../pages/PageKit.css'
 import './DjQueuePanel.css'
@@ -23,15 +22,12 @@ interface DjQueuePanelProps {
   nowPlaying: Track | null
   /** Milliseconds to add to the local clock to get the server clock. */
   clockOffsetMs: number
-  /** The viewer's own tracks, in the order they will play. */
-  lineup: QueuedTrack[]
   /**
    * A phone: the panel is the whole tab (mock-up M3b). The list scrolls above `dock`, the way in ("Passer DJ", "Quitter
    * la file") at its foot, where the bar has no room for it. On a computer it is at the end of the bar, as in the mock-ups.
    */
   showCta: boolean
   dock?: ReactNode
-  onOpen: () => void
 }
 
 export default function DjQueuePanel({
@@ -41,10 +37,8 @@ export default function DjQueuePanel({
   isMember,
   nowPlaying,
   clockOffsetMs,
-  lineup,
   showCta,
   dock,
-  onOpen,
 }: DjQueuePanelProps) {
   const serverNow = useServerNow(clockOffsetMs, nowPlaying !== null)
   const place = findMyPlace(queue, selfId)
@@ -57,11 +51,12 @@ export default function DjQueuePanel({
   const selfWait = place && !place.onDecks ? formatWaitShort(waitSec) : null
 
   const noTrack = place !== null && place.entry.next === null
-  // Without a track the warning replaces the sentence about the turn: it matters more, and the footer stays one row.
+  // Nothing lined up behind the track on the decks: when it ends the viewer is no longer a DJ. The warning replaces the
+  // sentence about the turn: it matters more, and the footer stays one row.
   const status = !isMember
     ? null
     : noTrack
-      ? 'Sans morceau, ton tour sera passé : ajoutes-en un.'
+      ? "C'est ton dernier morceau : ajoutes-en un pour rester DJ."
       : place === null && full
         ? 'La file est complète : réessaie quand un DJ sera parti.'
         : turnMessage(place, count, waitSec)
@@ -105,12 +100,12 @@ export default function DjQueuePanel({
   const placeKey = place ? `${place.onDecks}-${place.position}` : ''
   useEffect(keepSelfInView, [placeKey, keepSelfInView])
 
-  // A phone: the rows and "Ton morceau" scroll as one. The viewer's own row and their next track are brought into view when
-  // their place changes, and when the tab is shown (a hidden tab has no size, so that cannot be done while it is hidden).
+  // A phone: the rows and the notes scroll as one. The viewer's own row is brought into view when their place changes, and
+  // when the tab is shown (a hidden tab has no size, so that cannot be done while it is hidden).
   const scrollRef = useRef<HTMLDivElement>(null)
   const revealOwn = useCallback(() => {
     const scroll = scrollRef.current
-    const target = scroll?.querySelector<HTMLElement>('.dj-queue__mine') ?? scroll?.querySelector<HTMLElement>('.dj-row--self')
+    const target = scroll?.querySelector<HTMLElement>('.dj-row--self')
     if (!scroll || !target) return
     const box = scroll.getBoundingClientRect()
     const row = target.getBoundingClientRect()
@@ -119,7 +114,7 @@ export default function DjQueuePanel({
   }, [])
   useEffect(() => {
     if (showCta) revealOwn()
-  }, [showCta, placeKey, lineup.length, revealOwn])
+  }, [showCta, placeKey, queue.upcoming.length, revealOwn])
   useEffect(() => {
     const scroll = scrollRef.current
     if (!showCta || !scroll) return
@@ -136,7 +131,8 @@ export default function DjQueuePanel({
   // The order to come, as the server plays it. The "⋯" sits on the first track of each waiting DJ: that is the one a report
   // or the host's action points at. An absent DJ is not in it: they are passed over, so the times are what will happen.
   const remainingSec = nowPlaying ? Math.max(0, nowPlaying.durationSec - trackPositionSec(nowPlaying, serverNow)) : 0
-  const idle = queue.waiting.filter((entry) => entry.next === null)
+  // DJs who left the room keep their place for a few minutes but are passed over: they are not in the order above.
+  const absent = queue.waiting.filter((entry) => entry.participantId === null)
   const upcomingRows: ReactNode[] = []
   {
     const seen = new Set<string>()
@@ -159,7 +155,6 @@ export default function DjQueuePanel({
     }
   }
 
-  const next = lineup[0]
   const body = (
     <>
       <header className="dj-queue__header">
@@ -214,30 +209,15 @@ export default function DjQueuePanel({
           {queue.upcoming.length >= UPCOMING_MAX && (
             <p className="dj-queue__note">Seuls les {UPCOMING_MAX} prochains morceaux sont affichés.</p>
           )}
-          {idle.length > 0 && (
+          {absent.length > 0 && (
             <p className="dj-queue__note">
-              En file sans morceau (tour passé) : {idle.map((entry) => (entry.id === place?.entry.id ? `${entry.pseudo} (toi)` : entry.pseudo)).join(', ')}.
+              Hors ligne, place gardée quelques minutes : {absent.map((entry) => entry.pseudo).join(', ')}.
             </p>
           )}
         </div>
       )}
 
-      {/* A phone: the viewer's next track is the way to all of theirs; what is wrong with their turn is said under it. */}
-      {showCta && isMember && place && next && (
-        <button type="button" className="dj-queue__mine" aria-haspopup="dialog" onClick={onOpen}>
-          <TrackCover seed={next.videoId} size={44} />
-          <span className="dj-queue__mine-text">
-            <span className="dj-queue__mine-label">Ton morceau</span>
-            <span className="dj-queue__mine-track">
-              <strong>{next.title}</strong> · {next.artist}
-            </span>
-          </span>
-          <span className="visually-hidden">Mes morceaux ({lineup.length})</span>
-          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M6 3 L11 8 L6 13" />
-          </svg>
-        </button>
-      )}
+      {/* A phone: the viewer's own tracks are already in the order above ("toi"); the dock below leads to all of them. */}
       {showCta && isMember && status && (
         <p className={noTrack ? 'dj-queue__status dj-queue__status--warn' : 'dj-queue__status'}>{status}</p>
       )}

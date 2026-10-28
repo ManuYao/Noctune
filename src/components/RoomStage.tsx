@@ -160,7 +160,7 @@ export default function RoomStage({
           participants={participants}
           selfId={selfId}
           dj={queue.current}
-          queuePosition={place && !place.onDecks ? place.position : null}
+          queuePosition={place && !place.onDecks ? place.rank : null}
           likePulse={likePulse}
           messages={messages}
           clockOffsetMs={clockOffsetMs}

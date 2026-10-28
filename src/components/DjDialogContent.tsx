@@ -486,7 +486,7 @@ export default function DjDialogContent({
                 </svg>
                 <p>
                   {place
-                    ? 'Aucun morceau en attente : ajoutes-en un pour garder ta place.'
+                    ? 'Aucun morceau en attente : ajoutes-en un avant la fin du tien pour rester DJ.'
                     : `Tes morceaux en attente seront ici, jusqu'à ${LINEUP_MAX}. Tu pourras en ajouter d'autres et les retirer.`}
                 </p>
               </div>

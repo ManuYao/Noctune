@@ -135,11 +135,11 @@ export default function DjBarAction({
       </button>
       <p id="dj-cta-note" className="dj-cta__note">
         {noTrack ? (
-          <span className="dj-cta__warn">Sans morceau, ton tour sera passé</span>
+          <span className="dj-cta__warn">Dernier morceau : ajoutes-en un pour rester DJ</span>
         ) : place.onDecks ? (
           'À la console'
         ) : (
-          `${ordinal((place.position ?? 0) + 1)} dans la file`
+          `${ordinal((place.rank ?? 0) + 1)} dans la file`
         )}
         {' · '}
         <button type="button" className="dj-cta__link" aria-haspopup="dialog" onClick={onOpen}>

@@ -52,6 +52,7 @@ export default function DjQueueRow({ entry, rank, isSelf, nowPlaying, selfWait }
         <span className="dj-row__name">
           {entry.pseudo}
           {isSelf && ' (toi)'}
+          {away && onDecks && ' (hors ligne)'}
         </span>
         <span className="dj-row__detail" title={detail}>
           {detail}

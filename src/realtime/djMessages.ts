@@ -55,7 +55,7 @@ export function djErrorMessage(failure: DjFailure): string {
 export function turnMessage(place: MyPlace | null, djs: number, waitSec: number): string {
   if (place?.onDecks) return 'Tu es à la console.'
   if (place) {
-    const rank = place.position === 0 ? 'Tu es le prochain' : `Tu es n°${(place.position ?? 0) + 1} dans la file`
+    const rank = place.rank === 0 ? 'Tu es le prochain' : `Tu es n°${(place.rank ?? 0) + 1} dans la file`
     return `${rank} : ton tour dans ${formatWait(waitSec)}.`
   }
   return djs === 0

@@ -84,7 +84,7 @@ export default function RoomSide({
   // lives here and not in the queue panel: on a phone that panel is hidden while another tab is shown, and a hidden
   // region says nothing.
   const place = findMyPlace(queue, selfId)
-  const announcement = place?.onDecks ? 'Tu es à la console.' : place?.position === 0 ? 'Tu es le prochain à jouer.' : ''
+  const announcement = place?.onDecks ? 'Tu es à la console.' : place?.rank === 0 ? 'Tu es le prochain à jouer.' : ''
 
   function handleTabKeys(event: KeyboardEvent<HTMLDivElement>) {
     const index = tabs.findIndex((candidate) => candidate.id === active)
@@ -173,10 +173,8 @@ export default function RoomSide({
             isMember={isMember}
             nowPlaying={nowPlaying}
             clockOffsetMs={clockOffsetMs}
-            lineup={lineup}
             showCta={phone}
             dock={phone ? dock('bar') : undefined}
-            onOpen={onOpenDj}
           />
         </div>
       )}

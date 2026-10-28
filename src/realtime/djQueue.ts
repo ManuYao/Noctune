@@ -8,15 +8,22 @@ export interface MyPlace {
   entry: DjQueueEntry
   /** On the decks right now. */
   onDecks: boolean
-  /** Place among the waiting DJs, 0 for the next one to play. Null on the decks. */
+  /** Index among the waiting DJs, absent ones included (what `estimateWaitSec` slices by). Null on the decks. */
   position: number | null
+  /**
+   * What is said to the viewer: how many DJs will play before them, 0 for the next one. DJs who are away are passed
+   * over, so they do not count. Null on the decks.
+   */
+  rank: number | null
 }
 
 export function findMyPlace(queue: DjQueue, selfId: string | undefined): MyPlace | null {
   if (!selfId) return null
-  if (queue.current?.participantId === selfId) return { entry: queue.current, onDecks: true, position: null }
+  if (queue.current?.participantId === selfId) return { entry: queue.current, onDecks: true, position: null, rank: null }
   const position = queue.waiting.findIndex((entry) => entry.participantId === selfId)
-  return position === -1 ? null : { entry: queue.waiting[position], onDecks: false, position }
+  if (position === -1) return null
+  const rank = queue.waiting.slice(0, position).filter((entry) => entry.participantId !== null).length
+  return { entry: queue.waiting[position], onDecks: false, position, rank }
 }
 
 /** DJs in the queue, the one on the decks included: what the room's `maxDjs` counts. */
