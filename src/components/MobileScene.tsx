@@ -299,7 +299,8 @@ export default function MobileScene({ participants, selfId, dj, likePulse, decor
               ) : null
             })}
 
-        {showPeople && deckAvatar && (
+        {/* Somebody else on the decks. The viewer on the decks is drawn once, with their ring, further down. */}
+        {showPeople && deckAvatar && !selfAtDecks && (
           <>
             <Person avatar={deckAvatar} x={middle} feetY={deckFeet} size={deckSize} delay={-0.1} />
             <Console cx={middle} y={deckFeet - 10} width={Math.min(86, W * 0.22)} />
