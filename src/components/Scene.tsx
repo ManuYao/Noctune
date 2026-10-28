@@ -21,6 +21,8 @@ interface SceneProps {
   selfId: string | undefined
   /** The DJ on the decks: they stand behind the console instead of on the floor. Null while nobody is. */
   dj: DjQueueEntry | null
+  /** The DJs waiting, next first: the first two stand on the stage beside the console (in grey when they left the room). */
+  waiting: DjQueueEntry[]
   /** The viewer's place among the waiting DJs (0: next to play), null when they are not waiting. */
   queuePosition: number | null
   /** Goes up at each like anyone gives: a heart rises from the floor. */
@@ -43,6 +45,12 @@ const SCREEN = { x: 230, y: 20, width: 480, height: 270, radius: 12 }
 const MIN_SCALE = 200 / SCREEN.height
 // A narrow scene has no room for the crowd: one short row of it.
 const NARROW_MAX_PEOPLE = 7
+// The first two places of STAGE_SLOTS are on the stage beside the console: the DJs waiting stand there, nobody else.
+const STAGE_DJS_MAX = 2
+// The audience has the rest, the ones nearest the middle first.
+const FLOOR_ORDER = CENTER_FIRST.filter((index) => index >= STAGE_DJS_MAX)
+// Faceless heads for the people who do not fit on the floor.
+const SILHOUETTES_MAX = 15
 // The hearts of the mock-ups, where they float up from (x, y, width of a heart 24 x 22).
 const HEART_SPOTS = [
   { x: 215, y: 428, width: 22 },
@@ -53,9 +61,14 @@ const HEART_SPOTS = [
 ]
 
 /** Somebody of the crowd in their slot: their shadow on the floor, and the avatar that bounces. */
-function renderPerson(key: string, avatar: AvatarDef, slot: Pick<StageSlot, 'x' | 'y' | 'size' | 'delay'> & { shadow?: StageSlot['shadow'] }) {
+function renderPerson(
+  key: string,
+  avatar: AvatarDef,
+  slot: Pick<StageSlot, 'x' | 'y' | 'size' | 'delay'> & { shadow?: StageSlot['shadow'] },
+  away = false,
+) {
   return (
-    <g key={key}>
+    <g key={key} className={away ? 'scene__person--away' : undefined}>
       {slot.shadow && (
         <ellipse cx={slot.shadow.cx} cy={slot.shadow.cy} rx={slot.shadow.rx} ry={slot.shadow.ry} fill="#000000" opacity={slot.shadow.opacity} />
       )}
@@ -88,6 +101,7 @@ export default function Scene({
   participants,
   selfId,
   dj,
+  waiting,
   queuePosition,
   likePulse,
   messages,
@@ -100,26 +114,38 @@ export default function Scene({
   const scale = size ? Math.min(size.width / VIEW_W, size.height / VIEW_H) : 1
   const narrow = size !== null && scale < MIN_SCALE
 
-  // The DJ on the decks stands behind the console, and so is not on the floor as well. A narrow scene has no console:
-  // there they stay in the row with everybody. A DJ who is away (their track plays on) is not drawn at all.
+  // Three zones: the DJ on the decks stands behind the console (and so is not on the floor as well); the DJs waiting stand
+  // on the stage beside it, the first two, in line order; everybody else is the audience, on the floor. A narrow scene has
+  // no console nor stage: there everybody stays in the row. A DJ who left the room (their track plays on, their place is
+  // kept for a few minutes) stays where they were, in grey.
   const deckPerson = dj?.participantId ? participants.find((p) => p.id === dj.participantId) : undefined
   const deckAvatar = deckPerson && findAvatar(deckPerson.avatarId)
+  const deckAwayAvatar = dj && dj.participantId === null ? findAvatar(dj.avatarId) : undefined
   const atDecks = !narrow && deckPerson !== undefined && deckAvatar !== undefined
+  const stageDjs = narrow ? [] : waiting.slice(0, STAGE_DJS_MAX)
+  const moreDjs = narrow ? 0 : Math.max(0, waiting.length - STAGE_DJS_MAX)
+  const stagedIds = stageDjs.flatMap((entry) => (entry.participantId ? [entry.participantId] : []))
+  const stageKey = stagedIds.join()
   const self = participants.find((p) => p.id === selfId)
   const others = useMemo(
-    () => participants.filter((p) => p.id !== selfId && !(atDecks && p.id === deckPerson?.id)),
-    [participants, selfId, atDecks, deckPerson?.id],
+    () => participants.filter((p) => p.id !== selfId && !(atDecks && p.id === deckPerson?.id) && !stageKey.split(',').includes(p.id)),
+    [participants, selfId, atDecks, deckPerson?.id, stageKey],
   )
-  const slots = useMemo(() => assignSlots(others.map((participant) => participant.id), STAGE_SLOTS.length, CENTER_FIRST), [others])
+  // The audience only has the floor: the two places of the stage are never theirs.
+  const slots = useMemo(() => assignSlots(others.map((participant) => participant.id), FLOOR_ORDER.length, FLOOR_ORDER), [others])
 
   const hearts = useHearts(likePulse, HEART_SPOTS.length)
   const bubbles = useSceneBubbles(messages, clockOffsetMs)
 
   const selfAtDecks = atDecks && self !== undefined && self.id === deckPerson?.id
-  const selfOnFloor = self !== undefined && !selfAtDecks
+  const selfOnStage = self !== undefined && stagedIds.includes(self.id)
+  const selfOnFloor = self !== undefined && !selfAtDecks && !selfOnStage
   // The viewer is always in the narrow row too, first.
   const row = narrow ? [...(self ? [self] : []), ...others].slice(0, NARROW_MAX_PEOPLE) : []
-  const shownCount = narrow ? row.length : slots.size + (selfOnFloor ? 1 : 0) + (atDecks ? 1 : 0)
+  const stagedOthers = stagedIds.filter((id) => id !== self?.id && participants.some((p) => p.id === id)).length
+  const shownCount = narrow
+    ? row.length
+    : slots.size + (selfOnFloor ? 1 : 0) + (selfOnStage ? 1 : 0) + (atDecks ? 1 : 0) + stagedOthers
   const hidden = Math.max(0, participants.length - shownCount)
 
   // The box is laid over the drawing's screen, in pixels of the scene.
@@ -147,8 +173,12 @@ export default function Scene({
   const chipText = queuePosition === null ? null : `${ordinal(queuePosition + 1)} dans la file`
   const chipWidth = chipText ? approxTextWidth(chipText, 12) + 20 : 0
 
-  const stagePeople = others.filter((p) => (slots.get(p.id) ?? 99) < 2)
-  const floorPeople = others.filter((p) => (slots.get(p.id) ?? -1) >= 2).sort((a, b) => (slots.get(a.id) ?? 0) - (slots.get(b.id) ?? 0))
+  // Drawn in slot order: the rows in front cover the rows behind them.
+  const floorPeople = others.filter((p) => slots.has(p.id)).sort((a, b) => (slots.get(a.id) ?? 0) - (slots.get(b.id) ?? 0))
+  // Who does not fit on the floor is still counted: faceless heads behind the front row, and the "+N".
+  const silhouettes = narrow ? 0 : Math.min(hidden, SILHOUETTES_MAX)
+  /** Rank said on the stage: the DJs ahead who are here (an absent DJ is passed over, so they take no number). */
+  const stageRank = (index: number) => stageDjs.slice(0, index).filter((entry) => entry.participantId !== null).length
 
   /** Where somebody who just wrote has their bubble, and whether a tag names them (the viewer and the DJ need none). */
   function bubbleSpot(authorId: string): { anchor: BubbleAnchor; name: string | null } | null {
@@ -156,6 +186,10 @@ export default function Scene({
     // The plate on the console names the DJ already.
     if (atDecks && authorId === deckPerson?.id) {
       return { anchor: { side: 'right', x: DJ_SLOT.x + DJ_SLOT.size * 0.88, y: DJ_SLOT.y + DJ_SLOT.size * 0.5 }, name: null }
+    }
+    const stageIndex = stageDjs.findIndex((entry) => entry.participantId === authorId)
+    if (stageIndex !== -1) {
+      return { anchor: bubbleAnchor(STAGE_SLOTS[stageIndex]), name: authorId === self?.id ? null : stageDjs[stageIndex].pseudo }
     }
     const index = slots.get(authorId)
     const person = others.find((p) => p.id === authorId)
@@ -184,12 +218,53 @@ export default function Scene({
         <svg className="scene__art" viewBox={viewBox} aria-hidden="true" focusable="false">
           <SceneBackdrop kind={decor} />
 
-          {stagePeople.map((person) => {
-            const avatar = findAvatar(person.avatarId)
-            const index = slots.get(person.id)
-            return avatar && index !== undefined ? renderPerson(person.id, avatar, STAGE_SLOTS[index]) : null
+          {Array.from({ length: silhouettes }, (_, index) => (
+            <g key={`crowd-${index}`} className="scene__silhouette">
+              <ellipse cx={118 + index * 49} cy={425 + (index % 2) * 9 + 21} rx="14" ry="11" />
+              <circle cx={118 + index * 49} cy={425 + (index % 2) * 9} r="11" />
+            </g>
+          ))}
+
+          {/* The stage: the DJs waiting, in line order. Only the viewer's has the ring. */}
+          {stageDjs.map((entry, index) => {
+            const avatar = findAvatar(entry.avatarId)
+            const slot = STAGE_SLOTS[index]
+            if (!avatar) return null
+            const away = entry.participantId === null
+            const isSelf = entry.participantId !== null && entry.participantId === selfId
+            const label = away ? 'hors ligne' : `${ordinal(stageRank(index) + 1)}${isSelf ? ' · toi' : ''}`
+            const width = approxTextWidth(label, 12) + 20
+            const middle = slot.x + slot.size / 2
+            return (
+              <g key={entry.id}>
+                {isSelf && <ellipse cx={middle} cy={slot.shadow.cy} rx="34" ry="8" className="sc-accent sc-stroke-accent scene__ring" strokeWidth="2.5" />}
+                {renderPerson(entry.id, avatar, slot, away)}
+                <rect x={middle - width / 2} y={slot.y + slot.size + 8} width={width} height="22" rx="11" className={away ? 'scene__pill--away' : 'sc-accent2'} />
+                <text x={middle} y={slot.y + slot.size + 23} textAnchor="middle" className={away ? 'scene__text scene__text--away' : 'scene__text scene__text--chip'}>
+                  {label}
+                </text>
+              </g>
+            )
           })}
+          {moreDjs > 0 && (
+            <g>
+              <rect x={653 - (approxTextWidth(`+${moreDjs} DJ`, 12) + 20) / 2} y="391" width={approxTextWidth(`+${moreDjs} DJ`, 12) + 20} height="22" rx="11" className="sc-accent2" />
+              <text x="653" y="406" textAnchor="middle" className="scene__text scene__text--chip">
+                +{moreDjs} DJ
+              </text>
+            </g>
+          )}
+
           {atDecks && deckAvatar && renderPerson('dj', deckAvatar, DJ_SLOT)}
+          {deckAwayAvatar && !narrow && (
+            <>
+              {renderPerson('dj', deckAwayAvatar, DJ_SLOT, true)}
+              <rect x="560" y="396" width="196" height="22" rx="11" className="scene__pill--away" />
+              <text x="658" y="411" textAnchor="middle" className="scene__text scene__text--away">
+                hors ligne · son morceau joue
+              </text>
+            </>
+          )}
           <SceneConsole djName={dj ? dj.pseudo : null} />
 
           {floorPeople.map((person) => {

@@ -152,7 +152,7 @@ export default function RoomStage({
   return (
     <div className="room__player">
       {compact ? (
-        <MobileScene participants={participants} selfId={selfId} dj={queue.current} likePulse={likePulse} decor={decor}>
+        <MobileScene participants={participants} selfId={selfId} dj={queue.current} waiting={queue.waiting} likePulse={likePulse} decor={decor}>
           {video}
         </MobileScene>
       ) : (
@@ -160,6 +160,7 @@ export default function RoomStage({
           participants={participants}
           selfId={selfId}
           dj={queue.current}
+          waiting={queue.waiting}
           queuePosition={place && !place.onDecks ? place.rank : null}
           likePulse={likePulse}
           messages={messages}

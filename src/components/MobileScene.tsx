@@ -14,6 +14,8 @@ interface MobileSceneProps {
   selfId: string | undefined
   /** The DJ on the decks: they stand behind a small console in the middle. Null while nobody is. */
   dj: DjQueueEntry | null
+  /** The DJs waiting, next first: the first two stand beside the console (in grey when they left the room). No numbers on a phone. */
+  waiting: DjQueueEntry[]
   /** Goes up at each like anyone gives: a heart rises from the floor. */
   likePulse: number
   /** The genre of the room: its two neon accents (the walls and the floor keep the night blue). */
@@ -37,13 +39,18 @@ const STAGE_GAP = 4
 // The stage of the mock-ups (mock-up M3): a thin top face and a front with its cyan neon line.
 const STAGE_TOP_H = 7
 const STAGE_FRONT_H = 11
-// The crowd on the floor, as the mock-up M3 places it (fractions of the width), outermost first: six people at most.
-const CROWD_X = [0.082, 0.21, 0.346, 0.654, 0.79, 0.918]
+// The audience on the floor, in one row (fractions of the width), outermost first: six people at most. It stays clear of
+// the speakers (8-40 px and the same from the right edge) and of the console in the middle, and fills from the middle out.
+const CROWD_X = [0.17, 0.26, 0.35, 0.65, 0.74, 0.83]
+const CROWD_FILL_ORDER = [2, 3, 1, 4, 0, 5]
 // How big each is next to the base size, and how far up the floor (further from the front) its feet stand.
-const CROWD_SIZE = [1.05, 0.95, 0.9, 0.9, 0.95, 1.05]
-const CROWD_DEPTH = [0.3, 0.14, 0, 0, 0.14, 0.3]
-// Where the viewer stands when the DJ has the middle: the place of the crowd's third slot.
+const CROWD_SIZE = [1, 1, 1, 1, 1, 1]
+const CROWD_DEPTH = [0, 0, 0, 0, 0, 0]
+// Where the viewer stands when somebody else has the decks: the place of the crowd's third slot.
 const SELF_ASIDE = 2
+// The DJs waiting stand level with the console, one on each side (fractions of the width), the first two only.
+const STAGE_DJ_X = [0.22, 0.78]
+const STAGE_DJS_MAX = 2
 // Under this much floor (a short window) the crowd would not fit in front of the stage: only the drawing remains.
 const MIN_FLOOR_FOR_PEOPLE = 36
 const HEART_X = [0.2, 0.36, 0.5, 0.64, 0.8]
@@ -86,9 +93,9 @@ function useGeometry(sceneRef: RefObject<HTMLDivElement | null>, screenRef: RefO
 }
 
 /** Somebody on the floor: their shadow, and the avatar that bounces. `x` is the middle of their feet. */
-function Person({ avatar, x, feetY, size, delay }: { avatar: AvatarDef; x: number; feetY: number; size: number; delay: number }) {
+function Person({ avatar, x, feetY, size, delay, away = false }: { avatar: AvatarDef; x: number; feetY: number; size: number; delay: number; away?: boolean }) {
   return (
-    <g>
+    <g className={away ? 'scene__person--away' : undefined}>
       <ellipse cx={x} cy={feetY - size * 0.02} rx={size * 0.26} ry={size * 0.05} fill="#000000" opacity="0.4" />
       <g className="mw-bob" style={{ animationDelay: `${delay}s` }}>
         <svg x={x - size / 2} y={feetY - size} width={size} height={size} viewBox="0 0 100 100" overflow="visible">
@@ -140,23 +147,32 @@ function Console({ cx, y, width }: { cx: number; y: number; width: number }) {
  * (200 x 200 px, see MobileScene.css), so it takes the width of the phone and the stage and the crowd are squeezed under it.
  * All of it is decoration: the tabs under the scene list the same people, readable by everybody.
  */
-export default function MobileScene({ participants, selfId, dj, likePulse, decor, children }: MobileSceneProps) {
+export default function MobileScene({ participants, selfId, dj, waiting, likePulse, decor, children }: MobileSceneProps) {
   const sceneRef = useRef<HTMLDivElement>(null)
   const screenRef = useRef<HTMLDivElement>(null)
   const geometry = useGeometry(sceneRef, screenRef)
 
   const deckPerson = dj?.participantId ? participants.find((p) => p.id === dj.participantId) : undefined
   const deckAvatar = deckPerson && findAvatar(deckPerson.avatarId)
+  // A DJ who left the room: their track plays on and their place is kept a few minutes. They stay behind the console, in grey.
+  const deckAwayAvatar = dj && dj.participantId === null ? findAvatar(dj.avatarId) : undefined
   const self = participants.find((p) => p.id === selfId)
   const selfAvatar = self && findAvatar(self.avatarId)
   const selfAtDecks = deckPerson !== undefined && self !== undefined && deckPerson.id === self.id
+  const stageDjs = waiting.slice(0, STAGE_DJS_MAX)
+  const moreDjs = Math.max(0, waiting.length - STAGE_DJS_MAX)
+  const stagedIds = stageDjs.flatMap((entry) => (entry.participantId ? [entry.participantId] : []))
+  const stageKey = stagedIds.join()
+  const selfOnStage = self !== undefined && stagedIds.includes(self.id)
   const others = useMemo(
-    () => participants.filter((p) => p.id !== selfId && p.id !== deckPerson?.id),
-    [participants, selfId, deckPerson?.id],
+    () => participants.filter((p) => p.id !== selfId && p.id !== deckPerson?.id && !stageKey.split(',').includes(p.id)),
+    [participants, selfId, deckPerson?.id, stageKey],
   )
   // The viewer takes the middle, unless somebody else is on the decks: then they stand aside, in the crowd's third place.
-  const asideSelf = selfAvatar !== undefined && deckAvatar !== undefined && !selfAtDecks
-  const slots = useMemo(() => assignSlots(others.map((p) => p.id), CROWD_X.length - (asideSelf ? 1 : 0)), [others, asideSelf])
+  const asideSelf = selfAvatar !== undefined && (deckAvatar !== undefined || deckAwayAvatar !== undefined) && !selfAtDecks && !selfOnStage
+  const crowdSlots = useMemo(() => CROWD_FILL_ORDER.filter((index) => !(asideSelf && index === SELF_ASIDE)), [asideSelf])
+  // The slots come out as indexes of CROWD_X, the ones nearest the middle first.
+  const slots = useMemo(() => assignSlots(others.map((p) => p.id), crowdSlots.length, crowdSlots), [others, crowdSlots])
 
   const hearts = useHearts(likePulse, HEART_X.length)
 
@@ -174,19 +190,20 @@ export default function MobileScene({ participants, selfId, dj, likePulse, decor
     const stageWidth = W * 0.6
     const stageLeft = (W - stageWidth) / 2
 
-    // The crowd's slots, in the order they are drawn (further ones first). The viewer's third place is not the crowd's.
+    // The audience, in the order it is drawn (further rows first). The slots are indexes of CROWD_X; the viewer's third
+    // place is not theirs.
     const slotX = CROWD_X.map((fraction) => fraction * W)
-    const crowdSlots = CROWD_X.map((_, index) => index).filter((index) => !(asideSelf && index === SELF_ASIDE))
-    const crowdIndex = (slot: number) => crowdSlots[slot] ?? slot
     const crowd = others
       .map((person) => ({ person, slot: slots.get(person.id) }))
       .filter((entry): entry is { person: Participant; slot: number } => entry.slot !== undefined)
-      .sort((a, b) => CROWD_DEPTH[crowdIndex(b.slot)] - CROWD_DEPTH[crowdIndex(a.slot)])
+      .sort((a, b) => CROWD_DEPTH[b.slot] - CROWD_DEPTH[a.slot])
 
     const selfSize = Math.min(62, base * 1.4)
     const deckSize = Math.min(52, base * 1.2)
     const deckFeet = horizon + floor * 0.52
-    const shownPeople = (showPeople ? crowd.length : 0) + (showPeople && selfAvatar ? 1 : 0) + (showPeople && deckAvatar ? 1 : 0)
+    const stagedOthers = stagedIds.filter((id) => id !== self?.id && participants.some((p) => p.id === id)).length
+    const shownPeople =
+      (showPeople ? crowd.length : 0) + (showPeople && selfAvatar ? 1 : 0) + (showPeople && deckAvatar && !selfAtDecks ? 1 : 0) + (showPeople ? stagedOthers : 0)
     hiddenCount = showPeople ? Math.max(0, participants.length - shownPeople) : 0
 
     const ringRy = selfSize * 0.12
@@ -283,10 +300,10 @@ export default function MobileScene({ participants, selfId, dj, likePulse, decor
 
         {showPeople &&
           crowd
-            .filter((entry) => CROWD_DEPTH[crowdIndex(entry.slot)] > 0)
+            .filter((entry) => CROWD_DEPTH[entry.slot] > 0)
             .map(({ person, slot }) => {
               const avatar = findAvatar(person.avatarId)
-              const index = crowdIndex(slot)
+              const index = slot
               return avatar ? (
                 <Person
                   key={person.id}
@@ -306,13 +323,49 @@ export default function MobileScene({ participants, selfId, dj, likePulse, decor
             <Console cx={middle} y={deckFeet - 10} width={Math.min(86, W * 0.22)} />
           </>
         )}
+        {/* A DJ who left the room: still behind the console, in grey, with a word. */}
+        {showPeople && deckAwayAvatar && (
+          <>
+            <Person avatar={deckAwayAvatar} x={middle} feetY={deckFeet} size={deckSize} delay={-0.1} away />
+            <Console cx={middle} y={deckFeet - 10} width={Math.min(86, W * 0.22)} />
+            <rect x={middle - 31} y={deckFeet + 8} width="62" height="15" rx="7.5" className="scene__pill--away" />
+            <text x={middle} y={deckFeet + 19} textAnchor="middle" className="scene__text scene__text--away" fontSize="10">
+              hors ligne
+            </text>
+          </>
+        )}
+
+        {/* The DJs waiting, level with the console, one on each side: smaller, with a cyan ring (the viewer's is the accent
+            one). No numbers on a phone. */}
+        {showPeople &&
+          stageDjs.map((entry, index) => {
+            const avatar = findAvatar(entry.avatarId)
+            if (!avatar) return null
+            const x = W * STAGE_DJ_X[index]
+            const size = Math.min(38, deckSize * 0.72)
+            const isSelf = entry.participantId !== null && entry.participantId === selfId
+            return (
+              <g key={entry.id}>
+                <ellipse cx={x} cy={deckFeet + 3} rx={size * 0.5} ry={size * 0.09} fill="none" className={isSelf ? 'sc-stroke-accent' : 'sc-stroke-accent2'} strokeWidth="2" />
+                <Person avatar={avatar} x={x} feetY={deckFeet} size={size} delay={-0.3 * index} away={entry.participantId === null} />
+              </g>
+            )
+          })}
+        {showPeople && moreDjs > 0 && (
+          <>
+            <rect x={W * STAGE_DJ_X[1] + 24} y={deckFeet - 20} width="26" height="15" rx="7.5" className="sc-accent2" />
+            <text x={W * STAGE_DJ_X[1] + 37} y={deckFeet - 9} textAnchor="middle" className="scene__text scene__text--chip" fontSize="10">
+              +{moreDjs}
+            </text>
+          </>
+        )}
 
         {showPeople &&
           crowd
-            .filter((entry) => CROWD_DEPTH[crowdIndex(entry.slot)] === 0)
+            .filter((entry) => CROWD_DEPTH[entry.slot] === 0)
             .map(({ person, slot }) => {
               const avatar = findAvatar(person.avatarId)
-              const index = crowdIndex(slot)
+              const index = slot
               return avatar ? (
                 <Person
                   key={person.id}
@@ -326,7 +379,7 @@ export default function MobileScene({ participants, selfId, dj, likePulse, decor
             })}
 
         {/* The viewer: in front, on a ring of the accent colour; behind the console if they are the DJ. */}
-        {showPeople && selfAvatar && !selfAtDecks && (
+        {showPeople && selfAvatar && !selfAtDecks && !selfOnStage && (
           <>
             <ellipse cx={selfX} cy={ringCy} rx={selfSize * 0.7} ry={ringRy} className="sc-accent sc-stroke-accent scene__ring" strokeWidth="2.5" />
             <Person avatar={selfAvatar} x={selfX} feetY={H - 4} size={selfSize} delay={0} />
