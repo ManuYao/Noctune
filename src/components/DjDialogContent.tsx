@@ -15,7 +15,7 @@ import { useServerNow } from '../player/useServerNow'
 import KeepPicker, { type KeepOutcome } from './KeepPicker'
 import { djCount, estimateWaitSec, findMyPlace, type MyPlace } from '../realtime/djQueue'
 import { djErrorMessage } from '../realtime/djMessages'
-import type { SendAddTrackResult, SendDjResult, SendPlaylistStatusResult } from '../realtime/useRoom'
+import type { SendAddManyResult, SendAddTrackResult, SendDjResult, SendPlaylistStatusResult } from '../realtime/useRoom'
 import { STYLE_LABELS, maxTrackChip } from '../rooms/roomLabels'
 import DjPlaylistTab from './DjPlaylistTab'
 import TrackCover from './TrackCover'
@@ -36,6 +36,8 @@ interface DjDialogContentProps {
   styles?: RoomStyle[]
   onAdd: (input: string) => Promise<SendAddTrackResult>
   onAddFromPlaylist: (playlistTrackId: string) => Promise<SendAddTrackResult>
+  /** Several at once: only offered, and only accepted by the server, to a DJ who is alone in the queue. */
+  onAddManyFromPlaylist: (playlistTrackIds: string[]) => Promise<SendAddManyResult>
   onPlaylistStatus: (playlistId: string) => Promise<SendPlaylistStatusResult>
   onRemove: (trackId: string) => Promise<SendDjResult>
   onLeave: () => Promise<SendDjResult>
@@ -121,6 +123,7 @@ export default function DjDialogContent({
   styles = [],
   onAdd,
   onAddFromPlaylist,
+  onAddManyFromPlaylist,
   onPlaylistStatus,
   onRemove,
   onLeave,
@@ -134,7 +137,8 @@ export default function DjDialogContent({
   const [tab, setTab] = useState<Tab>('playlist')
   const [input, setInput] = useState('')
   const [source, setSource] = useState<Source | null>(null)
-  const [pickedId, setPickedId] = useState<string | null>(null)
+  // The tracks of the playlist chosen for the queue, in the order they were chosen: one, or several for a DJ who is alone.
+  const [pickedIds, setPickedIds] = useState<string[]>([])
   const [busy, setBusy] = useState<Busy | null>(null)
   const [error, setError] = useState('')
   // Which part of the dialog the error is about: the link field is only marked invalid for its own mistakes.
@@ -154,9 +158,14 @@ export default function DjDialogContent({
   const playlist = useDjPlaylist(onPlaylistStatus, refreshKey, keptVersion)
 
   const link = input.trim()
-  const picked = pickedId === null ? null : (playlist.tracks.tracks.find((track) => track.id === pickedId) ?? null)
-  const pickedVerdict = picked ? trackVerdict(picked, playlist.statuses[picked.id], rules) : null
+  const pickedTracks = pickedIds.flatMap((id) => playlist.tracks.tracks.find((track) => track.id === id) ?? [])
+  const picked = pickedTracks[0] ?? null
+  // The first refusal among the chosen tracks: the button waits until none is left (the room's answer can change meanwhile).
+  const pickedVerdict = pickedTracks.map((track) => trackVerdict(track, playlist.statuses[track.id], rules)).find((verdict) => verdict) ?? null
   const choice: Source | null = source === 'link' && link !== '' ? 'link' : source === 'playlist' && picked ? 'playlist' : null
+  // Several tracks at once are for a DJ who is alone in the queue (the server says the same): with others, one by one.
+  const alone = djCount(queue) - (place ? 1 : 0) === 0
+  const capacity = Math.max(0, LINEUP_MAX - lineup.length)
 
   function handlePick(track: PlaylistTrack) {
     setDone('')
@@ -167,18 +176,28 @@ export default function DjDialogContent({
       return
     }
     setError('')
-    if (choice === 'playlist' && track.id === pickedId) {
-      setPickedId(null)
-      setSource(link !== '' ? 'link' : null)
-    } else {
-      setPickedId(track.id)
-      setSource('playlist')
+    if (source === 'playlist' && pickedIds.includes(track.id)) {
+      const rest = pickedIds.filter((id) => id !== track.id)
+      setPickedIds(rest)
+      if (rest.length === 0) setSource(link !== '' ? 'link' : null)
+      return
     }
+    if (alone && source === 'playlist') {
+      if (pickedIds.length >= capacity) {
+        setErrorFromLink(false)
+        setError(`Ta file ne tient que ${LINEUP_MAX} morceaux : tu peux en ajouter ${capacity} de plus.`)
+        return
+      }
+      setPickedIds([...pickedIds, track.id])
+    } else {
+      setPickedIds([track.id])
+    }
+    setSource('playlist')
   }
 
   function handleSelectPlaylist(playlistId: string) {
     playlist.lists.select(playlistId)
-    setPickedId(null)
+    setPickedIds([])
     if (source === 'playlist') setSource(link !== '' ? 'link' : null)
   }
 
@@ -216,17 +235,46 @@ export default function DjDialogContent({
     setLastAdded(null)
     setErrorFromLink(false)
     if (pickedVerdict) return setError(pickedVerdict.full)
+    if (pickedTracks.length > 1) return handleAddSeveral()
     setBusy('add')
     setError('')
     const result = await onAddFromPlaylist(picked.id)
     setBusy(null)
     if (result.ok) {
       setDone(`Ajouté : « ${result.track.title} » est dans ta file.`)
-      setPickedId(null)
+      setPickedIds([])
       setSource(link !== '' ? 'link' : null)
       if (!phone && !touchScreen()) inputRef.current?.focus()
     } else {
       setError(djErrorMessage(result))
+    }
+  }
+
+  /** Several tracks of the playlist at once: each is lined up or refused on its own, and the dialog says both. */
+  async function handleAddSeveral() {
+    setBusy('add')
+    setError('')
+    const result = await onAddManyFromPlaylist(pickedTracks.map((track) => track.id))
+    setBusy(null)
+    if (!result.ok) return setError(djErrorMessage(result))
+    let added = 0
+    let firstTitle = ''
+    const refusals: string[] = []
+    result.results.forEach((answer, index) => {
+      if (answer.ok) {
+        added += 1
+        firstTitle = firstTitle || answer.track.title
+      } else {
+        refusals.push(`« ${pickedTracks[index]?.title ?? 'Ce morceau'} » : ${djErrorMessage(answer)}`)
+      }
+    })
+    setPickedIds([])
+    setSource(link !== '' ? 'link' : null)
+    if (added > 0) {
+      setDone(added === 1 ? `Ajouté : « ${firstTitle} » est dans ta file.` : `${added} morceaux ajoutés à ta file, dans l'ordre choisi.`)
+    }
+    if (refusals.length > 0) {
+      setError(refusals.length === 1 ? refusals[0] : `${refusals[0]} (et ${refusals.length - 1} de plus refusé${refusals.length > 2 ? 's' : ''})`)
     }
   }
 
@@ -296,7 +344,9 @@ export default function DjDialogContent({
       : null
 
   // What the big button of a phone says it will join the queue with.
-  const choiceTitle = choice === 'playlist' && picked ? (picked.title ?? 'Titre à actualiser') : choice === 'link' ? shortLink(link) : null
+  const severalPicked = choice === 'playlist' && pickedTracks.length > 1
+  const choiceTitle = severalPicked ? null : choice === 'playlist' && picked ? (picked.title ?? 'Titre à actualiser') : choice === 'link' ? shortLink(link) : null
+  const pickedTotalSec = pickedTracks.reduce((sum, track) => sum + (track.durationSec ?? 0), 0)
   const goVerb = place ? 'Ajouter à ma file' : 'Rejoindre la file'
   const lineupFull = lineup.length >= LINEUP_MAX
 
@@ -368,7 +418,8 @@ export default function DjDialogContent({
           <DjPlaylistTab
             playlist={playlist}
             rules={rules}
-            pickedId={choice === 'playlist' ? pickedId : null}
+            pickedIds={choice === 'playlist' ? pickedIds : []}
+            multi={alone}
             onPick={handlePick}
             onSelectPlaylist={handleSelectPlaylist}
             onShowLink={
@@ -559,7 +610,11 @@ export default function DjDialogContent({
         <div className="dj-band__what" id="dj-band-what">
           <span className="dj-band__text">
             <span className="dj-band__label">Ton morceau</span>
-            {choice === 'playlist' && picked ? (
+            {severalPicked ? (
+              <span className="dj-band__track">
+                <strong>{pickedTracks.length} morceaux</strong> · dans l'ordre choisi · {formatClock(pickedTotalSec)}
+              </span>
+            ) : choice === 'playlist' && picked ? (
               <span className="dj-band__track">
                 <strong>{picked.title ?? 'Titre à actualiser'}</strong> · {picked.artist ?? 'Artiste inconnu'}
                 {picked.durationSec !== null && ` · ${formatClock(picked.durationSec)}`}
@@ -596,7 +651,7 @@ export default function DjDialogContent({
           >
             <Plus />
             <span className="dj-band__go-label">
-              {lineupFull ? `${LINEUP_MAX} morceaux au plus` : busy === 'add' ? 'Vérification…' : phone && choiceTitle ? `${goVerb} avec « ${choiceTitle} »` : goVerb}
+              {lineupFull ? `${LINEUP_MAX} morceaux au plus` : busy === 'add' ? 'Vérification…' : severalPicked ? `${goVerb} avec ${pickedTracks.length} morceaux` : phone && choiceTitle ? `${goVerb} avec « ${choiceTitle} »` : goVerb}
             </span>
           </button>
         </div>

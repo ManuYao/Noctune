@@ -9,9 +9,11 @@ import './DjPlaylistTab.css'
 interface DjPlaylistTabProps {
   playlist: DjPlaylist
   rules: RoomRules
-  /** The track chosen for "Ton morceau", if it is one of the playlist's. */
-  pickedId: string | null
-  /** A row was pressed: the dialog chooses it, or says why the room would refuse it. */
+  /** The tracks chosen, in the order they were chosen (one, or several when `multi`). */
+  pickedIds: string[]
+  /** The viewer is alone in the queue: several tracks can be chosen, they play one after the other in that order. */
+  multi: boolean
+  /** A row was pressed: the dialog chooses it (or unchooses it), or says why the room would refuse it. */
   onPick: (track: PlaylistTrack) => void
   onSelectPlaylist: (playlistId: string) => void
   /** On a phone, the link is behind the other tab: a way to it. Absent on a computer, where it is in view. */
@@ -26,7 +28,7 @@ const fold = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toLo
  * "Choisir" / "Choisi" or what the room says about it ("Joué il y a 41 min", "Trop long · max 7:00"). A row is one
  * button, pressed or not; a track the room would refuse stays in the list, quiet, and pressing it says why.
  */
-export default function DjPlaylistTab({ playlist, rules, pickedId, onPick, onSelectPlaylist, onShowLink }: DjPlaylistTabProps) {
+export default function DjPlaylistTab({ playlist, rules, pickedIds, multi, onPick, onSelectPlaylist, onShowLink }: DjPlaylistTabProps) {
   const { lists, tracks, statuses } = playlist
   const [filter, setFilter] = useState('')
 
@@ -142,11 +144,16 @@ export default function DjPlaylistTab({ playlist, rules, pickedId, onPick, onSel
         </p>
       )}
 
+      {multi && shown.length > 0 && (
+        <p className="dj-playlist__multi">Tu es seul dans la file : choisis plusieurs morceaux, ils s'enchaînent dans l'ordre où tu les choisis.</p>
+      )}
+
       {shown.length > 0 && (
         <ul className="dj-playlist__list" role="list" aria-label="Morceaux de la playlist">
           {shown.map((track) => {
             const verdict = trackVerdict(track, statuses[track.id], rules)
-            const picked = track.id === pickedId
+            const order = pickedIds.indexOf(track.id)
+            const picked = order !== -1
             const title = track.title ?? 'Titre à actualiser'
             const artist = track.artist ?? 'Artiste inconnu'
             return (
@@ -174,7 +181,7 @@ export default function DjPlaylistTab({ playlist, rules, pickedId, onPick, onSel
                     <span className="dj-track__verdict">{verdict.short}</span>
                   ) : (
                     <span className="dj-track__pick" aria-hidden="true">
-                      {picked ? 'Choisi' : 'Choisir'}
+                      {picked ? (multi && pickedIds.length > 1 ? `Choisi · n° ${order + 1}` : 'Choisi') : 'Choisir'}
                     </span>
                   )}
                 </button>

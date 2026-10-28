@@ -225,6 +225,8 @@ export type DjError =
   | 'queue-full'
   /** This DJ already has LINEUP_MAX tracks lined up. */
   | 'lineup-full'
+  /** Several tracks at once are for a DJ who is alone in the queue: with other DJs, tracks are lined up one by one. */
+  | 'not-alone'
   /** Not in the DJ's line-up (already played, or never there). */
   | 'no-such-track'
   | 'not-in-queue'
@@ -242,6 +244,8 @@ export type DjFailure =
 export type DjResult = { ok: true } | DjFailure
 /** The track was added to the member's line-up; if they were not in the queue, they are now (at the end). */
 export type AddTrackResult = { ok: true; track: QueuedTrack } | DjFailure
+/** One answer per track asked for, in the order asked: each one lined up, or refused with its own reason. */
+export type AddManyResult = { ok: true; results: AddTrackResult[] } | DjFailure
 
 /** Where a playlist track stands in the room the member is in: whether the room would take it now. */
 export type TrackStatus =
@@ -612,6 +616,11 @@ export interface ClientToServerEvents {
    * of one of the member's own playlists). Puts them in the queue if they are not.
    */
   'dj:add': (payload: { input: string } | { playlistTrackId: string }, ack: (result: AddTrackResult) => void) => void
+  /**
+   * Several tracks of the member's own playlists at once, lined up in the order given (at most LINEUP_MAX). Only for a DJ
+   * who is alone in the queue (`not-alone` otherwise); more than one track at a time is not for a shared queue.
+   */
+  'dj:add-many': (payload: { playlistTrackIds: string[] }, ack: (result: AddManyResult) => void) => void
   /** For each track of one of the member's playlists: would this room take it now? */
   'dj:playlist-status': (payload: { playlistId: string }, ack: (result: PlaylistStatusResult) => void) => void
   /** Takes one track out of the member's own line-up. */

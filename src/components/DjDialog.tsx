@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { DjQueue, QueuedTrack, RoomRules, RoomStyle, Track } from '../../shared/protocol'
-import type { SendAddTrackResult, SendDjResult, SendPlaylistStatusResult } from '../realtime/useRoom'
+import type { SendAddManyResult, SendAddTrackResult, SendDjResult, SendPlaylistStatusResult } from '../realtime/useRoom'
 import DjDialogContent from './DjDialogContent'
 import './DjDialog.css'
 
@@ -19,6 +19,7 @@ interface DjDialogProps {
   styles?: RoomStyle[]
   onAdd: (input: string) => Promise<SendAddTrackResult>
   onAddFromPlaylist: (playlistTrackId: string) => Promise<SendAddTrackResult>
+  onAddManyFromPlaylist: (playlistTrackIds: string[]) => Promise<SendAddManyResult>
   onPlaylistStatus: (playlistId: string) => Promise<SendPlaylistStatusResult>
   onRemove: (trackId: string) => Promise<SendDjResult>
   onLeave: () => Promise<SendDjResult>

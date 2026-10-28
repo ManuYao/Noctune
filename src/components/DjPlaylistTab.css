@@ -62,6 +62,14 @@
   margin: 0 0 10px;
 }
 
+/* Alone in the queue: said once above the list, so that the circles are read as "pick as many as you like". */
+.dj-playlist__multi {
+  margin: 0;
+  color: var(--accent-2-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .dj-playlist__actions {
   display: flex;
   flex-wrap: wrap;

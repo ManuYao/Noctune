@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { estimateClockOffset } from '../../shared/clock'
 import type {
+  AddManyResult,
   AddTrackResult,
   ChatMessage,
   ChatResult,
@@ -43,6 +44,7 @@ export type RoomStatus = 'connecting' | 'joined' | 'error'
 export type SendChatResult = ChatResult | { ok: false; error: 'network' }
 export type SendReactionResult = ReactResult | { ok: false; error: 'network' }
 export type SendAddTrackResult = AddTrackResult | { ok: false; error: 'network' }
+export type SendAddManyResult = AddManyResult | { ok: false; error: 'network' }
 export type SendPlaylistStatusResult = PlaylistStatusResult | { ok: false; error: 'network' }
 export type SendDjResult = DjResult | { ok: false; error: 'network' }
 export type SendReportResult = ReportResult | { ok: false; error: 'network' }
@@ -175,6 +177,18 @@ async function emitAddFromPlaylist(playlistTrackId: string): Promise<SendAddTrac
   }
 }
 
+/** Several tracks of the member's playlists at once, for a DJ who is alone in the queue (the server refuses otherwise). */
+async function emitAddManyFromPlaylist(playlistTrackIds: string[]): Promise<SendAddManyResult> {
+  if (!socket.connected) return { ok: false, error: 'network' }
+  try {
+    // One read of YouTube at most per old track, one after the other: a little longer than one add for each of them.
+    const result: AddManyResult = await socket.timeout(DJ_ADD_ACK_TIMEOUT_MS * Math.max(1, playlistTrackIds.length)).emitWithAck('dj:add-many', { playlistTrackIds })
+    return result
+  } catch {
+    return { ok: false, error: 'network' }
+  }
+}
+
 /** For each track of a playlist: would this room take it now? Answered from what the server already knows. */
 async function emitPlaylistStatus(playlistId: string): Promise<SendPlaylistStatusResult> {
   if (!socket.connected) return { ok: false, error: 'network' }
@@ -256,6 +270,7 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
   voteSkip: (value: boolean) => Promise<SendReactionResult>
   addTrack: (input: string) => Promise<SendAddTrackResult>
   addFromPlaylist: (playlistTrackId: string) => Promise<SendAddTrackResult>
+  addManyFromPlaylist: (playlistTrackIds: string[]) => Promise<SendAddManyResult>
   playlistStatus: (playlistId: string) => Promise<SendPlaylistStatusResult>
   removeTrack: (trackId: string) => Promise<SendDjResult>
   leaveQueue: () => Promise<SendDjResult>
@@ -495,6 +510,7 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
   // answers: the screen shows what the server holds, never a guess.
   const addTrack = useCallback((input: string) => emitAddTrack(input), [])
   const addFromPlaylist = useCallback((playlistTrackId: string) => emitAddFromPlaylist(playlistTrackId), [])
+  const addManyFromPlaylist = useCallback((playlistTrackIds: string[]) => emitAddManyFromPlaylist(playlistTrackIds), [])
   const playlistStatus = useCallback((playlistId: string) => emitPlaylistStatus(playlistId), [])
   const removeTrack = useCallback((trackId: string) => emitRemoveTrack(trackId), [])
   const leaveQueue = useCallback(() => emitLeaveQueue(), [])
@@ -523,6 +539,7 @@ export function useRoom({ roomId, pseudo, avatarId }: RoomEntry): RoomState & {
     voteSkip,
     addTrack,
     addFromPlaylist,
+    addManyFromPlaylist,
     playlistStatus,
     removeTrack,
     leaveQueue,

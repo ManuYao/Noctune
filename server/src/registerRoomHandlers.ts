@@ -3,7 +3,9 @@ import type { Server } from 'socket.io'
 import {
   AVATAR_IDS,
   DJ_INPUT_MAX,
+  LINEUP_MAX,
   REPORT_REASONS,
+  type AddManyResult,
   type AddTrackResult,
   type AvatarId,
   type BadgeEarned,
@@ -568,6 +570,72 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
           )
           .finally(() => {
             if (fromLink) lookupPending = false
+          })
+      })
+    })
+
+    // Several tracks of the member's own playlists at once: only for a DJ who is alone in the queue. The tracks go through
+    // the same steps as one `dj:add`, one after the other (the room checks each against what the previous ones changed).
+    let addManyPending = false
+    socket.on('dj:add-many', (payload, ack) => {
+      if (typeof ack !== 'function') return
+      guarded(ack, () => {
+        const where = here()
+        if (!where) return ack({ ok: false, error: 'not-in-room' })
+        const { room, participantId } = where
+        const notMember = room.memberError(participantId)
+        if (notMember) return ack(notMember)
+
+        // What the page sends: a short list of distinct ids, no more than a line-up holds.
+        const wanted = (payload as { playlistTrackIds?: unknown } | null | undefined)?.playlistTrackIds
+        if (
+          !Array.isArray(wanted) ||
+          wanted.length < 1 ||
+          wanted.length > LINEUP_MAX ||
+          wanted.some((id) => typeof id !== 'string' || id.length < 1 || id.length > TRACK_ID_MAX_LENGTH) ||
+          new Set(wanted).size !== wanted.length
+        ) {
+          return ack({ ok: false, error: 'invalid' })
+        }
+        const ids = wanted as string[]
+        // Judged from the room as it is, not from what the page believes: with other DJs, one track at a time.
+        if (ids.length > 1 && !room.isAloneInQueue(participantId)) return ack({ ok: false, error: 'not-alone' })
+
+        // One batch at a time, and the same allowance as the other adds from a playlist.
+        if (addManyPending) return ack({ ok: false, error: 'rate-limited', retryAfterMs: DJ_LOOKUP_MIN_INTERVAL_MS })
+        const limited = limitedBy(playlistAddLimit)
+        if (limited) return ack(limited)
+
+        const unplaceable = room.placeError(participantId)
+        if (unplaceable) return ack(unplaceable)
+        const accountId = socket.data.account?.id
+        if (!accountId) return ack({ ok: false, error: 'members-only' })
+        if (!playlists) return ack({ ok: false, error: 'service-unavailable' })
+
+        const timeoutMs = (options.resolverTimeoutMs ?? RESOLVER_TIMEOUT_MS) + 4000
+        addManyPending = true
+        void (async () => {
+          const results: AddTrackResult[] = []
+          for (const trackId of ids) {
+            const find = async (): Promise<FoundVideo> => {
+              const read = await playlists.videoForDj(accountId, trackId)
+              if (read.ok) return read
+              return read.error === 'rate-limited' ? { ok: false, error: 'rate-limited', retryAfterMs: read.retryAfterMs } : { ok: false, error: read.error }
+            }
+            // A refusal of one track (too long, played recently, already queued) does not stop the others.
+            results.push(await lineUp(find, room, participantId, timeoutMs))
+          }
+          return results
+        })()
+          .then(
+            (results) => ack({ ok: true, results } satisfies AddManyResult),
+            (error: Error) => {
+              console.error(`[dj] ${error.message}`)
+              ack({ ok: false, error: 'server-error' })
+            },
+          )
+          .finally(() => {
+            addManyPending = false
           })
       })
     })

@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, describe, it, mock } from 'node:test'
 import type {
+  AddManyResult,
   AddTrackResult,
   DjNotice,
   DjQueue,
@@ -545,5 +546,120 @@ describe('the verdict of the room on a playlist', () => {
     assert.deepEqual(await statuses(ann.socket, mine.id), { ok: false, error: 'server-error' })
     mock.restoreAll()
     assert.ok((await statuses(ann.socket, mine.id)).ok)
+  })
+})
+
+describe('several tracks of one’s own playlist at once (a DJ who is alone in the queue)', () => {
+  const many = (socket: TestSocket, playlistTrackIds: unknown) =>
+    answer<AddManyResult>((callback) => socket.emit('dj:add-many', { playlistTrackIds } as never, callback))
+
+  it('lines them all up in the order asked, takes the decks at once, and asks YouTube nothing', async () => {
+    await start()
+    const ann = await memberIn('Ann')
+    const { tracks } = await playlistOf(ann, 'Chill', 'p1', 'p2', 'p3')
+    quiet()
+
+    const result = await many(ann.socket, [tracks.p2, tracks.p1, tracks.p3])
+    assert.ok(result.ok, JSON.stringify(result))
+    if (!result.ok) return
+    assert.deepEqual(result.results.map((entry) => entry.ok && entry.track.title), ['Title p2', 'Title p1', 'Title p3'])
+    await until(() => titleOnDecks(ann) === 'Title p2', 'the first track to take the decks')
+    await until(() => ann.pushes.lineups.at(-1)?.length === 2, 'the two others in the line-up')
+    assert.deepEqual(ann.pushes.lineups.at(-1)?.map((track) => track.title), ['Title p1', 'Title p3'])
+    assert.deepEqual([fake.calls, fake.manyCalls], [[], []])
+  })
+
+  it('refuses several tracks as soon as another DJ is in the queue, and lines nothing up', async () => {
+    await start()
+    const ann = await memberIn('Ann')
+    const ben = await memberIn('Ben')
+    const mine = await playlistOf(ann, 'Chill', 'p1', 'p2')
+    const his = await playlistOf(ben, 'Ben’s', 'p3')
+    assert.ok((await fromPlaylist(ben.socket, his.tracks.p3)).ok)
+
+    assert.deepEqual(await many(ann.socket, [mine.tracks.p1, mine.tracks.p2]), { ok: false, error: 'not-alone' })
+    assert.equal(ann.pushes.lineups.length, 0, 'nothing was lined up')
+    // One track at a time is still fine, with others in the queue.
+    const single = await many(ann.socket, [mine.tracks.p1])
+    assert.ok(single.ok, JSON.stringify(single))
+  })
+
+  it('counts a DJ who is away as another DJ, and the DJ who is on the decks too', async () => {
+    await start()
+    const ann = await memberIn('Ann')
+    const ben = await memberIn('Ben')
+    const mine = await playlistOf(ann, 'Chill', 'p1', 'p2', 'p3')
+    const his = await playlistOf(ben, 'Ben’s', 'p4')
+    assert.ok((await fromPlaylist(ben.socket, his.tracks.p4)).ok, 'Ben is on the decks')
+    assert.deepEqual(await many(ann.socket, [mine.tracks.p1, mine.tracks.p2]), { ok: false, error: 'not-alone' })
+    ben.socket.disconnect()
+    await sleep(150)
+    // Away, he keeps his place for a few minutes: still somebody in the queue.
+    assert.deepEqual(await many(ann.socket, [mine.tracks.p1, mine.tracks.p2]), { ok: false, error: 'not-alone' })
+  })
+
+  it('stops at what a line-up holds: LINEUP_MAX tracks, and says no to the next', async () => {
+    await start()
+    const ann = await memberIn('Ann')
+    const names = Array.from({ length: LINEUP_MAX + 2 }, (_, index) => `m${index}`)
+    for (const name of names) known[idOf(name)] = video(name)
+    const { tracks } = await playlistOf(ann, 'Big', ...names)
+    const ids = (list: string[]) => list.map((name) => tracks[name])
+    assert.deepEqual(await many(ann.socket, ids(names)), { ok: false, error: 'invalid' }, 'more than LINEUP_MAX in one go')
+
+    const first = await many(ann.socket, ids(names.slice(0, LINEUP_MAX)))
+    assert.ok(first.ok && first.results.every((entry) => entry.ok), JSON.stringify(first))
+    // The first of them took the decks and left the line-up: one place is free, then the line-up is full.
+    const rest = await many(ann.socket, ids(names.slice(LINEUP_MAX)))
+    assert.ok(rest.ok, JSON.stringify(rest))
+    if (!rest.ok) return
+    assert.ok(rest.results[0].ok, 'one more fits')
+    assert.deepEqual(rest.results[1], { ok: false, error: 'lineup-full' })
+  })
+
+  it('does not let one refused track stop the others, and says why for each', async () => {
+    await start()
+    const ann = await memberIn('Ann')
+    const { tracks } = await playlistOf(ann, 'Chill', 'p1', 'p2')
+    known[idOf('long')] = video('long', RULES.maxTrackSec! + 1)
+    const withLong = await playlistOf(ann, 'Long', 'long')
+
+    const result = await many(ann.socket, [tracks.p1, withLong.tracks.long, tracks.p2])
+    assert.ok(result.ok, JSON.stringify(result))
+    if (!result.ok) return
+    assert.equal(result.results.length, 3)
+    assert.ok(result.results[0].ok)
+    assert.deepEqual(result.results[1], { ok: false, error: 'too-long', maxSec: RULES.maxTrackSec })
+    assert.ok(result.results[2].ok)
+  })
+
+  it('refuses a visitor, a stranger, and what is not a short list of distinct ids', async () => {
+    await start()
+    const guest = await visitorIn('Guest')
+    assert.deepEqual(await many(guest.socket, ['a0000000-0000-4000-8000-0000000000ff']), { ok: false, error: 'members-only' })
+    const stranger = await server.connect()
+    assert.deepEqual(await many(stranger, ['x']), { ok: false, error: 'not-in-room' })
+
+    const ann = await memberIn('Ann')
+    const { tracks } = await playlistOf(ann, 'Chill', 'p1')
+    const bad = [{}, null, 'p1', [], [5], [''], ['x'.repeat(101)], [tracks.p1, tracks.p1], { $ne: 1 }, Array.from({ length: LINEUP_MAX + 1 }, (_, i) => `id${i}`)]
+    for (const ids of bad) assert.deepEqual(await many(ann.socket, ids), { ok: false, error: 'invalid' }, JSON.stringify(ids))
+    assert.equal(ann.pushes.lineups.length, 0)
+  })
+
+  it('does not know tracks that are somebody else’s: each one gets the same answer as a single add would', async () => {
+    await start()
+    const ann = await memberIn('Ann')
+    const ben = await memberIn('Ben')
+    const his = await playlistOf(ben, 'Ben’s', 'p1', 'p2')
+    // Ann is alone in the queue: the batch goes through, and each track of Ben's is refused.
+    const result = await many(ann.socket, [his.tracks.p1, his.tracks.p2])
+    assert.ok(result.ok, JSON.stringify(result))
+    if (!result.ok) return
+    assert.deepEqual(result.results, [
+      { ok: false, error: 'no-such-track' },
+      { ok: false, error: 'no-such-track' },
+    ])
+    assert.equal(ann.pushes.lineups.length, 0)
   })
 })

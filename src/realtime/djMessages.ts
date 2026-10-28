@@ -32,6 +32,8 @@ export function djErrorMessage(failure: DjFailure): string {
       return 'La file est complète : réessaie quand un DJ sera parti.'
     case 'lineup-full':
       return `Tu as déjà ${LINEUP_MAX} morceaux en attente : retire-en un pour en ajouter.`
+    case 'not-alone':
+      return "Plusieurs morceaux à la fois, ce n'est possible que seul dans la file : ajoute-les un par un."
     case 'no-such-track':
       return "Ce morceau n'est plus dans ta file."
     case 'not-in-queue':

@@ -401,6 +401,16 @@ export class Room {
   }
 
   /**
+   * Is nobody else in the queue? The DJ on the decks and the ones waiting count, the ones who are away too (they keep
+   * their place for a few minutes). Several tracks at once are for a DJ who is alone.
+   */
+  isAloneInQueue(participantId: string): boolean {
+    const accountId = this.accountOf.get(participantId)
+    const mine = accountId ? this.booth.find(accountId) : undefined
+    return this.booth.size - (mine ? 1 : 0) === 0
+  }
+
+  /**
    * Refusals that need no look at YouTube: the queue is full (and the member is not in it) or their line-up is.
    * Asked before the network is used, so that a request that cannot succeed costs no quota.
    */
