@@ -340,9 +340,9 @@ export default function DjDialogContent({
     document.getElementById(`dj-tab-${tabs[target].id}`)?.focus()
   }
 
-  // Leaving throws away the tracks lined up, and cuts the one that plays when it is the viewer's own.
+  // Leaving throws away the tracks lined up; the one that plays goes on to its end (nothing to ask when there is nothing lined up).
   const leaveCosts = place?.onDecks
-    ? 'Quitter la file coupe ton morceau en cours et efface tes morceaux en attente.'
+    ? (lineup.length > 0 ? "Quitter la file efface tes morceaux en attente. Ton morceau en cours va jusqu'au bout." : null)
     : lineup.length > 0
       ? 'Quitter la file efface tes morceaux en attente.'
       : null

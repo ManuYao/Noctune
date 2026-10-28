@@ -155,7 +155,8 @@ export default function MobileScene({ participants, selfId, dj, waiting, likePul
   const deckPerson = dj?.participantId ? participants.find((p) => p.id === dj.participantId) : undefined
   const deckAvatar = deckPerson && findAvatar(deckPerson.avatarId)
   // A DJ who left the room: their track plays on and their place is kept a few minutes. They stay behind the console, in grey.
-  const deckAwayAvatar = dj && dj.participantId === null ? findAvatar(dj.avatarId) : undefined
+  const deckLeaving = dj?.leaving === true
+  const deckAwayAvatar = dj && (dj.participantId === null || deckLeaving) ? findAvatar(dj.avatarId) : undefined
   const self = participants.find((p) => p.id === selfId)
   const selfAvatar = self && findAvatar(self.avatarId)
   const selfAtDecks = deckPerson !== undefined && self !== undefined && deckPerson.id === self.id
@@ -317,7 +318,7 @@ export default function MobileScene({ participants, selfId, dj, waiting, likePul
             })}
 
         {/* Somebody else on the decks. The viewer on the decks is drawn once, with their ring, further down. */}
-        {showPeople && deckAvatar && !selfAtDecks && (
+        {showPeople && deckAvatar && !selfAtDecks && !deckLeaving && (
           <>
             <Person avatar={deckAvatar} x={middle} feetY={deckFeet} size={deckSize} delay={-0.1} />
             <Console cx={middle} y={deckFeet - 10} width={Math.min(86, W * 0.22)} />
@@ -330,7 +331,7 @@ export default function MobileScene({ participants, selfId, dj, waiting, likePul
             <Console cx={middle} y={deckFeet - 10} width={Math.min(86, W * 0.22)} />
             <rect x={middle - 31} y={deckFeet + 8} width="62" height="15" rx="7.5" className="scene__pill--away" />
             <text x={middle} y={deckFeet + 19} textAnchor="middle" className="scene__text scene__text--away" fontSize="10">
-              hors ligne
+              {deckLeaving ? 'son morceau' : 'hors ligne'}
             </text>
           </>
         )}
@@ -385,7 +386,7 @@ export default function MobileScene({ participants, selfId, dj, waiting, likePul
             <Person avatar={selfAvatar} x={selfX} feetY={H - 4} size={selfSize} delay={0} />
           </>
         )}
-        {showPeople && selfAvatar && selfAtDecks && (
+        {showPeople && selfAvatar && selfAtDecks && !deckLeaving && (
           <>
             <ellipse cx={middle} cy={deckFeet + 4} rx={deckSize * 0.8} ry={deckSize * 0.12} className="sc-accent sc-stroke-accent scene__ring" strokeWidth="2.5" />
             <Person avatar={selfAvatar} x={middle} feetY={deckFeet} size={deckSize} delay={0} />

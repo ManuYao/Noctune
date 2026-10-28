@@ -169,6 +169,11 @@ export interface DjQueueEntry {
   /** The DJ's id among the participants while they are in the room; null while they are away. */
   participantId: string | null
   /**
+   * The DJ left the queue while their track plays: it goes on to its end, they have nothing after it and are out then. They
+   * stand behind the console in grey meanwhile, like a DJ who left the room. Absent (false) otherwise.
+   */
+  leaving?: boolean
+  /**
    * The track they play on their next turn. Null only for the DJ on the decks whose last track is the one playing: a
    * place that waits always has one (a DJ with nothing lined up is out of the queue).
    */

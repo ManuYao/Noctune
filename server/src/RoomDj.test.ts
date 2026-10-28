@@ -601,24 +601,32 @@ describe('leaving the queue and taking tracks out', () => {
     assert.deepEqual(room.leaveQueue(ben.id), { ok: false, error: 'not-in-queue' })
   })
 
-  it('cuts the track when the DJ on the decks leaves, and does not send them to the back', () => {
+  it('lets the track play on when the DJ on the decks leaves the queue (greyed), and does not send them to the back', () => {
     annOnTheDecksBenWaiting()
     mock.timers.tick(50 * SECOND)
     assert.deepEqual(room.leaveQueue(ann.id), { ok: true })
 
-    assert.equal(room.nowPlaying?.title, 'b1')
-    assert.equal(room.nowPlaying?.startedAt, START + 50 * SECOND)
-    assert.equal(onDecks(), 'Ben')
-    assert.deepEqual(waitingNames(), [])
+    assert.equal(room.nowPlaying?.title, 'a1', 'not cut')
+    assert.equal(onDecks(), 'Ann')
+    assert.equal(room.queueView().current?.leaving, true)
+    assert.deepEqual(waitingNames(), ['Ben'])
     assert.deepEqual(room.lineupOf(ann.id), [], 'a2 went with her')
+    assert.deepEqual(room.leaveQueue(ann.id), { ok: true }, 'asking again changes nothing')
+
+    mock.timers.tick(150 * SECOND) // a1 ends at 200 s
+    assert.equal(room.nowPlaying?.title, 'b1')
+    assert.equal(room.nowPlaying?.startedAt, START + 200 * SECOND)
+    assert.deepEqual(waitingNames(), [], 'Ann is out: nothing left to play')
     mock.timers.tick(200 * SECOND)
     assert.equal(room.nowPlaying?.videoId, TEST_TRACKS[1].videoId, 'Ann never comes round again')
   })
 
-  it('cuts the track for the room’s own selection when nobody else can play', () => {
+  it('goes on to the room’s own selection after the track of a DJ who left the queue', () => {
     enter(ann, vic)
     lineUp(ann, 'a1')
     room.leaveQueue(ann.id)
+    assert.equal(room.nowPlaying?.title, 'a1', 'not cut')
+    mock.timers.tick(200 * SECOND)
     assert.equal(room.nowPlaying?.videoId, TEST_TRACKS[1].videoId)
     assert.equal(onDecks(), null)
     assert.equal(room.djCount, 0)

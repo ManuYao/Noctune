@@ -17,6 +17,8 @@ export interface DjEntry {
   avatarId: AvatarId
   /** The tracks they will play, in order. Each one leaves the line-up when it starts. */
   lineup: QueuedTrack[]
+  /** They left the queue while their track plays: it goes on, and they are out when it ends (see Room.leaveQueue). */
+  leaving?: boolean
 }
 
 /** What the booth must ask the room to decide a turn. */

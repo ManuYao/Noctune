@@ -464,6 +464,8 @@ export class Room {
       durationSec: video.durationSec,
     }
     place.lineup.push(track)
+    // A DJ who had left the queue and lines a track up again is a DJ again.
+    place.leaving = false
     this.sendLineup(who.accountId)
     this.scheduleQueueBroadcast()
     this.takeOverFromHouse()
@@ -565,17 +567,23 @@ export class Room {
     return this.booth.waiting.find((entry) => entry.id === entryId)
   }
 
-  /** Leaves the queue, line-up included. On the decks, that cuts the track that plays. */
+  /**
+   * Leaves the queue, line-up included. On the decks, the track that plays goes on to its end (the DJ simply has nothing
+   * left after it, so they are out then): it is not cut, as it is not when a DJ leaves the site. The public may skip it.
+   */
   leaveQueue(participantId: string): DjResult {
     const who = this.member(participantId)
     if (!who.ok) return who
     const place = this.booth.find(who.accountId)
     if (!place) return { ok: false, error: 'not-in-queue' }
-    const wasOnDecks = this.booth.current === place
-    this.booth.remove(place)
+    if (this.booth.current === place) {
+      place.lineup = []
+      place.leaving = true
+    } else {
+      this.booth.remove(place)
+    }
     this.sendLineup(who.accountId)
-    if (wasOnDecks) this.advance()
-    else this.scheduleQueueBroadcast()
+    this.scheduleQueueBroadcast()
     return { ok: true }
   }
 
@@ -608,6 +616,7 @@ export class Room {
       pseudo: entry.pseudo,
       avatarId: entry.avatarId,
       participantId: this.participantOf.get(entry.accountId) ?? null,
+      ...(entry.leaving ? { leaving: true } : {}),
       next: entry.lineup[0] ?? null,
     }
   }

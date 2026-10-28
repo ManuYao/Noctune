@@ -120,7 +120,9 @@ export default function Scene({
   // kept for a few minutes) stays where they were, in grey.
   const deckPerson = dj?.participantId ? participants.find((p) => p.id === dj.participantId) : undefined
   const deckAvatar = deckPerson && findAvatar(deckPerson.avatarId)
-  const deckAwayAvatar = dj && dj.participantId === null ? findAvatar(dj.avatarId) : undefined
+  // Grey behind the console: a DJ who left the room, or who left the queue while their track plays (it goes on to its end).
+  const deckLeaving = dj?.leaving === true
+  const deckAwayAvatar = dj && (dj.participantId === null || deckLeaving) ? findAvatar(dj.avatarId) : undefined
   const atDecks = !narrow && deckPerson !== undefined && deckAvatar !== undefined
   const stageDjs = narrow ? [] : waiting.slice(0, STAGE_DJS_MAX)
   const moreDjs = narrow ? 0 : Math.max(0, waiting.length - STAGE_DJS_MAX)
@@ -255,13 +257,13 @@ export default function Scene({
             </g>
           )}
 
-          {atDecks && deckAvatar && renderPerson('dj', deckAvatar, DJ_SLOT)}
+          {atDecks && deckAvatar && !deckLeaving && renderPerson('dj', deckAvatar, DJ_SLOT)}
           {deckAwayAvatar && !narrow && (
             <>
               {renderPerson('dj', deckAwayAvatar, DJ_SLOT, true)}
               <rect x="560" y="396" width="196" height="22" rx="11" className="scene__pill--away" />
               <text x="658" y="411" textAnchor="middle" className="scene__text scene__text--away">
-                hors ligne · son morceau joue
+                {deckLeaving ? 'son morceau joue' : 'hors ligne · son morceau joue'}
               </text>
             </>
           )}

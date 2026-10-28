@@ -456,7 +456,7 @@ describe('taking turns', () => {
     await until(() => titleOnDecks(guest) === 'Bravo', 'the track to change')
   })
 
-  it('cuts the DJ’s track when they leave the queue, and the next DJ starts', async () => {
+  it('lets the DJ’s track play on when they leave the queue, and says so (they are shown in grey)', async () => {
     await start()
     const ann = await memberIn('Ann')
     const ben = await memberIn('Ben')
@@ -465,10 +465,11 @@ describe('taking turns', () => {
     await until(() => titleOnDecks(ben) === 'Alpha', 'Ann on the decks')
 
     assert.deepEqual(await leaveQueue(ann.socket), { ok: true })
-    await until(() => titleOnDecks(ben) === 'Bravo', 'Ben’s track')
-    assert.deepEqual(waiting(ben.pushes.tracks.at(-1)?.queue), [])
-    assert.deepEqual(await leaveQueue(ann.socket), { ok: false, error: 'not-in-queue' })
+    await until(() => ben.pushes.queues.at(-1)?.current?.leaving === true, 'the queue to say she is leaving')
+    assert.equal(titleOnDecks(ben), 'Alpha', 'her track is not cut')
+    assert.deepEqual(waiting(ben.pushes.queues.at(-1)), ['Ben'])
     assert.deepEqual(room(ann).lineup, [])
+    assert.deepEqual(await leaveQueue(ann.socket), { ok: true }, 'still on the decks: asking again changes nothing')
   })
 
   it('keeps a DJ’s place while they are away, and the others see them away', async () => {
@@ -801,8 +802,10 @@ describe('the list of rooms', () => {
     await leaveQueue(ben.socket)
     await until(() => djs(latest) === 1, 'the list to show the DJ in line gone')
 
+    // On the decks, her track plays on: she is a DJ until it ends.
     await leaveQueue(ann.socket)
-    await until(() => djs(latest) === 0, 'the list to show the DJ gone')
+    await sleep(300)
+    assert.equal(djs(latest), 1)
   })
 })
 

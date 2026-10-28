@@ -3,6 +3,7 @@ import { PgAccountStore } from './accounts/PgAccountStore'
 import { PgActivityStore } from './activity/PgActivityStore'
 import type { ActivityStore } from './activity/ActivityStore'
 import { createNoctuneServer } from './createServer'
+import { migrate, pendingMigrations } from './db/migrate'
 import { createPool } from './db/pool'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -55,6 +56,17 @@ async function openDatabase(): Promise<{ accounts: AccountService; playlistStore
     return null
   }
   const pool = createPool(url)
+  // Opt-in (MIGRATE_ON_START=1): a deployed server brings its own database up to date, so that a new feature never meets a
+  // table that was not made. Never fatal here: a refusal (an address through a pooler, for one) is said below, and the
+  // checks that follow decide whether the server can run.
+  if (process.env.MIGRATE_ON_START === '1') {
+    try {
+      const applied = await migrate(pool)
+      console.log(applied.length > 0 ? `[base] migrations appliquées au démarrage : ${applied.join(', ')}` : '[base] migrations à jour.')
+    } catch (error) {
+      console.error(`[base] migration au démarrage impossible : ${(error as Error).message}`)
+    }
+  }
   try {
     // Fails now, and loudly, rather than at the first sign-in.
     await pool.query('SELECT 1 FROM users LIMIT 1')
@@ -67,6 +79,19 @@ async function openDatabase(): Promise<{ accounts: AccountService; playlistStore
     process.exit(1)
   }
   console.log('[base] comptes, playlists et rooms de membres activés.')
+  // The checks above only know the oldest tables: a database that is behind still starts, and one feature then fails
+  // quietly (the badge notifications, for one, need the table of migration 011). Say so, once, where it is read.
+  try {
+    const pending = await pendingMigrations(pool)
+    if (pending.length > 0) {
+      console.error(
+        `[base] MIGRATIONS EN ATTENTE : ${pending.join(', ')}. Certaines fonctions ne marcheront pas (notifications de trophées, musique seulement…). ` +
+          'Lance npm run db:migrate sur cette base, ou mets MIGRATE_ON_START=1 sur l’hébergeur.',
+      )
+    }
+  } catch (error) {
+    console.error(`[base] migrations non vérifiées : ${(error as Error).message}`)
+  }
   return {
     accounts: new AccountService(new PgAccountStore(pool)),
     playlistStore: new PgPlaylistStore(pool),

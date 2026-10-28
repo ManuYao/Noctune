@@ -39,7 +39,7 @@ Garde un bloc-notes ouvert : tu vas copier deux valeurs dedans (**A** = adresse 
    Remove-Item Env:DATABASE_URL
    ```
 
-   **Ce que tu dois voir** : la liste des migrations `001` à `009` appliquées, sans message d'erreur. Cela n'écrit que dans Neon : ta base locale n'est pas touchée (la variable posée dans PowerShell passe avant `.env.local`, le temps de la commande ; la 3e ligne l'efface).
+   **Ce que tu dois voir** : la liste des migrations appliquées (`001` à `011` à ce jour), sans message d'erreur. Cela n'écrit que dans Neon : ta base locale n'est pas touchée (la variable posée dans PowerShell passe avant `.env.local`, le temps de la commande ; la 3e ligne l'efface).
 
 ---
 
@@ -108,7 +108,11 @@ Ne publie pas l'adresse ailleurs.
 
 ## Mettre à jour plus tard
 
-Chaque `git push` sur `main` redéploie tout seul. Si tu ajoutes une migration (`server/migrations/0xx_*.sql`), applique-la **avant** de pousser, avec les trois lignes PowerShell de l'étape 1.4.
+Chaque `git push` sur `main` redéploie tout seul. Si tu ajoutes une migration (`server/migrations/0xx_*.sql`), applique-la **avant** de pousser, avec les trois lignes PowerShell de l'étape 1.4 (elles n'appliquent que celles qui manquent : tu peux les relancer sans risque).
+
+**Plus simple : le faire faire au serveur.** Ajoute une variable d'environnement sur Render : `MIGRATE_ON_START` = `1`. À chaque démarrage, le serveur applique lui-même les migrations qui manquent et l'écrit dans les logs (`[base] migrations appliquées au démarrage : …`). Si l'adresse de la base passe par le « pooler » de Neon, cela échoue (voir l'étape 1.3) : le serveur le dit dans les logs et continue.
+
+**Comment savoir si la base est en retard.** Au démarrage, le serveur écrit dans les logs une ligne `[base] MIGRATIONS EN ATTENTE : …` si des migrations manquent. Sans elles, certaines fonctions échouent sans bruit : par exemple les notifications de trophées (migration `011`) et le filtre « musique seulement » (`010`).
 
 ## Ce qu'il faut savoir (limites du gratuit)
 

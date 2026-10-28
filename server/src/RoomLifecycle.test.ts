@@ -180,7 +180,7 @@ describe('a DJ who has played their last track', () => {
 })
 
 describe('a DJ who leaves the queue by choice', () => {
-  it('on the decks: their track is cut, their line-up is gone, the next DJ plays and they are out', () => {
+  it('on the decks: their track plays on to its end (greyed), their line-up is gone, then the next DJ plays and they are out', () => {
     scene = new Scene()
     scene.join('Ann')
     scene.join('Ben')
@@ -188,14 +188,32 @@ describe('a DJ who leaves the queue by choice', () => {
     scene.lineUp('Ann', 60) // t2, queued
     scene.lineUp('Ben', 60) // t3
     const annId = scene.here.get('Ann') ?? ''
+    scene.wait(20)
 
     const left = scene.room.leaveQueue(annId)
     assert.ok(left.ok, JSON.stringify(left))
+    assert.equal(scene.playing, 't1', 'her track is not cut')
+    assert.equal(scene.view.current?.pseudo, 'Ann')
+    assert.equal(scene.view.current?.leaving, true, 'it is said, so that she is drawn in grey')
+    assert.deepEqual(scene.room.lineupOf(annId), [], 'her queued tracks went')
+    assert.ok(scene.view.upcoming.every((step) => step.pseudo !== 'Ann'), 'and are not in "À suivre"')
+
+    scene.wait(40) // t1 ends
     assert.equal(scene.playing, 't3', 'Ben plays')
     assert.deepEqual(scene.waitingNames, [], 'Ann does not come back at the end of the queue')
     assert.equal(scene.room.djCount, 1)
-    assert.deepEqual(scene.room.lineupOf(annId), [])
-    assert.ok(scene.view.upcoming.every((step) => step.pseudo !== 'Ann'), 'and her queued track is not in "À suivre"')
+  })
+
+  it('lines a track up again while their track plays on: they are a DJ again, not greyed', () => {
+    scene = new Scene()
+    scene.join('Ann')
+    scene.lineUp('Ann', 60)
+    scene.room.leaveQueue(scene.here.get('Ann') ?? '')
+    assert.equal(scene.view.current?.leaving, true)
+    assert.ok(scene.lineUp('Ann', 60))
+    assert.equal(scene.view.current?.leaving, undefined)
+    scene.wait(60)
+    assert.equal(scene.playing, 't2', 'her new track follows')
   })
 })
 
@@ -462,9 +480,12 @@ function randomWalk(check: (scene: Scene) => string | null, label: string) {
         const left = scene.room.leaveQueue(scene.here.get(name) ?? '')
         stats.leaveQueues += 1
         action = `${name} leaves the queue`
-        // Whoever leaves the queue by choice is out of it, wherever they were (on the decks or waiting).
-        const stillThere = [scene.view.current, ...scene.view.waiting].some((entry) => entry?.pseudo === name)
-        assert.ok(!(left.ok && stillThere), `${label}, seed ${seed}, step ${step}: ${name} left the queue and is still in it`)
+        // Whoever leaves the queue by choice is out of it; if their track is on the decks it plays on, marked as leaving
+        // and with nothing after it.
+        const current = scene.view.current
+        const stillThere = [current, ...scene.view.waiting].some((entry) => entry?.pseudo === name)
+        const onlyLeaving = current?.pseudo === name && current.leaving === true && !scene.view.waiting.some((entry) => entry.pseudo === name)
+        assert.ok(!(left.ok && stillThere && !onlyLeaving), `${label}, seed ${seed}, step ${step}: ${name} left the queue and is still in it`)
       } else if (roll < 0.74 && present.length > 0) {
         const name = pick([...present])
         scene.room.voteSkip(scene.here.get(name) ?? '', true)

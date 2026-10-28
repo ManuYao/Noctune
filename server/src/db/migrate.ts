@@ -6,6 +6,21 @@ const MIGRATIONS_DIR = new URL('../../migrations/', import.meta.url)
 const LOCK_ID = 727_274
 
 /**
+ * The migrations of the repository that this database has not applied yet (all of them for a database that has none).
+ * Read only: a server that starts on a database that is behind can say so, instead of failing later in one feature.
+ */
+export async function pendingMigrations(pool: Pick<pg.Pool, 'query'>, directory: URL = MIGRATIONS_DIR): Promise<string[]> {
+  const files = (await readdir(directory)).filter((file) => file.endsWith('.sql')).sort()
+  let done = new Set<string>()
+  try {
+    done = new Set((await pool.query<{ name: string }>('SELECT name FROM schema_migrations')).rows.map((row) => row.name))
+  } catch {
+    // No table of migrations yet: nothing was applied through migrate().
+  }
+  return files.filter((file) => !done.has(file))
+}
+
+/**
  * Applies, in file name order, the .sql files that were not applied yet, each one in a transaction.
  * Returns the names it applied. A migration that was applied is never run again: to change the schema, add a file.
  */

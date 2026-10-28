@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { Link } from 'react-router'
 import type { BadgeEarned } from '../../shared/protocol'
 import { socket } from '../realtime/socket'
@@ -15,6 +16,20 @@ const KIND_TONES = { unique: 'unique', rare: 'rare', hidden: 'hidden' } as const
 // A little longer than a notice: it is good news, and it is worth a look at the profile.
 const READ_TIME_MS = 10_000
 const KEPT = 3
+
+// Where the sparkles fly (degrees, px) and when: a ring of ten, a few farther, a few late.
+const SPARKLES = [
+  { angle: 0, dist: 34, delay: 0 },
+  { angle: 36, dist: 44, delay: 0.08 },
+  { angle: 72, dist: 32, delay: 0.16 },
+  { angle: 108, dist: 46, delay: 0.04 },
+  { angle: 144, dist: 36, delay: 0.2 },
+  { angle: 180, dist: 42, delay: 0.1 },
+  { angle: 216, dist: 33, delay: 0.24 },
+  { angle: 252, dist: 47, delay: 0.06 },
+  { angle: 288, dist: 35, delay: 0.18 },
+  { angle: 324, dist: 43, delay: 0.12 },
+]
 
 function toneOf(badge: BadgeEarned): BadgeTone {
   return badge.kind === 'tiered' ? (`tier${Math.min(3, Math.max(1, badge.level))}` as BadgeTone) : KIND_TONES[badge.kind]
@@ -35,7 +50,15 @@ function Toast({ toast, newTab, onDismiss }: { toast: Toast; newTab: boolean; on
   const many = others.length > 0
   return (
     <li className="badge-toasts__item">
-      <BadgeIcon id={first.id as BadgeId} tone={toneOf(first)} state="earned" size={48} />
+      {/* The icon pops and sparkles twice: something was unlocked. Decoration only; reduced motion switches it off (the message stays). */}
+      <span className="badge-toasts__icon">
+        <BadgeIcon id={first.id as BadgeId} tone={toneOf(first)} state="earned" size={48} />
+        <span className="badge-toasts__sparkles" aria-hidden="true">
+          {SPARKLES.map((sparkle, index) => (
+            <i key={index} style={{ '--angle': `${sparkle.angle}deg`, '--dist': `${sparkle.dist}px`, '--delay': `${sparkle.delay}s` } as CSSProperties} />
+          ))}
+        </span>
+      </span>
       <div className="badge-toasts__text">
         <strong>{many ? `${toast.badges.length} nouveaux badges !` : 'Nouveau badge !'}</strong>
         <p>{many ? toast.badges.map((badge) => badge.name).join(', ') : badgeLine(first)}</p>
@@ -64,6 +87,12 @@ export default function BadgeToasts({ newTab = false }: { newTab?: boolean }) {
   useEffect(() => {
     const onEarned = (badges: BadgeEarned[]) => {
       if (!Array.isArray(badges) || badges.length === 0) return
+      // A phone shakes a little (Android; absent elsewhere, and never an error).
+      try {
+        navigator.vibrate?.([70, 50, 70])
+      } catch {
+        // Not allowed here.
+      }
       setToasts((prev) => [...prev, { id: nextId.current++, badges }].slice(-KEPT))
     }
     socket.on('badge:earned', onEarned)

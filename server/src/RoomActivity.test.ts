@@ -104,19 +104,22 @@ describe('played tracks', () => {
     assert.deepEqual(named('trackPlayed'), [['acc-ann']])
   })
 
-  it('does not count a track that was cut before 10 s', () => {
+  it('does not count a track that was cut before 10 s (the room emptied)', () => {
     enter(ann, ben)
     lineUp(ann, 'one')
     mock.timers.tick(5 * SECOND)
-    room.leaveQueue('p-ann') // on the decks: the track is cut
+    room.remove('p-ben')
+    room.remove('p-ann')
     assert.deepEqual(named('trackPlayed'), [])
   })
 
-  it('counts a track cut after 10 s', () => {
+  it('counts the track of a DJ who left the queue, once it has been heard for 10 s', () => {
     enter(ann, ben)
     lineUp(ann, 'one')
     mock.timers.tick(12 * SECOND)
-    room.leaveQueue('p-ann')
+    room.leaveQueue('p-ann') // on the decks: the track plays on
+    assert.deepEqual(named('trackPlayed'), [], 'not settled yet')
+    mock.timers.tick(300 * SECOND)
     assert.deepEqual(named('trackPlayed'), [['acc-ann']])
   })
 
