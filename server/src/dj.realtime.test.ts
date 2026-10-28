@@ -804,3 +804,56 @@ describe('the list of rooms', () => {
     await until(() => djs(latest) === 0, 'the list to show the DJ gone')
   })
 })
+
+describe('the order of what plays next, told to everybody', () => {
+  const order = (queue: DjQueue | undefined) => queue?.upcoming.map((step) => `${step.pseudo}:${step.track.title}`)
+
+  it('tells a visitor the projected order, in the snapshot and after each change', async () => {
+    await start()
+    const ann = await memberIn('Ann')
+    const ben = await memberIn('Ben')
+    const guest = await visitorIn('Guest')
+    await lineUp(ann, 'aaaaaaaaaa1')
+    await lineUp(ann, 'aaaaaaaaaa2')
+    await lineUp(ben, 'bbbbbbbbbb1')
+    const benSecond = await lineUp(ben, 'bbbbbbbbbb2')
+    await until(() => titleOnDecks(guest) === 'Alpha', 'Ann on the decks')
+    await until(
+      () => order(guest.pushes.queues.at(-1))?.join() === 'Ben:Bravo,Ann:Alpha 2,Ben:Bravo 2',
+      'the visitor to hear the order',
+    )
+
+    // A latecomer gets it in the snapshot, with the positions and nothing private.
+    const late = await visitorIn('Late')
+    assert.deepEqual(order(late.snapshot.queue), ['Ben:Bravo', 'Ann:Alpha 2', 'Ben:Bravo 2'])
+    const first = late.snapshot.queue.upcoming[0]
+    assert.deepEqual(Object.keys(first).sort(), ['avatarId', 'away', 'entryId', 'position', 'pseudo', 'track'])
+    assert.deepEqual(Object.keys(first.track).sort(), ['artist', 'durationSec', 'id', 'title', 'videoId'])
+    assert.deepEqual(late.snapshot.queue.upcoming.map((step) => step.position), [1, 2, 3])
+    assert.equal(first.entryId, late.snapshot.queue.waiting[0].id)
+
+    assert.deepEqual(await remove(ben.socket, benSecond.id), { ok: true })
+    await until(() => order(guest.pushes.queues.at(-1))?.join() === 'Ben:Bravo,Ann:Alpha 2', 'the removed track to leave the list')
+
+    await lineUp(ben, 'cccccccccc1')
+    await until(() => order(guest.pushes.queues.at(-1))?.join() === 'Ben:Bravo,Ann:Alpha 2,Ben:Charlie', 'the added track')
+
+    assert.deepEqual(await leaveQueue(ben.socket), { ok: true })
+    await until(() => order(guest.pushes.queues.at(-1))?.join() === 'Ann:Alpha 2' || order(guest.pushes.queues.at(-1))?.length === 0, 'Ben to leave the list')
+    assert.ok(!order(guest.pushes.queues.at(-1))?.some((step) => step.startsWith('Ben')), 'Ben is gone from the list')
+  })
+
+  it('changes the list when the turn changes', async () => {
+    await start()
+    const ann = await memberIn('Ann')
+    const ben = await memberIn('Ben')
+    const guest = await visitorIn('Guest')
+    await lineUp(ann, 'aaaaaaaaaa1')
+    await lineUp(ann, 'aaaaaaaaaa2')
+    await lineUp(ben, 'bbbbbbbbbb1')
+    await until(() => titleOnDecks(guest) === 'Alpha', 'Ann on the decks')
+    assert.deepEqual(await skip(ann.socket, true), { ok: true })
+    await until(() => titleOnDecks(guest) === 'Bravo', 'Ben’s track')
+    assert.deepEqual(order(guest.pushes.tracks.at(-1)?.queue), ['Ann:Alpha 2'])
+  })
+})

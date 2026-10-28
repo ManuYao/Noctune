@@ -3,6 +3,7 @@ import {
   LINEUP_MAX,
   OWN_SKIP_MIN_SEC,
   SKIP_PROTECTED_SEC,
+  UPCOMING_MAX,
   type AddTrackResult,
   type DjFailure,
   type DjNotice,
@@ -23,7 +24,7 @@ import { pseudoKey } from '../../shared/validation'
 import type { RoomActivity } from './activity/ActivityRecorder'
 import { TEST_TRACKS } from './catalog'
 import { ChatLog } from './ChatLog'
-import { DjBooth, type DjEntry, type DropReason, type TurnContext, type TurnEvent } from './DjBooth'
+import { DjBooth, projectUpcoming, type DjEntry, type DropReason, type TurnContext, type TurnEvent } from './DjBooth'
 import { MinInterval } from './MinInterval'
 import { Moderation, type ModerationOptions } from './moderation/Moderation'
 
@@ -358,6 +359,19 @@ export class Room {
     return {
       current: this.booth.current ? this.entryView(this.booth.current) : null,
       waiting: this.booth.waiting.map((entry) => this.entryView(entry)),
+      upcoming: projectUpcoming(
+        this.booth.current,
+        this.booth.waiting,
+        (accountId) => this.participantOf.has(accountId),
+        UPCOMING_MAX,
+      ).map((step) => ({
+        entryId: step.entry.id,
+        pseudo: step.entry.pseudo,
+        avatarId: step.entry.avatarId,
+        track: { ...step.track },
+        position: step.position,
+        away: step.away,
+      })),
     }
   }
 
@@ -456,7 +470,7 @@ export class Room {
     if (index === -1) return { ok: false, error: 'no-such-track' }
     place.lineup.splice(index, 1)
     this.sendLineup(who.accountId)
-    if (index === 0) this.scheduleQueueBroadcast() // the queue shows the first track of each line-up
+    this.scheduleQueueBroadcast()
     return { ok: true }
   }
 
@@ -488,7 +502,7 @@ export class Room {
     if (index === -1) return { ok: false, error: 'no-such-track' }
     const [track] = entry.lineup.splice(index, 1)
     this.sendLineup(entry.accountId)
-    if (index === 0) this.scheduleQueueBroadcast() // the queue shows the first track of each line-up
+    this.scheduleQueueBroadcast()
     return { ok: true, title: track.title, accountId: entry.accountId }
   }
 

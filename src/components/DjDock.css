@@ -55,8 +55,23 @@
   background: transparent;
 }
 
-.dj-dock--leave svg {
-  color: var(--accent-2);
+/* In the queue tab: "Ajouter un morceau" takes the width, "Quitter la file" is a smaller outline beside it. */
+.dj-dock-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.dj-dock-row .dj-dock--add {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.dj-dock-row .dj-dock--leave {
+  flex: none;
+  width: auto;
+  padding: 0 16px;
+  font-size: 14px;
 }
 
 .dj-dock--mine {

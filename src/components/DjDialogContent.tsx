@@ -199,8 +199,10 @@ export default function DjDialogContent({
     if (result.ok) {
       setInput('')
       setSource(null)
-      setDone(`« ${result.track.title} » est dans ta file.`)
+      setDone(`Ajouté : « ${result.track.title} » est dans ta file.`)
       setLastAdded(result.track)
+      // Several tracks in a row: the field is empty and ready for the next link.
+      if (!touchScreen()) inputRef.current?.focus()
     } else {
       setError(djErrorMessage(result))
     }
@@ -217,9 +219,10 @@ export default function DjDialogContent({
     const result = await onAddFromPlaylist(picked.id)
     setBusy(null)
     if (result.ok) {
-      setDone(`« ${result.track.title} » est dans ta file.`)
+      setDone(`Ajouté : « ${result.track.title} » est dans ta file.`)
       setPickedId(null)
       setSource(link !== '' ? 'link' : null)
+      if (!phone && !touchScreen()) inputRef.current?.focus()
     } else {
       setError(djErrorMessage(result))
     }
@@ -298,6 +301,7 @@ export default function DjDialogContent({
   // What the big button of a phone says it will join the queue with.
   const choiceTitle = choice === 'playlist' && picked ? (picked.title ?? 'Titre à actualiser') : choice === 'link' ? shortLink(link) : null
   const goVerb = place ? 'Ajouter à ma file' : 'Rejoindre la file'
+  const lineupFull = lineup.length >= LINEUP_MAX
 
   const ruleChips = [
     maxTrackChip(rules),
@@ -586,12 +590,12 @@ export default function DjDialogContent({
             type="button"
             className="dj-band__go"
             aria-describedby="dj-band-what"
-            disabled={busy !== null || choice === null || (choice === 'playlist' && pickedVerdict !== null)}
+            disabled={busy !== null || lineupFull || choice === null || (choice === 'playlist' && pickedVerdict !== null)}
             onClick={() => void (choice === 'link' ? handleAddLink() : handleAddPicked())}
           >
             <Plus />
             <span className="dj-band__go-label">
-              {busy === 'add' ? 'Vérification…' : phone && choiceTitle ? `${goVerb} avec « ${choiceTitle} »` : goVerb}
+              {lineupFull ? `${LINEUP_MAX} morceaux au plus` : busy === 'add' ? 'Vérification…' : phone && choiceTitle ? `${goVerb} avec « ${choiceTitle} »` : goVerb}
             </span>
           </button>
         </div>

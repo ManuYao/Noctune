@@ -335,7 +335,7 @@ describe('the rules of the room when lining a track up', () => {
     room.addTrack(ann.id, video('long', 999))
     mock.timers.tick(SECOND)
     assert.equal(room.djCount, 0)
-    assert.deepEqual(room.queueView(), { current: null, waiting: [] })
+    assert.deepEqual(room.queueView(), { current: null, waiting: [], upcoming: [] })
     assert.deepEqual(lineups, [])
     assert.deepEqual(queueChanges, [])
   })
@@ -541,7 +541,8 @@ describe('leaving the queue and taking tracks out', () => {
     assert.deepEqual(room.removeTrack(ben.id, b2.id), { ok: true })
     assert.deepEqual(lineups.at(-1), { participantId: ben.id, lineup: [b1, b3] })
     mock.timers.tick(250)
-    assert.equal(queueChanges.length, 0, 'the queue shows the first track only: nothing changed for the room')
+    assert.equal(queueChanges.length, 1, 'the upcoming list shows every track: the room is told')
+    queueChanges.length = 0
 
     assert.deepEqual(room.removeTrack(ben.id, b1.id), { ok: true })
     mock.timers.tick(250)

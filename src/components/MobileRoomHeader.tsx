@@ -54,8 +54,8 @@ export default function MobileRoomHeader({ roomId, name, online, host, isHost, c
             )}
           </p>
         </div>
-        {/* The details open in a new tab, so that the room and its player keep going. */}
-        <Link to={`/rooms/${encodeURIComponent(roomId)}/infos`} target="_blank" rel="noopener noreferrer" className="mroom-head__button" aria-label="Infos de la room (nouvel onglet)">
+        {/* Same tab on a phone: a second tab would leave people lost among several pages. Back returns to the room. */}
+        <Link to={`/rooms/${encodeURIComponent(roomId)}/infos`} className="mroom-head__button" aria-label="Infos de la room">
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <circle cx="12" cy="12" r="9" />
             <path d="M12 11 V17" />

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { beforeEach, describe, it } from 'node:test'
 import type { QueuedTrack } from '../../shared/protocol'
-import { DjBooth, MAX_MISSES, type DjEntry, type DropReason, type TurnContext } from './DjBooth'
+import { DjBooth, MAX_MISSES, projectUpcoming, type DjEntry, type DropReason, type TurnContext } from './DjBooth'
 
 let counter = 0
 function track(title: string, videoId = `vid${String(++counter).padStart(8, '0')}`): QueuedTrack {
@@ -312,5 +312,52 @@ describe('the decks when the room empties', () => {
     assert.deepEqual(names(booth.waiting), ['Ben', 'Ann'])
     booth.endCurrent() // nobody on the decks: nothing happens
     assert.deepEqual(names(booth.waiting), ['Ben', 'Ann'])
+  })
+})
+
+describe('the projected order of play', () => {
+  const titles = (steps: { track: QueuedTrack }[]) => steps.map((step) => step.track.title)
+  const project = (max = 20) => projectUpcoming(booth.current, booth.waiting, (id) => present.has(id), max)
+
+  it('is empty with an empty queue, or with nobody having a track', () => {
+    assert.deepEqual(project(), [])
+    dj('Ann')
+    assert.deepEqual(project(), [])
+  })
+
+  it('lists one DJ’s tracks in order, the one on the decks excluded', () => {
+    dj('Ann', ['a1', 'a2', 'a3'])
+    booth.nextTurn(context)
+    const steps = project()
+    assert.deepEqual(titles(steps), ['a2', 'a3'])
+    assert.deepEqual(steps.map((step) => step.position), [1, 2])
+  })
+
+  it('interleaves three DJs and skips the one with no track', () => {
+    dj('Ann', ['a1', 'a2', 'a3'])
+    dj('Ben', ['b1'])
+    dj('Cat', [])
+    dj('Dan', ['d1', 'd2'])
+    assert.deepEqual(titles(project()), ['a1', 'b1', 'd1', 'a2', 'd2', 'a3'])
+    booth.nextTurn(context) // Ann plays a1
+    assert.deepEqual(titles(project()), ['b1', 'd1', 'a2', 'd2', 'a3'])
+  })
+
+  it('matches what the rotation really plays', () => {
+    dj('Ann', ['a1', 'a2'])
+    dj('Ben', ['b1', 'b2', 'b3'])
+    dj('Cat', ['c1'])
+    const expected = titles(project())
+    const real: (string | undefined)[] = []
+    for (let i = 0; i < expected.length; i += 1) real.push(played(booth.nextTurn(context)))
+    assert.deepEqual(real, expected)
+  })
+
+  it('caps the list and keeps absent DJs, marked away', () => {
+    dj('Ann', ['a1', 'a2', 'a3', 'a4'])
+    dj('Ben', ['b1', 'b2'], false)
+    const steps = project(3)
+    assert.deepEqual(titles(steps), ['a1', 'b1', 'a2'])
+    assert.deepEqual(steps.map((step) => step.away), [false, true, false])
   })
 })

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import type { DjQueue, QueuedTrack, RoomRules } from '../../shared/protocol'
+import { LINEUP_MAX, type DjQueue, type QueuedTrack, type RoomRules } from '../../shared/protocol'
 import { djCount, findMyPlace } from '../realtime/djQueue'
 import { djErrorMessage } from '../realtime/djMessages'
 import type { SendDjResult } from '../realtime/useRoom'
@@ -38,7 +38,7 @@ function Lock() {
 /**
  * The way into "Passer DJ" on a phone (the bar has no room for it, see DjBarAction for a computer): locked for a visitor (it
  * leads to signing in, in a new tab so that the room plays on), "+ Passer DJ" for a member, and once in the queue the place
- * in it above the chat field, "− Quitter la file" at the foot of the queue tab.
+ * in it above the chat field, "Ajouter un morceau" and "Quitter la file" at the foot of the queue tab.
  */
 export default function DjDock({ variant, rules, queue, selfId, isMember, lineup, onOpen, onLeave, onNote }: DjDockProps) {
   const [confirming, setConfirming] = useState(false)
@@ -91,8 +91,28 @@ export default function DjDock({ variant, rules, queue, selfId, isMember, lineup
     if (!result.ok) onNote(djErrorMessage(result))
   }
 
+  const lineupFull = lineup.length >= LINEUP_MAX
+
   return (
-    <>
+    <div className="dj-dock-row">
+      <button type="button" className={`${classes} dj-dock--add`} disabled={lineupFull} aria-haspopup="dialog" onClick={onOpen}>
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+          <path d="M8 3 V13 M3 8 H13" />
+        </svg>
+        {lineupFull ? (
+          <>
+            {LINEUP_MAX} morceaux au plus<span className="visually-hidden"> : ta file est pleine, retire un morceau pour en ajouter</span>
+          </>
+        ) : (
+          <>
+            Ajouter un morceau
+            <span className="visually-hidden">
+              {' '}
+              à ta file ({lineup.length === 0 ? 'aucun morceau prévu' : `${lineup.length} morceau${lineup.length > 1 ? 'x' : ''} prévu${lineup.length > 1 ? 's' : ''}`})
+            </span>
+          </>
+        )}
+      </button>
       <button
         type="button"
         className={`${classes} dj-dock--leave`}
@@ -100,12 +120,9 @@ export default function DjDock({ variant, rules, queue, selfId, isMember, lineup
         aria-haspopup={costs ? 'dialog' : undefined}
         onClick={() => (costs ? setConfirming(true) : void leave())}
       >
-        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-          <path d="M3 8 H13" />
-        </svg>
         Quitter la file
       </button>
       {costs && <LeaveQueueDialog open={confirming} costs={costs} busy={busy} onConfirm={() => void leave()} onClose={() => setConfirming(false)} />}
-    </>
+    </div>
   )
 }

@@ -172,11 +172,33 @@ export interface DjQueueEntry {
   next: QueuedTrack | null
 }
 
+/** The most tracks `DjQueue.upcoming` lists. */
+export const UPCOMING_MAX = 20
+
+/** One track of the projected play order. Public on purpose: everybody sees what will play, and from whom. */
+export interface UpcomingTrack {
+  /** The `DjQueueEntry.id` of the DJ who plays it. */
+  entryId: string
+  pseudo: string
+  avatarId: AvatarId
+  track: QueuedTrack
+  /** 1 = right after the track on the decks. */
+  position: number
+  /** The DJ is not in the room right now: their turn may be skipped. */
+  away: boolean
+}
+
 export interface DjQueue {
   /** On the decks right now. Null while the room's own selection plays. */
   current: DjQueueEntry | null
   /** Waiting for their turn, the next one first. */
   waiting: DjQueueEntry[]
+  /**
+   * What will play after the current track, closest first, at most UPCOMING_MAX: the rotation of the DJs simulated over
+   * their line-ups (the DJ on the decks comes back at the end with their remaining tracks, a DJ without track is
+   * left out). A projection: DJs may change it, and an `away` DJ may be skipped. Empty while the room's selection plays.
+   */
+  upcoming: UpcomingTrack[]
 }
 
 export type DjError =
@@ -463,6 +485,20 @@ export interface ProfileData {
   topRooms: { id: string; name: string }[]
 }
 
+/**
+ * A badge (or a new level of one) the member has just earned, pushed to their open connections as `badge:earned`.
+ * `id` is a `BadgeId` of shared/badges.ts. `level` and `levels` are 1 and 1 for a badge earned once.
+ */
+export interface BadgeEarned {
+  id: string
+  name: string
+  kind: 'tiered' | 'unique' | 'rare' | 'hidden'
+  level: number
+  levels: number
+  /** The short label of the level reached ("50", "6 mois"); empty for a badge earned once. */
+  tierLabel: string
+}
+
 export type ProfileReply =
   | { ok: true; profile: ProfileData }
   | { ok: false; error: Exclude<AuthError, 'rate-limited'> }
@@ -485,20 +521,6 @@ export const ROOM_THEMES = ['neon', 'sunset', 'vinyl', 'jungle'] as const
 export type RoomTheme = (typeof ROOM_THEMES)[number]
 
 export const ROOM_NAME_MIN = 3
-/**
- * A badge (or a new level of one) the member has just earned, pushed to their open connections as `badge:earned`.
- * `id` is a `BadgeId` of shared/badges.ts. `level` and `levels` are 1 and 1 for a badge earned once.
- */
-export interface BadgeEarned {
-  id: string
-  name: string
-  kind: 'tiered' | 'unique' | 'rare' | 'hidden'
-  level: number
-  levels: number
-  /** The short label of the level reached ("50", "6 mois"); empty for a badge earned once. */
-  tierLabel: string
-}
-
 export const ROOM_NAME_MAX = 40
 export const ROOM_DESCRIPTION_MAX = 200
 export const ROOM_STYLES_MAX = 3
@@ -625,6 +647,8 @@ export interface ServerToClientEvents {
   'dj:notice': (notice: DjNotice) => void
   /** To the host only: the whole inbox of reports, each time it changes. */
   'mod:reports': (reports: Report[]) => void
+  /** To every open connection of a member: badges they have just earned (all of them at once if several), once each. */
+  'badge:earned': (badges: BadgeEarned[]) => void
   /** To the person a host acted on. */
   'mod:notice': (notice: ModNotice) => void
   /** To the person the host excluded: they are out of the room (and cannot come back for 24 hours). */
@@ -633,5 +657,3 @@ export interface ServerToClientEvents {
   'track:reactions': (reactions: Reactions) => void
   'chat:message': (message: ChatMessage) => void
 }
-  /** To every open connection of a member: badges they have just earned (all of them at once if several), once each. */
-  'badge:earned': (badges: BadgeEarned[]) => void

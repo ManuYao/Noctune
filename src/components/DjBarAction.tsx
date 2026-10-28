@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import type { DjQueue, QueuedTrack, RoomRules, Track } from '../../shared/protocol'
+import { LINEUP_MAX, type DjQueue, type QueuedTrack, type RoomRules, type Track } from '../../shared/protocol'
 import { useServerNow } from '../player/useServerNow'
 import { djCount, estimateWaitSec, findMyPlace } from '../realtime/djQueue'
 import { djErrorMessage, turnMessage } from '../realtime/djMessages'
@@ -31,7 +31,7 @@ const ordinal = (rank: number) => (rank === 1 ? '1er' : `${rank}e`)
 /**
  * "Passer DJ" at the right end of the bar, as in mock-ups 3 and 3b, with its note under it: locked for a visitor (it
  * leads to signing in, in a new tab so that the room plays on), "+ Passer DJ" for a member, "− Quitter la file" once
- * in it. Rendered as two items of the bar's grid: the button, then the note under the sound and the button.
+ * in it "Ajouter un morceau" (to chain several), with "Quitter la file" demoted to an outline beside the note. Rendered as two items of the bar's grid: the button, then the note under the sound and the button.
  */
 export default function DjBarAction({
   rules,
@@ -104,21 +104,36 @@ export default function DjBarAction({
     if (!result.ok) onNote(djErrorMessage(result))
   }
 
+  const lineupFull = lineup.length >= LINEUP_MAX
+
   return (
     <>
       <button
         type="button"
-        className="dj-cta dj-cta--leave"
-        disabled={busy}
-        aria-haspopup={costs ? 'dialog' : undefined}
-        onClick={() => (costs ? setConfirming(true) : void leave())}
+        className="dj-cta"
+        disabled={lineupFull}
+        aria-haspopup="dialog"
+        aria-describedby="dj-cta-note"
+        onClick={onOpen}
       >
-        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-          <path d="M3 8 H13" />
+        <svg viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+          <path d="M9 3 V15 M3 9 H15" />
         </svg>
-        Quitter la file
+        {lineupFull ? (
+          <>
+            {LINEUP_MAX} morceaux au plus<span className="visually-hidden"> : ta file est pleine, retire un morceau pour en ajouter</span>
+          </>
+        ) : (
+          <>
+            Ajouter un morceau
+            <span className="visually-hidden">
+              {' '}
+              à ta file ({lineup.length === 0 ? 'aucun morceau prévu' : `${lineup.length} morceau${lineup.length > 1 ? 'x' : ''} prévu${lineup.length > 1 ? 's' : ''}`})
+            </span>
+          </>
+        )}
       </button>
-      <p className="dj-cta__note">
+      <p id="dj-cta-note" className="dj-cta__note">
         {noTrack ? (
           <span className="dj-cta__warn">Sans morceau, ton tour sera passé</span>
         ) : place.onDecks ? (
@@ -128,7 +143,16 @@ export default function DjBarAction({
         )}
         {' · '}
         <button type="button" className="dj-cta__link" aria-haspopup="dialog" onClick={onOpen}>
-          Mes morceaux ({lineup.length})
+          Mes morceaux ({lineup.length}/{LINEUP_MAX})
+        </button>
+        <button
+          type="button"
+          className="dj-cta__leave"
+          disabled={busy}
+          aria-haspopup={costs ? 'dialog' : undefined}
+          onClick={() => (costs ? setConfirming(true) : void leave())}
+        >
+          Quitter la file
         </button>
       </p>
       {costs && (

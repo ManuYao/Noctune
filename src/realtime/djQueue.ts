@@ -1,7 +1,7 @@
 import { trackPositionSec } from '../../shared/clock'
 import type { DjQueue, DjQueueEntry, Track } from '../../shared/protocol'
 
-export const EMPTY_QUEUE: DjQueue = { current: null, waiting: [] }
+export const EMPTY_QUEUE: DjQueue = { current: null, waiting: [], upcoming: [] }
 
 /** Where the viewer stands in the queue. */
 export interface MyPlace {

@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router'
+import { UPCOMING_MAX } from '../../shared/protocol'
 import type { DjQueue, QueuedTrack, RoomRules, Track } from '../../shared/protocol'
+import { trackPositionSec } from '../../shared/clock'
 import { formatWaitShort } from '../data/duration'
 import { useServerNow } from '../player/useServerNow'
 import { djCount, estimateWaitSec, findMyPlace } from '../realtime/djQueue'
 import { turnMessage } from '../realtime/djMessages'
 import DjQueueRow from './DjQueueRow'
 import TrackCover from './TrackCover'
+import UpcomingRow from './UpcomingRow'
 import '../pages/PageKit.css'
 import './DjQueuePanel.css'
 
@@ -65,7 +68,7 @@ export default function DjQueuePanel({
 
   // The list is a scroll box. Its edges fade where more rows hide, so that a cut row reads as "there is more" and not as
   // a mistake; it takes the keyboard focus only when there is something to scroll.
-  const listRef = useRef<HTMLOListElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
   const [overflow, setOverflow] = useState({ above: false, below: false })
   const updateOverflow = useCallback(() => {
     const list = listRef.current
@@ -130,6 +133,35 @@ export default function DjQueuePanel({
     return () => observer.disconnect()
   }, [showCta, revealOwn])
 
+  // The order to come, as the server plays it. The "⋯" sits on the first track of each waiting DJ: that is the one a report
+  // or the host's action points at. Past an absent DJ the times are "at the latest": their turn may be skipped.
+  const remainingSec = nowPlaying ? Math.max(0, nowPlaying.durationSec - trackPositionSec(nowPlaying, serverNow)) : 0
+  const idle = queue.waiting.filter((entry) => entry.next === null)
+  const upcomingRows: ReactNode[] = []
+  {
+    const seen = new Set<string>()
+    let eta = remainingSec
+    let afterAway = false
+    for (const item of queue.upcoming) {
+      const entry = queue.waiting.find((candidate) => candidate.id === item.entryId)
+      const first = !seen.has(item.entryId)
+      seen.add(item.entryId)
+      const aims = first && entry?.next?.id === item.track.id
+      upcomingRows.push(
+        <UpcomingRow
+          key={item.track.id}
+          item={item}
+          isSelf={place?.entry.id === item.entryId}
+          etaSec={eta}
+          latest={afterAway}
+          action={aims && entry ? { entryId: entry.id, trackId: item.track.id, participantId: entry.participantId } : null}
+        />,
+      )
+      eta += item.track.durationSec
+      if (item.away) afterAway = true
+    }
+  }
+
   const next = lineup[0]
   const body = (
     <>
@@ -149,39 +181,48 @@ export default function DjQueuePanel({
       {count === 0 ? (
         <p className="dj-queue__empty">Personne à la console : la room joue sa propre sélection.</p>
       ) : (
-        <ol
+        <div
           ref={listRef}
           className="dj-queue__list"
-          role="list"
-          aria-label="Ordre de passage des DJ"
+          role="group"
+          aria-label="Ordre de passage"
           data-above={overflow.above}
           data-below={overflow.below}
           tabIndex={overflow.above || overflow.below ? 0 : undefined}
           onScroll={updateOverflow}
         >
           {queue.current && (
-            <DjQueueRow
-              entry={queue.current}
-              rank={null}
-              isSelf={queue.current.participantId === selfId}
-              nowPlaying={nowPlaying}
-              selfWait={null}
-            />
-          )}
-          {queue.waiting.map((entry, index) => {
-            const isSelf = entry.participantId !== null && entry.participantId === selfId
-            return (
+            <ol className="dj-queue__upcoming" aria-label="En cours">
               <DjQueueRow
-                key={entry.id}
-                entry={entry}
-                rank={index + 1}
-                isSelf={isSelf}
+                entry={queue.current}
+                rank={null}
+                isSelf={queue.current.participantId === selfId}
                 nowPlaying={nowPlaying}
-                selfWait={isSelf ? selfWait : null}
+                selfWait={null}
               />
-            )
-          })}
-        </ol>
+            </ol>
+          )}
+          <h3 className="dj-queue__sub">À suivre</h3>
+          {queue.upcoming.length === 0 ? (
+            <p className="dj-queue__note">
+              {queue.current
+                ? 'Rien de prévu après ce morceau : la room jouera sa sélection.'
+                : 'Rien de prévu : la room joue sa sélection.'}
+            </p>
+          ) : (
+            <ol className="dj-queue__upcoming" aria-label="Morceaux à venir, dans l'ordre">
+              {upcomingRows}
+            </ol>
+          )}
+          {queue.upcoming.length >= UPCOMING_MAX && (
+            <p className="dj-queue__note">Seuls les {UPCOMING_MAX} prochains morceaux sont affichés.</p>
+          )}
+          {idle.length > 0 && (
+            <p className="dj-queue__note">
+              En file sans morceau (tour passé) : {idle.map((entry) => (entry.id === place?.entry.id ? `${entry.pseudo} (toi)` : entry.pseudo)).join(', ')}.
+            </p>
+          )}
+        </div>
       )}
 
       {/* A phone: the viewer's next track is the way to all of theirs; what is wrong with their turn is said under it. */}

@@ -1,0 +1,163 @@
+/* A row of "À suivre": three short lines beside a cover, taller than the DJ rows of mock-up 3. */
+.up-row {
+  min-height: 56px;
+  padding-block: 4px;
+}
+
+.up-row .track-cover {
+  flex: none;
+}
+
+.up-row__title {
+  font-size: 14px;
+}
+
+.up-row__dj {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.up-row__dj > svg {
+  flex: none;
+}
+
+.up-row__pseudo {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.up-row__flag {
+  flex: none;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.up-row__flag--self {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.dj-row--self .up-row__eta {
+  color: var(--accent-text);
+}
+
+.up-row__eta {
+  padding: 0 4px;
+}
+
+.dj-queue__sub {
+  margin: 6px 0 0;
+  padding: 0 8px;
+  color: var(--text-muted);
+  font-family: var(--font-text);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dj-queue__upcoming {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0 8px;
+  list-style: none;
+}
+
+.dj-queue__note {
+  margin: 4px 0 0;
+  padding: 0 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 760px) {
+  .up-row {
+    min-height: 60px;
+  }
+
+  .dj-queue__sub,
+  .dj-queue__note,
+  .dj-queue__upcoming {
+    padding-inline: 0;
+  }
+
+  .dj-queue__upcoming {
+    gap: 8px;
+  }
+}
+
+/* A computer: one compact line per track, so that the order shows without scrolling. The details stay in the tooltip and
+   in the text read aloud; the "⋯" keeps a 44 px target without making the row taller. */
+@media (min-width: 761px) {
+  .up-row {
+    min-height: 36px;
+    padding-block: 0;
+    gap: 8px;
+  }
+
+  .up-row .dj-row__badge {
+    width: 22px;
+    height: 22px;
+  }
+
+  .up-row .track-cover {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+  }
+
+  .up-row .track-cover svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .up-row .dj-row__who {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .up-row .up-row__title {
+    flex: 0 1 auto;
+    min-width: 0;
+  }
+
+  /* Artist after the title, one line; the duration moves to the end. */
+  .up-row .dj-row__detail {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .up-row__dj {
+    flex: none;
+    max-width: 38%;
+    order: 3;
+  }
+
+  .up-row__eta {
+    display: none;
+  }
+
+  .up-row .dj-row__more {
+    right: -6px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .up-row .dj-row__more svg {
+    width: 16px;
+    height: 16px;
+  }
+}

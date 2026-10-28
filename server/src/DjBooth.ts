@@ -43,6 +43,40 @@ export interface Turn {
   events: TurnEvent[]
 }
 
+/** One step of the projected play order. */
+export interface UpcomingStep {
+  entry: DjEntry
+  track: QueuedTrack
+  /** 1 = right after the track on the decks. */
+  position: number
+  away: boolean
+}
+
+/**
+ * The order the line-ups will play in if nothing changes, following the rotation of the booth: the DJ on the decks goes
+ * to the back after their track (with what is left of their line-up), a DJ without a track is passed over. Rules that
+ * may drop a track later (length, replay delay) and skips of absent DJs are not simulated.
+ */
+export function projectUpcoming(
+  current: DjEntry | null,
+  waiting: readonly DjEntry[],
+  isPresent: (accountId: string) => boolean,
+  max: number,
+): UpcomingStep[] {
+  const ring = [...waiting, ...(current ? [current] : [])].map((entry) => ({ entry, next: 0 }))
+  const steps: UpcomingStep[] = []
+  while (steps.length < max && ring.length > 0) {
+    const slot = ring.shift()
+    if (!slot) break
+    const track = slot.entry.lineup[slot.next]
+    if (!track) continue
+    steps.push({ entry: slot.entry, track, position: steps.length + 1, away: !isPresent(slot.entry.accountId) })
+    slot.next += 1
+    ring.push(slot)
+  }
+  return steps
+}
+
 /**
  * The DJ on the decks and the DJs waiting for their turn. Pure bookkeeping: it knows nothing about timers, sockets
  * or the clock. The room tells it who is present and which tracks still fit its rules.
