@@ -172,17 +172,17 @@ describe('lining a track up', () => {
     assert.equal(titles().filter((title) => title === 'b1').length, 0)
   })
 
-  it('goes on with the room’s own selection after the last track of the last DJ', () => {
+  it('goes on with the room’s own selection after the last track of the last DJ, who is not a DJ any more', () => {
     enter(ann, vic)
     lineUp(ann, 'a1')
     mock.timers.tick(200 * SECOND)
     assert.equal(room.nowPlaying?.videoId, TEST_TRACKS[1].videoId, 'the selection continues where it was left')
     assert.equal(onDecks(), null)
-    assert.deepEqual(noticesFor(ann), [], 'her turn has not come round again: she has just played')
-    assert.equal(room.djCount, 1, 'and she keeps her place')
+    assert.equal(room.djCount, 0, 'Ann has nothing lined up: she is out of the queue')
+    assert.deepEqual(noticesFor(ann), [], 'and nobody tells her: she saw her last track play')
 
-    mock.timers.tick(TEST_TRACKS[1].durationSec * SECOND) // the selection ends: her turn, with nothing to play
-    assert.deepEqual(noticesFor(ann), [{ kind: 'skipped' }], 'now Ann is told her turn came with nothing to play')
+    mock.timers.tick(TEST_TRACKS[1].durationSec * SECOND) // the selection goes on
+    assert.deepEqual(noticesFor(ann), [])
   })
 
   it('lets a DJ line up several tracks and play them in order', () => {
@@ -355,7 +355,7 @@ describe('taking turns', () => {
 
     mock.timers.tick(200 * SECOND)
     assert.equal(room.nowPlaying?.title, 'a2')
-    assert.deepEqual(waitingNames(), ['Ben'])
+    assert.deepEqual(waitingNames(), [], 'Ben played his only track: he is out of the queue')
 
     mock.timers.tick(200 * SECOND) // nobody has anything left: the room’s own selection plays
     assert.equal(room.nowPlaying?.videoId, TEST_TRACKS[1].videoId)
@@ -372,51 +372,63 @@ describe('taking turns', () => {
     assert.equal(change?.queue.waiting[0].next?.title, 'a2')
   })
 
-  it('tells a DJ whose turn came with nothing to play, and takes them out at the second time', () => {
+  it('takes a DJ out of the queue as soon as their last track has played, without a notice: they have nothing to wait for', () => {
     enter(ann, ben)
     lineUp(ann, 'a1')
     lineUp(ben, 'b1')
-    mock.timers.tick(200 * SECOND) // Ben plays b1; Ann has just played, her turn has not come round again
+    mock.timers.tick(200 * SECOND) // Ben plays b1; Ann has played her only track
     assert.deepEqual(noticesFor(ann), [])
-    mock.timers.tick(200 * SECOND) // Ann's turn: nothing (miss 1); Ben has just played → the selection
-    assert.deepEqual(noticesFor(ann), [{ kind: 'skipped' }])
-    assert.deepEqual(noticesFor(ben), [], 'Ben has just played too')
-    assert.equal(room.djCount, 2)
+    assert.deepEqual(waitingNames(), [])
+    assert.equal(room.djCount, 1, 'only Ben is a DJ now')
 
-    mock.timers.tick(TEST_TRACKS[1].durationSec * SECOND) // the selection ends: Ann misses again, Ben misses his first
-    assert.deepEqual(noticesFor(ann), [{ kind: 'skipped' }, { kind: 'removed' }])
-    assert.deepEqual(noticesFor(ben), [{ kind: 'skipped' }])
-    assert.equal(room.djCount, 1)
-
-    mock.timers.tick(TEST_TRACKS[2].durationSec * SECOND) // and Ben's second
-    assert.deepEqual(noticesFor(ben), [{ kind: 'skipped' }, { kind: 'removed' }])
+    mock.timers.tick(200 * SECOND) // Ben's only track ends too: the room’s selection
+    assert.deepEqual(noticesFor(ben), [])
     assert.equal(room.djCount, 0)
-    assert.deepEqual(lineups.at(-1)?.lineup, [], 'and their line-up is gone')
+    assert.deepEqual(lineups.at(-1)?.lineup, [], 'and nobody has a line-up')
   })
 
-  it('skips a DJ who is away, who keeps their place and their line-up', () => {
-    annOnTheDecksBenWaiting()
+  it('passes over a DJ who is away, who keeps their place and their line-up', () => {
+    enter(ann, ben)
+    lineUp(ann, 'a1', 60)
+    lineUp(ann, 'a2', 60)
+    lineUp(ben, 'b1', 60)
     room.remove(ben.id)
     const [entry] = room.queueView().waiting
     assert.equal(entry.participantId, null)
     assert.equal(entry.pseudo, 'Ben')
     assert.equal(entry.next?.title, 'b1')
 
-    mock.timers.tick(200 * SECOND) // Ben is away: Ann plays a2 instead
+    mock.timers.tick(60 * SECOND) // Ben is away: Ann plays a2 instead
     assert.equal(room.nowPlaying?.title, 'a2')
     assert.deepEqual(waitingNames(), ['Ben'])
     assert.equal(room.queueView().waiting[0].next?.title, 'b1', 'the track is still lined up')
     assert.deepEqual(noticesFor(ben), [], 'nobody to tell')
   })
 
-  it('takes an away DJ out after two turns skipped in a row', () => {
+  it('takes an away DJ out, with their line-up, once 3 minutes have passed', () => {
+    annOnTheDecksBenWaiting() // a1 plays for 200 s
+    room.remove(ben.id)
+    mock.timers.tick(179 * SECOND)
+    assert.deepEqual(waitingNames(), ['Ben'], 'still in line a second before')
+    assert.equal(room.queueView().waiting[0].next?.title, 'b1')
+
+    mock.timers.tick(SECOND)
+    assert.deepEqual(waitingNames(), [])
+    assert.equal(room.djCount, 1, 'only Ann is left')
+    assert.equal(room.nowPlaying?.title, 'a1', 'and the track on the decks is not cut')
+  })
+
+  it('counts the 3 minutes from the last time the DJ left', () => {
     annOnTheDecksBenWaiting()
     room.remove(ben.id)
-    mock.timers.tick(200 * SECOND) // Ann plays a2; Ben's first miss
-    assert.equal(room.djCount, 2)
-    mock.timers.tick(200 * SECOND) // Ben's second miss: out; Ann (nothing left) misses once
-    assert.deepEqual(waitingNames(), ['Ann'])
-    assert.equal(room.djCount, 1)
+    mock.timers.tick(100 * SECOND)
+    room.add({ ...ben, id: 'p-ben-2' }, 'acc-ben') // back in time
+    mock.timers.tick(50 * SECOND)
+    room.remove('p-ben-2') // gone again, at 150 s
+    mock.timers.tick(170 * SECOND) // 320 s in, but 170 s since the last departure
+    assert.deepEqual(waitingNames(), ['Ben'])
+    mock.timers.tick(10 * SECOND)
+    assert.deepEqual(waitingNames(), [])
   })
 
   it('gives a DJ who comes back the same place and line-up, under a new participant id', () => {
@@ -475,17 +487,17 @@ describe('taking turns', () => {
 
   it('lets a DJ who comes back while the room’s own selection plays take the decks at once', () => {
     enter(ann, vic)
-    lineUp(ann, 'a1')
-    lineUp(ann, 'a2')
+    lineUp(ann, 'a1', 60)
+    lineUp(ann, 'a2', 60)
     room.remove(ann.id) // away; a1 plays on
     assert.equal(room.nowPlaying?.title, 'a1')
-    mock.timers.tick(200 * SECOND) // Ann is away: skipped, the selection plays
+    mock.timers.tick(60 * SECOND) // Ann is away: passed over, the selection plays
     assert.equal(room.nowPlaying?.videoId, TEST_TRACKS[1].videoId)
 
-    mock.timers.tick(50 * SECOND)
+    mock.timers.tick(50 * SECOND) // 110 s since she left: back within the 3 minutes
     room.add({ ...ann, id: 'p-ann-2' }, 'acc-ann')
     assert.equal(room.nowPlaying?.title, 'a2')
-    assert.equal(room.nowPlaying?.startedAt, START + 250 * SECOND)
+    assert.equal(room.nowPlaying?.startedAt, START + 110 * SECOND)
     assert.equal(onDecks(), 'Ann')
     assert.deepEqual(room.lineupOf('p-ann-2'), [])
   })
@@ -499,7 +511,7 @@ describe('taking turns', () => {
     assert.equal(room.nowPlaying?.title, 'a1')
   })
 
-  it('keeps the queue when the room empties, and starts again from the front when someone comes back', () => {
+  it('keeps the queue when the room empties, and starts again from the front when someone comes back in time', () => {
     annOnTheDecksBenWaiting()
     room.remove(ann.id)
     room.remove(ben.id)
@@ -508,7 +520,7 @@ describe('taking turns', () => {
     assert.equal(onDecks(), null)
     assert.deepEqual(waitingNames(), ['Ben', 'Ann'], 'the DJ who was on the decks went to the back')
 
-    mock.timers.tick(3600 * SECOND)
+    mock.timers.tick(100 * SECOND)
     assert.equal(playingNow(), null, 'nothing plays for nobody')
 
     room.add({ ...ben, id: 'p-ben-2' }, 'acc-ben')
@@ -518,15 +530,26 @@ describe('taking turns', () => {
     assert.equal(room.nowPlaying?.title, 'a2')
   })
 
-  it('treats the DJs who never came back as skipped turns when someone else opens the room', () => {
+  it('lets go of the DJs of an empty room after 3 minutes: nobody is there to wait for', () => {
+    annOnTheDecksBenWaiting()
+    room.remove(ann.id)
+    room.remove(ben.id)
+    mock.timers.tick(181 * SECOND)
+    assert.equal(room.djCount, 0)
+    assert.equal(playingNow(), null)
+    room.add({ ...ben, id: 'p-ben-2' }, 'acc-ben')
+    assert.notEqual(room.nowPlaying?.title, 'b1', 'his track went with his place: the selection plays')
+  })
+
+  it('passes over the DJs who never came back when someone else opens the room, and lets them go after 3 minutes', () => {
     annOnTheDecksBenWaiting()
     room.remove(ann.id)
     room.remove(ben.id)
     enter(cat)
     assert.equal(room.nowPlaying?.videoId, TEST_TRACKS[1].videoId, 'the selection plays: nobody of the queue is here')
-    assert.equal(room.djCount, 2, 'the first miss')
-    mock.timers.tick(TEST_TRACKS[1].durationSec * SECOND)
-    assert.equal(room.djCount, 0, 'the second miss: both are out')
+    assert.equal(room.djCount, 2, 'they keep their places for now')
+    mock.timers.tick(181 * SECOND)
+    assert.equal(room.djCount, 0, 'both are out')
   })
 })
 
@@ -608,19 +631,32 @@ describe('leaving the queue and taking tracks out', () => {
     assert.equal(room.queueView().current?.participantId, null)
     mock.timers.tick(200 * SECOND)
     assert.equal(room.nowPlaying?.title, 'b1')
-    assert.deepEqual(waitingNames(), ['Ann'], 'and Ann is at the back, away')
+    assert.deepEqual(waitingNames(), [], 'her queued track went after 3 minutes: with nothing left she is out')
+  })
+
+  it('and goes to the back, away, when they have tracks left and the 3 minutes are not over', () => {
+    enter(ann, ben)
+    lineUp(ann, 'a1', 60)
+    lineUp(ann, 'a2', 60)
+    lineUp(ben, 'b1', 60)
+    room.remove(ann.id)
+    mock.timers.tick(60 * SECOND)
+    assert.equal(room.nowPlaying?.title, 'b1')
+    assert.deepEqual(waitingNames(), ['Ann'], 'at the back, away, with a2')
+    assert.equal(room.queueView().waiting[0].participantId, null)
   })
 })
 
 describe('the rules, checked again when the track is about to play', () => {
-  it('drops a track that no longer fits the room, tells the DJ, and skips the turn if nothing else can play', () => {
+  it('drops a track that no longer fits the room, tells the DJ, and takes them out of the queue if nothing else can play', () => {
     enter(ann, ben)
     lineUp(ann, 'a1')
     lineUp(ben, 'b1', 280) // fine for 300 s
     rules.maxTrackSec = 200 // the room's rules changed meanwhile
     mock.timers.tick(200 * SECOND)
 
-    assert.deepEqual(noticesFor(ben), [{ kind: 'track-dropped', title: 'b1', reason: 'too-long' }, { kind: 'skipped' }])
+    assert.deepEqual(noticesFor(ben), [{ kind: 'track-dropped', title: 'b1', reason: 'too-long' }, { kind: 'removed' }])
+    assert.deepEqual(waitingNames(), [], 'Ben has nothing left: he is not in the queue')
     assert.deepEqual(lineups.filter((entry) => entry.participantId === ben.id).at(-1)?.lineup, [])
     assert.equal(room.nowPlaying?.videoId === video('b1').videoId, false)
   })
@@ -640,18 +676,20 @@ describe('the rules, checked again when the track is about to play', () => {
   it('drops a track that the room’s own selection played while its DJ was away', () => {
     const wanted = TEST_TRACKS[1] // what the selection plays next
     enter(ann, ben)
-    lineUp(ann, 'a1')
+    lineUp(ann, 'a1', 60)
     assert.equal(room.addTrack(ben.id, { ...video('whatever'), videoId: wanted.videoId, title: wanted.title, durationSec: wanted.durationSec }).ok, true)
     room.remove(ben.id)
-    mock.timers.tick(200 * SECOND) // Ben is away, Ann has nothing: the selection plays the video Ben lined up
+    mock.timers.tick(60 * SECOND) // Ben is away, Ann has nothing: the selection plays the video Ben lined up
     assert.equal(room.nowPlaying?.videoId, wanted.videoId)
 
-    room.add({ ...ben, id: 'p-ben-2' }, 'acc-ben')
+    room.add({ ...ben, id: 'p-ben-2' }, 'acc-ben') // back within the 3 minutes
     assert.equal(room.nowPlaying?.videoId, wanted.videoId, 'still the selection’s track')
     assert.deepEqual(noticesFor({ ...ben, id: 'p-ben-2' }), [
       { kind: 'track-dropped', title: wanted.title, reason: 'recently-played' },
+      { kind: 'removed' },
     ])
     assert.deepEqual(room.lineupOf('p-ben-2'), [])
+    assert.deepEqual(waitingNames(), [], 'it was his only track: he is out of the queue')
   })
 })
 
@@ -804,7 +842,7 @@ describe('a DJ skipping their own track', () => {
     assert.deepEqual(lineupTitles(ann), [])
   })
 
-  it('skips the turn of a waiting DJ who is away, and plays again only because nobody else can', () => {
+  it('passes over the turn of a waiting DJ who is away, as often as it comes, and plays again only because nobody else can', () => {
     enter(ann, ben, vic)
     lineUp(ann, 'a1')
     lineUp(ann, 'a2')
@@ -812,30 +850,32 @@ describe('a DJ skipping their own track', () => {
     lineUp(ben, 'b1')
     room.remove(ben.id)
 
-    room.voteSkip(ann.id, true) // Ben is away: his turn is skipped (first miss)
+    room.voteSkip(ann.id, true) // Ben is away: his turn is passed over
     assert.equal(room.nowPlaying?.title, 'a2')
     assert.equal(onDecks(), 'Ann')
     assert.deepEqual(waitingNames(), ['Ben'])
-    assert.equal(room.djCount, 2, 'one miss is not the end of his place')
 
     mock.timers.tick(SECOND) // a vote to skip may come again after a moment
-    room.voteSkip(ann.id, true) // second miss in a row: he is out
+    room.voteSkip(ann.id, true) // and passed over again: he is still within his 3 minutes, and keeps his place
     assert.equal(room.nowPlaying?.title, 'a3')
-    assert.deepEqual(waitingNames(), [])
-    assert.equal(room.djCount, 1)
+    assert.deepEqual(waitingNames(), ['Ben'])
+    assert.equal(room.djCount, 2)
   })
 
-  it('skips the turn of a waiting DJ who has no track, and tells them', () => {
+  it('takes a waiting DJ out of the queue when they take their last track back', () => {
     enter(ann, ben, vic)
     lineUp(ann, 'a1')
     lineUp(ann, 'a2')
     const b1 = lineUp(ben, 'b1')
-    room.removeTrack(ben.id, b1.id) // still in the queue, with nothing to play
+    assert.deepEqual(waitingNames(), ['Ben'])
+    room.removeTrack(ben.id, b1.id) // nothing left to play: not a DJ any more
+    assert.deepEqual(waitingNames(), [])
+    assert.equal(room.djCount, 1)
+    assert.deepEqual(lineups.filter((entry) => entry.participantId === ben.id).at(-1)?.lineup, [])
 
     room.voteSkip(ann.id, true)
     assert.equal(room.nowPlaying?.title, 'a2', 'Ann plays again: nobody else can')
-    assert.deepEqual(noticesFor(ben), [{ kind: 'skipped' }])
-    assert.deepEqual(waitingNames(), ['Ben'])
+    assert.deepEqual(noticesFor(ben), [], 'Ben did it himself: no notice')
   })
 
   it('becomes an ordinary vote again once the DJ is no longer on the decks', () => {

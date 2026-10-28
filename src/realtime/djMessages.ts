@@ -92,9 +92,7 @@ export function djNoticeMessage(notice: DjNotice): string {
       return notice.reason === 'too-long'
         ? `Ton morceau « ${notice.title} » a été retiré de ta file : il est trop long pour cette room.`
         : `Ton morceau « ${notice.title} » a été retiré de ta file : il a été joué récemment dans cette room.`
-    case 'skipped':
-      return "Ton tour est passé : tu n'avais aucun morceau à jouer. Ajoutes-en un pour garder ta place."
     case 'removed':
-      return "Tu n'es plus dans la file : tes deux derniers tours sont passés sans morceau à jouer."
+      return "Tu n'es plus dans la file : aucun de tes morceaux ne pouvait passer. Ajoutes-en un pour y revenir."
   }
 }

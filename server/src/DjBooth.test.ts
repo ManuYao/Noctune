@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { beforeEach, describe, it } from 'node:test'
 import type { QueuedTrack } from '../../shared/protocol'
-import { DjBooth, MAX_MISSES, projectUpcoming, type DjEntry, type DropReason, type TurnContext } from './DjBooth'
+import { DjBooth, projectUpcoming, type DjEntry, type DropReason, type TurnContext } from './DjBooth'
 
 let counter = 0
 function track(title: string, videoId = `vid${String(++counter).padStart(8, '0')}`): QueuedTrack {
@@ -112,57 +112,69 @@ describe('a turn', () => {
 
   it('leaves nobody on the decks when nobody can play', () => {
     assert.deepEqual(booth.nextTurn(context), { play: null, events: [] })
-    dj('Ann')
+    dj('Ann') // here, nothing lined up: not a DJ
     assert.equal(booth.nextTurn(context).play, null)
     assert.equal(booth.current, null)
+    assert.equal(booth.size, 0, 'and nobody is left in the queue')
   })
 
-  it('skips a DJ who is away and sends them to the back', () => {
+  it('lets the DJ whose last track has just played go: they are out of the queue, without a word', () => {
+    dj('Ann', ['a1'])
+    booth.nextTurn(context) // Ann plays her only track
+    const turn = booth.nextTurn(context) // it is over; nothing else to play
+    assert.equal(turn.play, null)
+    assert.deepEqual(turn.events, [], 'no notice: she simply is not a DJ any more')
+    assert.equal(booth.size, 0)
+    assert.deepEqual(names(booth.waiting), [])
+  })
+
+  it('gives the decks to the next DJ when the last track of the one on the decks has played', () => {
+    dj('Ann', ['a1'])
+    dj('Ben', ['b1'])
+    booth.nextTurn(context)
+    assert.equal(played(booth.nextTurn(context)), 'b1')
+    assert.deepEqual(names(booth.waiting), [], 'Ann is out, Ben is on the decks')
+  })
+
+  it('passes over a DJ who is away: they keep their place and their tracks, the others play, and nothing is said', () => {
     const ann = dj('Ann', ['a1'], false)
     dj('Ben', ['b1'])
     const turn = booth.nextTurn(context)
     assert.equal(played(turn), 'b1')
-    assert.deepEqual(turn.events, [{ kind: 'skipped', accountId: ann.accountId }])
-    assert.equal(ann.misses, 1)
+    assert.deepEqual(turn.events, [])
     assert.deepEqual(names(booth.waiting), ['Ann'])
     assert.deepEqual(ann.lineup.map((queued) => queued.title), ['a1'], 'what they lined up is kept for when they are back')
   })
 
-  it('skips a DJ who is here but has nothing to play', () => {
-    const ann = dj('Ann')
-    dj('Ben', ['b1'])
-    const turn = booth.nextTurn(context)
-    assert.equal(played(turn), 'b1')
-    assert.deepEqual(turn.events, [{ kind: 'skipped', accountId: ann.accountId }])
-    assert.equal(ann.misses, 1)
+  it('never takes an away DJ out, however many turns pass: that is the room’s countdown, not the booth’s', () => {
+    const ann = dj('Ann', ['a1'], false)
+    dj('Ben', ['b1', 'b2', 'b3'])
+    for (let turn = 0; turn < 3; turn += 1) {
+      const result = booth.nextTurn(context)
+      assert.equal(played(result), `b${turn + 1}`)
+      assert.deepEqual(result.events, [])
+    }
+    assert.equal(booth.find(ann.accountId), ann)
   })
 
-  it('does not count a miss against the DJ who has just played: their turn has not come round yet', () => {
-    const ann = dj('Ann', ['a1'])
-    booth.nextTurn(context) // Ann plays her only track
-    const turn = booth.nextTurn(context) // it is over; nothing else to play
-    assert.equal(turn.play, null)
-    assert.deepEqual(turn.events, [], 'no miss and no notice')
-    assert.equal(ann.misses, 0)
-    assert.deepEqual(names(booth.waiting), ['Ann'], 'and she keeps her place')
+  it('lets a DJ who comes back in time play at their turn, first in line', () => {
+    const ann = dj('Ann', ['a1'], false)
+    dj('Ben', ['b1', 'b2'])
+    assert.equal(played(booth.nextTurn(context)), 'b1')
+    present.add(ann.accountId)
+    assert.equal(played(booth.nextTurn(context)), 'a1', 'Ann was passed over and kept her place at the front')
+    assert.equal(played(booth.nextTurn(context)), 'b2')
   })
 
-  it('judges that DJ from their next turn on: skipped once, then out', () => {
-    const ann = dj('Ann', ['a1'])
-    booth.nextTurn(context)
-    booth.nextTurn(context)
-    assert.deepEqual(booth.nextTurn(context).events, [{ kind: 'skipped', accountId: ann.accountId }])
-    assert.deepEqual(booth.nextTurn(context).events, [{ kind: 'removed', accountId: ann.accountId }])
-    assert.equal(booth.size, 0)
-  })
-
-  it('does not count a miss against the DJ who has just played if they left the room meanwhile either', () => {
-    const ann = dj('Ann', ['a1'])
+  it('keeps the place of the DJ who has just played and left the room with tracks to come', () => {
+    const ann = dj('Ann', ['a1', 'a2'])
     booth.nextTurn(context)
     present.delete(ann.accountId)
     const turn = booth.nextTurn(context)
+    assert.equal(turn.play, null, 'she is away: nobody plays')
     assert.deepEqual(turn.events, [])
-    assert.equal(ann.misses, 0)
+    assert.deepEqual(names(booth.waiting), ['Ann'])
+    assert.deepEqual(ann.lineup.map((queued) => queued.title), ['a2'])
   })
 
   it('still plays the DJ who has just played again when they have another track', () => {
@@ -171,59 +183,37 @@ describe('a turn', () => {
     assert.equal(played(booth.nextTurn(context)), 'a2')
   })
 
-  it('takes a DJ out after their turn was skipped twice in a row', () => {
-    assert.equal(MAX_MISSES, 2)
+  it('takes out a DJ who is here but has nothing to play, and says so', () => {
     const ann = dj('Ann')
-    dj('Ben', ['b1', 'b2'])
-    booth.nextTurn(context) // Ann: 1st miss, Ben plays b1
-    const turn = booth.nextTurn(context) // Ann: 2nd miss, Ben plays b2
-    assert.equal(played(turn), 'b2')
+    dj('Ben', ['b1'])
+    const turn = booth.nextTurn(context)
+    assert.equal(played(turn), 'b1')
     assert.deepEqual(turn.events, [{ kind: 'removed', accountId: ann.accountId }])
     assert.equal(booth.find(ann.accountId), undefined)
-    assert.equal(booth.size, 1)
   })
 
-  it('counts only turns in a row: playing in between starts the count again', () => {
-    const ann = dj('Ann', [], false)
-    dj('Ben', ['b1', 'b2', 'b3'])
-    booth.nextTurn(context) // Ann misses (1st), Ben plays b1
-    assert.equal(ann.misses, 1)
-
-    present.add(ann.accountId)
-    ann.lineup.push(track('a1'))
-    assert.equal(played(booth.nextTurn(context)), 'a1', 'Ann is first in line when Ben’s track ends')
-    assert.equal(ann.misses, 0, 'playing starts the count again')
-
-    assert.equal(played(booth.nextTurn(context)), 'b2')
-    present.delete(ann.accountId)
-    const turn = booth.nextTurn(context) // Ann is first in line again, and away: her 1st miss, not her 2nd
-    assert.equal(played(turn), 'b3')
-    assert.equal(ann.misses, 1)
-    assert.ok(booth.find(ann.accountId), 'still in the queue')
-  })
-
-  it('walks the queue once, giving every DJ who could not play exactly one miss, order unchanged', () => {
+  it('walks the queue once: passes over the DJs who are away, takes out the ones here with nothing left, order unchanged', () => {
     const ann = dj('Ann')
-    const ben = dj('Ben', [], false)
+    const ben = dj('Ben', ['b1'], false)
     const cat = dj('Cat')
     const turn = booth.nextTurn(context)
     assert.equal(turn.play, null)
-    assert.deepEqual(names(booth.waiting), ['Ann', 'Ben', 'Cat'])
-    assert.deepEqual([ann.misses, ben.misses, cat.misses], [1, 1, 1])
-    assert.deepEqual(
-      turn.events.map((event) => event.kind),
-      ['skipped', 'skipped', 'skipped'],
-    )
+    assert.deepEqual(names(booth.waiting), ['Ben'])
+    assert.deepEqual(turn.events, [
+      { kind: 'removed', accountId: ann.accountId },
+      { kind: 'removed', accountId: cat.accountId },
+    ])
+    assert.deepEqual(ben.lineup.map((queued) => queued.title), ['b1'])
   })
 
-  it('puts the skipped DJs behind the ones who did not have to wait', () => {
+  it('keeps an away DJ where they stand: the others play before them, in their own order', () => {
     dj('Ann', ['a1'], false)
     dj('Ben', ['b1'])
     dj('Cat', ['c1'])
-    booth.nextTurn(context) // Ann skipped, Ben plays
-    assert.deepEqual(names(booth.waiting), ['Cat', 'Ann'])
-    booth.nextTurn(context) // Ben goes to the back: Cat, Ann, Ben
-    assert.deepEqual(names(booth.waiting), ['Ann', 'Ben'])
+    booth.nextTurn(context) // Ann is passed over, Ben plays
+    assert.deepEqual(names(booth.waiting), ['Ann', 'Cat'])
+    booth.nextTurn(context) // Ben has no more: out. Ann passed over, Cat plays
+    assert.deepEqual(names(booth.waiting), ['Ann'])
     assert.equal(booth.current?.pseudo, 'Cat')
   })
 
@@ -233,10 +223,9 @@ describe('a turn', () => {
     const turn = booth.nextTurn(context)
     assert.equal(played(turn), 'fine')
     assert.deepEqual(turn.events, [{ kind: 'dropped', accountId: ann.accountId, title: 'too long', reason: 'too-long' }])
-    assert.equal(ann.misses, 0)
   })
 
-  it('skips a DJ whose every track was dropped, and says why and that they were skipped', () => {
+  it('takes out a DJ whose every track was dropped, and says why and that they are out', () => {
     const ann = dj('Ann', ['one', 'two'])
     for (const queued of ann.lineup) refused.set(queued.videoId, 'recently-played')
     dj('Ben', ['b1'])
@@ -244,53 +233,55 @@ describe('a turn', () => {
     assert.equal(played(turn), 'b1')
     assert.deepEqual(
       turn.events.map((event) => event.kind),
-      ['dropped', 'dropped', 'skipped'],
+      ['dropped', 'dropped', 'removed'],
     )
     assert.deepEqual(ann.lineup, [])
-    assert.equal(ann.misses, 1)
+    assert.equal(booth.find(ann.accountId), undefined)
   })
 
   it('does not look at the tracks of a DJ who is away', () => {
     const ann = dj('Ann', ['a1'], false)
     refused.set(ann.lineup[0].videoId, 'too-long')
     const turn = booth.nextTurn(context)
-    assert.deepEqual(turn.events, [{ kind: 'skipped', accountId: ann.accountId }])
+    assert.deepEqual(turn.events, [])
     assert.equal(ann.lineup.length, 1)
+    assert.equal(booth.find(ann.accountId), ann)
   })
 })
 
 describe('the room’s own selection playing, and a DJ arriving', () => {
   it('gives the decks to the first DJ in line who is here and can play, passing nobody’s turn', () => {
-    const ann = dj('Ann') // here, nothing to play
     const ben = dj('Ben', ['b1'], false) // away
     const cat = dj('Cat', ['c1', 'c2'])
     const dan = dj('Dan', ['d1'])
     const turn = booth.takeOver(context)
     assert.equal(played(turn), 'c1')
     assert.equal(booth.current, cat)
-    assert.deepEqual(names(booth.waiting), ['Ann', 'Ben', 'Dan'], 'the others keep their order')
-    assert.deepEqual([ann.misses, ben.misses, dan.misses, cat.misses], [0, 0, 0, 0], 'and nobody is penalised')
+    assert.deepEqual(names(booth.waiting), ['Ben', 'Dan'], 'the others keep their order')
     assert.deepEqual(turn.events, [])
+    assert.equal(ben.lineup.length, 1)
+    assert.equal(dan.lineup.length, 1)
   })
 
   it('changes nothing when nobody can take over', () => {
-    const ann = dj('Ann')
     dj('Ben', ['b1'], false)
     const turn = booth.takeOver(context)
     assert.deepEqual(turn, { play: null, events: [] })
-    assert.deepEqual(names(booth.waiting), ['Ann', 'Ben'])
-    assert.equal(ann.misses, 0)
+    assert.deepEqual(names(booth.waiting), ['Ben'])
   })
 
-  it('drops a track that does not fit, and passes to the next DJ without a miss when that was the last one', () => {
+  it('drops a track that does not fit, takes out the DJ who had no other, and passes to the next DJ', () => {
     const ann = dj('Ann', ['a1'])
     refused.set(ann.lineup[0].videoId, 'recently-played')
     const ben = dj('Ben', ['b1'])
     const turn = booth.takeOver(context)
     assert.equal(played(turn), 'b1')
-    assert.deepEqual(turn.events, [{ kind: 'dropped', accountId: ann.accountId, title: 'a1', reason: 'recently-played' }])
-    assert.equal(ann.misses, 0)
+    assert.deepEqual(turn.events, [
+      { kind: 'dropped', accountId: ann.accountId, title: 'a1', reason: 'recently-played' },
+      { kind: 'removed', accountId: ann.accountId },
+    ])
     assert.equal(booth.current, ben)
+    assert.deepEqual(names(booth.waiting), [])
   })
 
   it('does nothing while a DJ is already on the decks', () => {
@@ -303,8 +294,8 @@ describe('the room’s own selection playing, and a DJ arriving', () => {
 })
 
 describe('the decks when the room empties', () => {
-  it('sends the DJ on the decks to the back, as if their track had ended', () => {
-    dj('Ann', ['a1'])
+  it('sends the DJ on the decks to the back when they have tracks left, as if their track had ended', () => {
+    dj('Ann', ['a1', 'a2'])
     dj('Ben', ['b1'])
     booth.nextTurn(context)
     booth.endCurrent()
@@ -312,6 +303,15 @@ describe('the decks when the room empties', () => {
     assert.deepEqual(names(booth.waiting), ['Ben', 'Ann'])
     booth.endCurrent() // nobody on the decks: nothing happens
     assert.deepEqual(names(booth.waiting), ['Ben', 'Ann'])
+  })
+
+  it('lets the DJ on the decks go when theirs was the last track', () => {
+    dj('Ann', ['a1'])
+    dj('Ben', ['b1'])
+    booth.nextTurn(context)
+    booth.endCurrent()
+    assert.equal(booth.current, null)
+    assert.deepEqual(names(booth.waiting), ['Ben'])
   })
 })
 
@@ -353,11 +353,30 @@ describe('the projected order of play', () => {
     assert.deepEqual(real, expected)
   })
 
-  it('caps the list and keeps absent DJs, marked away', () => {
+  it('caps the list, and leaves the DJs who are away out: they will not play', () => {
     dj('Ann', ['a1', 'a2', 'a3', 'a4'])
     dj('Ben', ['b1', 'b2'], false)
     const steps = project(3)
-    assert.deepEqual(titles(steps), ['a1', 'b1', 'a2'])
-    assert.deepEqual(steps.map((step) => step.away), [false, true, false])
+    assert.deepEqual(titles(steps), ['a1', 'a2', 'a3'])
+    assert.deepEqual(steps.map((step) => step.position), [1, 2, 3])
+  })
+
+  it('leaves out the DJ on the decks too when they are away: they do not come back at the end', () => {
+    const ann = dj('Ann', ['a1', 'a2'])
+    dj('Ben', ['b1'])
+    booth.nextTurn(context) // Ann plays a1, a2 is left
+    present.delete(ann.accountId)
+    assert.deepEqual(titles(project()), ['b1'])
+  })
+
+  it('matches what the rotation really plays with a DJ away: the same order without them', () => {
+    dj('Ann', ['a1', 'a2'])
+    dj('Ben', ['b1', 'b2'], false)
+    dj('Cat', ['c1'])
+    const expected = titles(project())
+    assert.deepEqual(expected, ['a1', 'c1', 'a2'])
+    const real: (string | undefined)[] = []
+    for (let i = 0; i < expected.length; i += 1) real.push(played(booth.nextTurn(context)))
+    assert.deepEqual(real, expected)
   })
 })

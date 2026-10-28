@@ -2,11 +2,12 @@
 // and what the room shows of it. The other room tests check each rule alone; these follow a DJ through the transitions, the
 // way the beta testers did, and a seeded random walk checks the same facts after every action.
 //
-// Two kinds of tests:
-// - what holds today (a guard for the next steps): ordinary tests;
-// - the rules agreed on 28/10/2026, not coded yet (see .tmp/retours-28-10.md): marked `todo`, so that they run and say what
-//   is missing without failing the suite. Step 3 codes them and removes the mark. `LIFECYCLE_STRICT=1` runs them as
-//   ordinary tests, to see the failures.
+// The rules they hold the room to (agreed with the user on 28/10/2026):
+// - a DJ is somebody with a track on the decks or lined up: when their last track has ended, or they take their last
+//   queued track back, they are out of the queue at once;
+// - a DJ who leaves the site keeps their place and queued tracks for 3 minutes (counted from the last time they left),
+//   passed over at their turn without penalty; their track on the decks plays to its end; then everything goes;
+// - what "À suivre" lists is what will really play: never the track of a DJ who is away.
 import assert from 'node:assert/strict'
 import { afterEach, beforeEach, describe, it, mock } from 'node:test'
 import type { DjQueue, DjQueueEntry, Participant, QueuedTrack, RoomRules, VideoInfo } from '../../shared/protocol'
@@ -17,8 +18,6 @@ const START = 1_000_000
 const SECOND = 1000
 /** A DJ who leaves the site keeps their queued tracks this long (28/10/2026). */
 const ABSENCE_GRACE_MS = 3 * 60 * SECOND
-
-const NEW_RULE: { todo?: string } = process.env.LIFECYCLE_STRICT ? {} : { todo: 'step 3: DJ life cycle (28/10/2026)' }
 
 const MEMBERS = ['Ann', 'Ben', 'Cat'] as const
 type Member = (typeof MEMBERS)[number]
@@ -130,7 +129,7 @@ afterEach(() => {
 })
 
 describe('a DJ who has played their last track', () => {
-  it('is out of the queue at once, not "first in the queue" with nothing to play (28/10: « 1er dans la file alors qu’il n’est plus DJ »)', NEW_RULE, () => {
+  it('is out of the queue at once, not "first in the queue" with nothing to play (28/10: « 1er dans la file alors qu’il n’est plus DJ »)', () => {
     scene = new Scene()
     scene.join('Ann')
     scene.join('Ben')
@@ -144,7 +143,7 @@ describe('a DJ who has played their last track', () => {
     assert.equal(scene.room.djCount, 1, 'only Ben is a DJ now')
   })
 
-  it('is out as soon as their last track ends, even with nobody else in the queue', NEW_RULE, () => {
+  it('is out as soon as their last track ends, even with nobody else in the queue', () => {
     scene = new Scene()
     scene.join('Ann')
     scene.join('Ben')
@@ -154,7 +153,7 @@ describe('a DJ who has played their last track', () => {
     assert.equal(scene.view.current, null)
   })
 
-  it('is out too when they take their last queued track back (found by the random walk)', NEW_RULE, () => {
+  it('is out too when they take their last queued track back (found by the random walk)', () => {
     scene = new Scene()
     scene.join('Ann')
     scene.join('Ben')
@@ -212,14 +211,14 @@ describe('a DJ who leaves the site', () => {
     scene.leave('Ben')
   }
 
-  it('is never shown as the next track while they are away: only what will really play is "À suivre"', NEW_RULE, () => {
+  it('is never shown as the next track while they are away: only what will really play is "À suivre"', () => {
     benLeavesWithTwoTracks()
     const ahead = scene.view.upcoming
     assert.ok(ahead.length > 0)
     assert.ok(ahead.every((step) => step.pseudo !== 'Ben'), 'none of Ben’s tracks is listed: he is not there to play them')
   })
 
-  it('keeps their place and their tracks for 3 minutes, however many turns pass', NEW_RULE, () => {
+  it('keeps their place and their tracks for 3 minutes, however many turns pass', () => {
     benLeavesWithTwoTracks()
     scene.wait(90) // three turns have come round: before, Ben was out after two
     assert.deepEqual(scene.waitingNames, ['Ben'])
@@ -235,7 +234,7 @@ describe('a DJ who leaves the site', () => {
     assert.equal(scene.room.djCount, 1, 'only Ann is left')
   })
 
-  it('finds everything as they left it when they come back within 3 minutes', NEW_RULE, () => {
+  it('finds everything as they left it when they come back within 3 minutes', () => {
     benLeavesWithTwoTracks()
     scene.wait(100)
     scene.join('Ben')
@@ -243,7 +242,7 @@ describe('a DJ who leaves the site', () => {
     assert.deepEqual(scene.room.lineupOf(scene.here.get('Ben') ?? '').map((track) => track.title), ['t9', 't10'])
   })
 
-  it('counts the 3 minutes from the last time they left (phone asleep, tunnel: the connection drops again)', NEW_RULE, () => {
+  it('counts the 3 minutes from the last time they left (phone asleep, tunnel: the connection drops again)', () => {
     benLeavesWithTwoTracks()
     scene.wait(100)
     scene.join('Ben') // back before any of his turns
@@ -274,7 +273,7 @@ describe('the track of a DJ who leaves while it plays', () => {
     assert.equal(scene.view.current?.participantId, null, 'shown as away')
   })
 
-  it('has its queued tracks removed after 3 minutes, but not the track that plays', NEW_RULE, () => {
+  it('has its queued tracks removed after 3 minutes, but not the track that plays', () => {
     annLeavesDuringALongTrack()
     scene.wait(ABSENCE_GRACE_MS / SECOND + 1)
     assert.equal(scene.playing, 't1', 'the track on the decks is not cut')
@@ -282,7 +281,7 @@ describe('the track of a DJ who leaves while it plays', () => {
     assert.ok(scene.view.upcoming.every((step) => step.pseudo !== 'Ann'), 'her queued track is gone')
   })
 
-  it('then leaves the queue for good when that track ends', NEW_RULE, () => {
+  it('then leaves the queue for good when that track ends', () => {
     annLeavesDuringALongTrack()
     scene.wait(400) // t1 ends at 400 s
     assert.equal(scene.playing, 't3', 'Ben’s track: Ann has nothing left to play')
@@ -505,7 +504,7 @@ describe('random walks over the life of the members', () => {
     assert.ok(stats.tracksSeen >= 200, `tracks play: ${JSON.stringify(stats)}`)
   })
 
-  it('follow the rules of 28/10/2026: no empty place, no away DJ in "À suivre", 3 minutes at most', NEW_RULE, () => {
+  it('follow the rules of 28/10/2026: no empty place, no away DJ in "À suivre", 3 minutes at most', () => {
     randomWalk(brokenByNewRules, 'new rules')
   })
 })

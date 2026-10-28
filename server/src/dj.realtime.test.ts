@@ -489,7 +489,7 @@ describe('taking turns', () => {
     assert.equal(ben.pushes.queues.at(-1)?.current?.pseudo, 'Ann')
   })
 
-  it('moves on to the next DJ when a track ends by itself, and tells only the DJ whose turn came round with nothing to play', async () => {
+  it('moves on to the next DJ when a track ends by itself, and a DJ whose last track has played is out of the queue without a word', async () => {
     await start()
     const ann = await memberIn('Ann')
     const ben = await memberIn('Ben')
@@ -500,16 +500,16 @@ describe('taking turns', () => {
     await until(() => titleOnDecks(guest) === 'Short two', 'Ben’s track to start by itself', 3000)
     const change = guest.pushes.tracks.at(-1)
     assert.equal(change?.queue.current?.pseudo, 'Ben')
-    assert.deepEqual(waiting(change?.queue), ['Ann'])
+    assert.deepEqual(waiting(change?.queue), [], 'Ann played her only track: she is not in the queue any more')
 
-    // A second later nobody has anything left. Ann's turn comes round with nothing to play and she is told; Ben has just
-    // played, his turn has not come round again. The visitor hears nothing of it.
-    await until(() => ann.pushes.notices.length > 0, 'Ann’s notice', 3000)
+    // A second later nobody has anything left: the room's own selection plays. Each DJ saw their last track play, so
+    // nobody is told anything.
+    await until(() => titleOnDecks(guest) !== 'Short two', 'the room’s own selection to take over', 3000)
     await sleep(100)
-    assert.deepEqual(ann.pushes.notices, [{ kind: 'skipped' }])
+    assert.deepEqual(ann.pushes.notices, [])
     assert.deepEqual(ben.pushes.notices, [])
     assert.deepEqual(guest.pushes.notices, [])
-    assert.equal(titleOnDecks(guest) === 'Short two', false, 'and the room’s own selection plays on')
+    assert.equal(guest.pushes.tracks.at(-1)?.queue.current, null, 'nobody is on the decks')
   })
 
   it('takes a track out of a line-up, and refuses another DJ’s track id', async () => {
@@ -587,6 +587,7 @@ describe('the allowances between two requests', () => {
     const ben = await memberIn('Ben')
     await lineUp(ann, 'aaaaaaaaaa1')
     const queued = await lineUp(ben, 'bbbbbbbbbb1')
+    await lineUp(ben, 'bbbbbbbbbb2') // a second track: taking the first back leaves Ben in the queue
     assert.deepEqual(await remove(ben.socket, queued.id), { ok: true })
     const fast = await leaveQueue(ben.socket)
     assert.equal(fast.ok, false)
@@ -827,7 +828,7 @@ describe('the order of what plays next, told to everybody', () => {
     const late = await visitorIn('Late')
     assert.deepEqual(order(late.snapshot.queue), ['Ben:Bravo', 'Ann:Alpha 2', 'Ben:Bravo 2'])
     const first = late.snapshot.queue.upcoming[0]
-    assert.deepEqual(Object.keys(first).sort(), ['avatarId', 'away', 'entryId', 'position', 'pseudo', 'track'])
+    assert.deepEqual(Object.keys(first).sort(), ['avatarId', 'entryId', 'position', 'pseudo', 'track'])
     assert.deepEqual(Object.keys(first.track).sort(), ['artist', 'durationSec', 'id', 'title', 'videoId'])
     assert.deepEqual(late.snapshot.queue.upcoming.map((step) => step.position), [1, 2, 3])
     assert.equal(first.entryId, late.snapshot.queue.waiting[0].id)

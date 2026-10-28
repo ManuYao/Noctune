@@ -44,6 +44,12 @@ const VIDEO_ID = /^[\w-]{11}$/
 // once. (Somebody who opens a room and leaves again must not use up the room's own selection, nor make a DJ's track
 // "played recently" when nobody heard it.)
 const MIN_HEARD_MS = 10 * 1000
+/**
+ * A DJ who leaves the room keeps their place and their queued tracks this long: a dropped connection, a phone put to sleep,
+ * a tunnel. Past it the queued tracks are thrown away and the place goes (the track on the decks plays to its end first).
+ * Counted from the last time they left.
+ */
+export const DJ_ABSENCE_GRACE_MS = 3 * 60 * 1000
 
 /** What a room asks of its DJs when nobody has chosen: no limit on length, a track waits an hour to repeat. */
 export const DEFAULT_RULES: RoomRules = Object.freeze({ maxTrackSec: null, repeatDelaySec: 60 * 60, maxDjs: 10 })
@@ -92,6 +98,8 @@ export class Room {
   /** What each participant's sanctions are written on (account and/or hashed address): see SanctionKeys. Never sent anywhere. */
   private sanctionKeys = new Map<string, readonly string[]>()
   private readonly booth = new DjBooth()
+  /** The countdown of each absent DJ (account id): when it ends, their queued tracks and their place go. */
+  private absenceTimers = new Map<string, NodeJS.Timeout>()
   /** When each video last started in this room (house selection included). Insertion order is time order. */
   private playedAt = new Map<string, number>()
   /** The play that is in the memory but that nobody may have heard yet, and what the memory held for it before. */
@@ -191,6 +199,8 @@ export class Room {
     this.chat.clear()
     this.moderation.clear()
     this.stopPlayback()
+    for (const timer of this.absenceTimers.values()) clearTimeout(timer)
+    this.absenceTimers.clear()
     clearTimeout(this.reactionsTimer)
     this.reactionsTimer = undefined
     clearTimeout(this.queueTimer)
@@ -224,7 +234,8 @@ export class Room {
       this.activity?.entered(accountId, participant.id)
       place = this.booth.find(accountId)
       if (place) {
-        // A DJ who comes back keeps their place, under the name their account has now.
+        // A DJ who comes back in time keeps their place, under the name their account has now.
+        this.clearAbsence(accountId)
         place.pseudo = participant.pseudo
         place.avatarId = participant.avatarId
       }
@@ -249,6 +260,8 @@ export class Room {
       this.accountOf.delete(participantId)
       if (accountId) this.activity?.left(accountId, participantId)
       if (accountId && this.participantOf.get(accountId) === participantId) this.participantOf.delete(accountId)
+      // A DJ who is gone (not just one of their connections) starts the countdown after which they lose their place.
+      if (accountId && !this.participantOf.has(accountId) && this.booth.find(accountId)) this.startAbsence(accountId)
       this.sanctionKeys.delete(participantId)
       this.chat.forget(participantId)
       this.reactionLimit.forget(participantId)
@@ -260,7 +273,7 @@ export class Room {
         this.chat.clear()
         this.moderation.clearReports()
       } else {
-        // A DJ who leaves keeps their place and their track plays on: they are only away now.
+        // A DJ who leaves keeps their place for a few minutes and their track plays on: they are only away now.
         if (accountId && this.booth.find(accountId)) this.scheduleQueueBroadcast()
         if (!this.skipIfMajority()) this.scheduleReactionsBroadcast()
       }
@@ -370,7 +383,6 @@ export class Room {
         avatarId: step.entry.avatarId,
         track: { ...step.track },
         position: step.position,
-        away: step.away,
       })),
     }
   }
@@ -469,9 +481,40 @@ export class Room {
     const index = place.lineup.findIndex((track) => track.id === trackId)
     if (index === -1) return { ok: false, error: 'no-such-track' }
     place.lineup.splice(index, 1)
+    this.dropIfEmpty(place)
     this.sendLineup(who.accountId)
     this.scheduleQueueBroadcast()
     return { ok: true }
+  }
+
+  /** A place with nothing lined up has nothing to wait for and goes, unless its DJ is on the decks (their last track plays). */
+  private dropIfEmpty(place: DjEntry) {
+    if (place.lineup.length === 0 && this.booth.current !== place) this.booth.remove(place)
+  }
+
+  /** A DJ has left the room: after the grace period their queued tracks and their place go. A new departure restarts it. */
+  private startAbsence(accountId: string) {
+    this.clearAbsence(accountId)
+    this.absenceTimers.set(accountId, setTimeout(() => this.endAbsence(accountId), DJ_ABSENCE_GRACE_MS))
+  }
+
+  private clearAbsence(accountId: string) {
+    clearTimeout(this.absenceTimers.get(accountId))
+    this.absenceTimers.delete(accountId)
+  }
+
+  /**
+   * The grace period of an absent DJ is over. Their queued tracks are thrown away and they leave the queue; on the decks,
+   * their track plays to its end first (their place goes then, having nothing left to play).
+   */
+  private endAbsence(accountId: string) {
+    this.absenceTimers.delete(accountId)
+    if (this.participantOf.has(accountId)) return // back in time: the countdown was cleared, this is only a safeguard
+    const place = this.booth.find(accountId)
+    if (!place) return
+    place.lineup = []
+    this.dropIfEmpty(place)
+    this.scheduleQueueBroadcast()
   }
 
   /**
@@ -501,6 +544,7 @@ export class Room {
     const index = entry.lineup.findIndex((track) => track.id === trackId)
     if (index === -1) return { ok: false, error: 'no-such-track' }
     const [track] = entry.lineup.splice(index, 1)
+    this.dropIfEmpty(entry)
     this.sendLineup(entry.accountId)
     this.scheduleQueueBroadcast()
     return { ok: true, title: track.title, accountId: entry.accountId }
@@ -530,6 +574,7 @@ export class Room {
    * connections of the account are closed by whoever calls this, which takes its participants out first.
    */
   forgetAccount(accountId: string): void {
+    this.clearAbsence(accountId)
     const place = this.booth.find(accountId)
     if (!place) return
     const wasOnDecks = this.booth.current === place

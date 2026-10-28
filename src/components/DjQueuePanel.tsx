@@ -134,14 +134,13 @@ export default function DjQueuePanel({
   }, [showCta, revealOwn])
 
   // The order to come, as the server plays it. The "⋯" sits on the first track of each waiting DJ: that is the one a report
-  // or the host's action points at. Past an absent DJ the times are "at the latest": their turn may be skipped.
+  // or the host's action points at. An absent DJ is not in it: they are passed over, so the times are what will happen.
   const remainingSec = nowPlaying ? Math.max(0, nowPlaying.durationSec - trackPositionSec(nowPlaying, serverNow)) : 0
   const idle = queue.waiting.filter((entry) => entry.next === null)
   const upcomingRows: ReactNode[] = []
   {
     const seen = new Set<string>()
     let eta = remainingSec
-    let afterAway = false
     for (const item of queue.upcoming) {
       const entry = queue.waiting.find((candidate) => candidate.id === item.entryId)
       const first = !seen.has(item.entryId)
@@ -153,12 +152,10 @@ export default function DjQueuePanel({
           item={item}
           isSelf={place?.entry.id === item.entryId}
           etaSec={eta}
-          latest={afterAway}
           action={aims && entry ? { entryId: entry.id, trackId: item.track.id, participantId: entry.participantId } : null}
         />,
       )
       eta += item.track.durationSec
-      if (item.away) afterAway = true
     }
   }
 

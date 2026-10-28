@@ -168,7 +168,10 @@ export interface DjQueueEntry {
   avatarId: AvatarId
   /** The DJ's id among the participants while they are in the room; null while they are away. */
   participantId: string | null
-  /** The track they play on their next turn. Null while they have none lined up: their turn will be skipped. */
+  /**
+   * The track they play on their next turn. Null only for the DJ on the decks whose last track is the one playing: a
+   * place that waits always has one (a DJ with nothing lined up is out of the queue).
+   */
   next: QueuedTrack | null
 }
 
@@ -184,8 +187,6 @@ export interface UpcomingTrack {
   track: QueuedTrack
   /** 1 = right after the track on the decks. */
   position: number
-  /** The DJ is not in the room right now: their turn may be skipped. */
-  away: boolean
 }
 
 export interface DjQueue {
@@ -195,8 +196,9 @@ export interface DjQueue {
   waiting: DjQueueEntry[]
   /**
    * What will play after the current track, closest first, at most UPCOMING_MAX: the rotation of the DJs simulated over
-   * their line-ups (the DJ on the decks comes back at the end with their remaining tracks, a DJ without track is
-   * left out). A projection: DJs may change it, and an `away` DJ may be skipped. Empty while the room's selection plays.
+   * their line-ups (the DJ on the decks comes back at the end with their remaining tracks). A DJ who is away is not in it:
+   * they keep their place for a few minutes but are passed over, so none of their tracks will play while they are gone.
+   * A projection: DJs may change it. Empty while the room's selection plays.
    */
   upcoming: UpcomingTrack[]
 }
@@ -261,9 +263,7 @@ export type PlaylistStatusResult = { ok: true; statuses: Record<string, TrackSta
 export type DjNotice =
   /** A track of the line-up was taken out when its turn came: it no longer fits the rules of the room. */
   | { kind: 'track-dropped'; title: string; reason: 'too-long' | 'recently-played' }
-  /** Their turn came and they had no track to play: they keep their place, for one more turn. */
-  | { kind: 'skipped' }
-  /** Their turn was skipped twice in a row: they are out of the queue. */
+  /** None of the tracks they had lined up could play when their turn came: they have nothing left and are out of the queue. */
   | { kind: 'removed' }
 
 export interface RoomSnapshot {

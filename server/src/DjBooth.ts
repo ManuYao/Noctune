@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto'
 import type { AvatarId, DjNotice, QueuedTrack } from '../../shared/protocol'
 
-/** A DJ whose turn is skipped this many times in a row loses their place in the queue. */
-export const MAX_MISSES = 2
-
 /** Why a track of a line-up can no longer play when its turn comes. */
 export type DropReason = Extract<DjNotice, { kind: 'track-dropped' }>['reason']
 
-/** One DJ's place in the queue. */
+/**
+ * One DJ's place in the queue. A DJ is somebody with a track on the decks or lined up: a place that waits always holds
+ * at least one track, and the one on the decks leaves when their last track ends.
+ */
 export interface DjEntry {
   /** Public id of the place: stays the same while the DJ keeps it. */
   readonly id: string
@@ -17,8 +17,6 @@ export interface DjEntry {
   avatarId: AvatarId
   /** The tracks they will play, in order. Each one leaves the line-up when it starts. */
   lineup: QueuedTrack[]
-  /** Turns skipped in a row. */
-  misses: number
 }
 
 /** What the booth must ask the room to decide a turn. */
@@ -32,9 +30,7 @@ export interface TurnContext {
 export type TurnEvent =
   /** A track left the line-up because it no longer fits the rules of the room. */
   | { kind: 'dropped'; accountId: string; title: string; reason: DropReason }
-  /** The DJ's turn came and they could not play: they keep their place for one more turn. */
-  | { kind: 'skipped'; accountId: string }
-  /** The DJ's turn was skipped too often in a row: they lost their place. */
+  /** Every track of their line-up was dropped: they have nothing to play and lose their place. */
   | { kind: 'removed'; accountId: string }
 
 export interface Turn {
@@ -49,13 +45,13 @@ export interface UpcomingStep {
   track: QueuedTrack
   /** 1 = right after the track on the decks. */
   position: number
-  away: boolean
 }
 
 /**
  * The order the line-ups will play in if nothing changes, following the rotation of the booth: the DJ on the decks goes
- * to the back after their track (with what is left of their line-up), a DJ without a track is passed over. Rules that
- * may drop a track later (length, replay delay) and skips of absent DJs are not simulated.
+ * to the back after their track (with what is left of their line-up). A DJ who is away is passed over, as the booth does
+ * at their turn, so what is listed is what will really play. Rules that may drop a track later (length, replay delay)
+ * are not simulated.
  */
 export function projectUpcoming(
   current: DjEntry | null,
@@ -63,14 +59,16 @@ export function projectUpcoming(
   isPresent: (accountId: string) => boolean,
   max: number,
 ): UpcomingStep[] {
-  const ring = [...waiting, ...(current ? [current] : [])].map((entry) => ({ entry, next: 0 }))
+  const ring = [...waiting, ...(current ? [current] : [])]
+    .filter((entry) => isPresent(entry.accountId))
+    .map((entry) => ({ entry, next: 0 }))
   const steps: UpcomingStep[] = []
   while (steps.length < max && ring.length > 0) {
     const slot = ring.shift()
     if (!slot) break
     const track = slot.entry.lineup[slot.next]
     if (!track) continue
-    steps.push({ entry: slot.entry, track, position: steps.length + 1, away: !isPresent(slot.entry.accountId) })
+    steps.push({ entry: slot.entry, track, position: steps.length + 1 })
     slot.next += 1
     ring.push(slot)
   }
@@ -84,7 +82,7 @@ export function projectUpcoming(
 export class DjBooth {
   /** On the decks right now (their track plays, or just played). */
   current: DjEntry | null = null
-  /** Waiting for their turn, the next one first. */
+  /** Waiting for their turn, the next one first. Each one has a track lined up. */
   waiting: DjEntry[] = []
 
   /** DJs in all, the one on the decks included. */
@@ -103,11 +101,14 @@ export class DjBooth {
     return everyone.some((entry) => entry.lineup.some((track) => track.videoId === videoId))
   }
 
-  /** Puts someone at the end of the queue. An account has one place only: asking again gives the one it has. */
+  /**
+   * Puts someone at the end of the queue. An account has one place only: asking again gives the one it has. The caller
+   * lines a track up at once: a place with nothing in it does not wait.
+   */
   join(who: { accountId: string; pseudo: string; avatarId: AvatarId }): DjEntry {
     const existing = this.find(who.accountId)
     if (existing) return existing
-    const entry: DjEntry = { id: randomUUID(), ...who, lineup: [], misses: 0 }
+    const entry: DjEntry = { id: randomUUID(), ...who, lineup: [] }
     this.waiting.push(entry)
     return entry
   }
@@ -118,71 +119,59 @@ export class DjBooth {
     else this.waiting = this.waiting.filter((candidate) => candidate !== entry)
   }
 
-  /** The DJ who was on the decks goes to the back of the queue, as when their track ends. */
+  /**
+   * The DJ who was on the decks leaves them: to the back of the queue when they have tracks left, out of it when their
+   * last one has just played.
+   */
   endCurrent(): void {
-    if (!this.current) return
-    this.waiting.push(this.current)
+    const entry = this.current
+    if (!entry) return
     this.current = null
+    if (entry.lineup.length > 0) this.waiting.push(entry)
   }
 
   /**
-   * The turn changes (a track ended or was skipped). The DJ who was on the decks goes to the back, then the queue is
-   * walked once, from the front: a DJ who is away, or has nothing that can play, loses the turn and goes to the back
-   * (or out, once it happened too often in a row); the first DJ with a playable track takes the decks.
+   * The turn changes (a track ended or was skipped). The DJ who was on the decks goes to the back (or out), then the
+   * queue is walked once from the front: see `takeFirstPlayable`.
    */
   nextTurn(context: TurnContext): Turn {
-    const justPlayed = this.current
     this.endCurrent()
     const events: TurnEvent[] = []
-
-    for (let turns = this.waiting.length; turns > 0; turns -= 1) {
-      const entry = this.waiting.shift()
-      if (!entry) break
-      const track = context.isPresent(entry.accountId) ? this.takePlayable(entry, context, events) : null
-      if (track) {
-        entry.misses = 0
-        this.current = entry
-        return { play: { entry, track }, events }
-      }
-
-      // The DJ who has just played has not missed a turn: theirs has not come round yet. They wait at the back, and the
-      // two turns they may miss are the next two (so a DJ whose last track just ended has time to line another up).
-      if (entry === justPlayed) {
-        this.waiting.push(entry)
-        continue
-      }
-
-      entry.misses += 1
-      if (entry.misses >= MAX_MISSES) {
-        events.push({ kind: 'removed', accountId: entry.accountId })
-      } else {
-        events.push({ kind: 'skipped', accountId: entry.accountId })
-        this.waiting.push(entry)
-      }
-    }
-    return { play: null, events }
+    return { play: this.takeFirstPlayable(context, events), events }
   }
 
   /**
    * Nobody is on the decks (the room's own selection plays) and a DJ has something to play: the first present DJ in
-   * line with a playable track takes the decks at once. Nobody is penalised and the order does not change: this is
-   * not a turn that passed, only a DJ who arrived.
+   * line with a playable track takes the decks at once. The order does not change: this is not a turn that passed, only
+   * a DJ who arrived.
    */
   takeOver(context: TurnContext): Turn {
     const events: TurnEvent[] = []
     if (this.current) return { play: null, events }
+    return { play: this.takeFirstPlayable(context, events), events }
+  }
 
-    for (let index = 0; index < this.waiting.length; index += 1) {
+  /**
+   * Walks the queue once, from the front. A DJ who is away is passed over and keeps their place (the others play first,
+   * nobody is penalised: the room puts them out after a few minutes). A present DJ whose every track is dropped has
+   * nothing left and leaves the queue. The first present DJ with a track that can play takes the decks.
+   */
+  private takeFirstPlayable(context: TurnContext, events: TurnEvent[]): Turn['play'] {
+    for (let index = 0; index < this.waiting.length; ) {
       const entry = this.waiting[index]
-      if (!context.isPresent(entry.accountId)) continue
+      if (!context.isPresent(entry.accountId)) {
+        index += 1
+        continue
+      }
       const track = this.takePlayable(entry, context, events)
-      if (!track) continue
       this.waiting.splice(index, 1)
-      entry.misses = 0
-      this.current = entry
-      return { play: { entry, track }, events }
+      if (track) {
+        this.current = entry
+        return { entry, track }
+      }
+      events.push({ kind: 'removed', accountId: entry.accountId })
     }
-    return { play: null, events }
+    return null
   }
 
   /** The first track of the line-up that can play. Tracks that cannot are dropped on the way (and reported). */
