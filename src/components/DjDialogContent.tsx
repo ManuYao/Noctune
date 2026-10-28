@@ -13,6 +13,7 @@ import {
 import { formatClock, formatSpan, formatWait } from '../data/duration'
 import { useServerNow } from '../player/useServerNow'
 import KeepPicker, { type KeepOutcome } from './KeepPicker'
+import type { SheetControl } from './useSheetDrag'
 import { djCount, estimateWaitSec, findMyPlace, type MyPlace } from '../realtime/djQueue'
 import { djErrorMessage } from '../realtime/djMessages'
 import type { SendAddManyResult, SendAddTrackResult, SendDjResult, SendPlaylistStatusResult } from '../realtime/useRoom'
@@ -42,6 +43,8 @@ interface DjDialogContentProps {
   onRemove: (trackId: string) => Promise<SendDjResult>
   onLeave: () => Promise<SendDjResult>
   onClose: () => void
+  /** A phone: the sheet's handle and the title can be dragged (see useSheetDrag). */
+  sheet?: SheetControl
 }
 
 type Busy = 'add' | 'remove' | 'leave'
@@ -128,6 +131,7 @@ export default function DjDialogContent({
   onRemove,
   onLeave,
   onClose,
+  sheet,
 }: DjDialogContentProps) {
   const phone = useMediaQuery(PHONE_QUERY)
   const serverNow = useServerNow(clockOffsetMs, nowPlaying !== null)
@@ -359,9 +363,23 @@ export default function DjDialogContent({
 
   return (
     <div className="dj-dialog__sheet dj-sheet">
-      {phone && <span className="dj-handle" aria-hidden="true" />}
+      {/* A phone: the handle is a real button (Enter switches the two heights) and, with the title, the zone to drag. */}
+      {phone && sheet && (
+        <button
+          type="button"
+          className={sheet.seen ? 'dj-handle dj-handle--seen' : 'dj-handle'}
+          aria-expanded={sheet.expanded}
+          aria-label={sheet.expanded ? 'Réduire la fenêtre' : 'Agrandir la fenêtre'}
+          {...sheet.zoneProps}
+          onClick={() => {
+            if (!sheet.consumeClick()) sheet.toggle()
+          }}
+        >
+          <span className="dj-handle__bar" aria-hidden="true" />
+        </button>
+      )}
       <header className="dj-dialog__header dj-head">
-        <div className="dj-head__titles">
+        <div className="dj-head__titles" {...(phone && sheet ? sheet.zoneProps : {})}>
           <h2 id="dj-dialog-title">{place ? 'Ma file de DJ' : 'Passer DJ'}</h2>
           <p id="dj-dialog-sub" className="dj-head__sub">
             {phone ? turnLineShort(place, queue, rules.maxDjs, waitSec) : turnLine(place, queue, rules.maxDjs, waitSec)}

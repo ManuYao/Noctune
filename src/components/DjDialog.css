@@ -664,10 +664,24 @@ html:has(.dj-dialog[open]) {
     height: calc(100dvh - 24px);
   }
 
+  /* Its own height stops where the scene's stage and floor begin; pulled up (--sheet-grow, from the handle), it goes on up
+     to where the video ends: the video is never covered. */
   .dj-dialog--dj[open] {
     max-height: none;
-    height: calc(100dvh - var(--m-stage-h, 112px));
+    height: calc(100dvh - var(--m-stage-h, 112px) + var(--sheet-grow, 0px));
     box-shadow: 0 -8px 40px rgb(0 0 0 / 0.5);
+    transition: height 220ms ease-out;
+  }
+
+  /* Following the finger: no delay. */
+  .dj-dialog--dj[data-dragging='true'] {
+    transition: none;
+  }
+
+  /* Pulled up, the room's rules and the sentence about the turn make way for the rows: the verdict is on each row anyway. */
+  .dj-dialog--dj[data-expanded='true'] .dj-head__sub,
+  .dj-dialog--dj[data-expanded='true'] .dj-head__rules {
+    display: none;
   }
 
   /* Nothing dims the video: the sheet stands under it, and the sheet's own shadow is enough (also in the light ambiance,
@@ -682,13 +696,48 @@ html:has(.dj-dialog[open]) {
     padding: 10px 16px calc(14px + env(safe-area-inset-bottom));
   }
 
+  /* The handle: a button 44 px tall (the bar is only 5 px), pulled with the finger or pressed. */
   .dj-handle {
+    display: flex;
     flex: none;
-    align-self: center;
+    align-items: center;
+    justify-content: center;
+    align-self: stretch;
+    height: 28px;
+    margin: -8px 0 -8px;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: grab;
+    touch-action: none;
+  }
+
+  .dj-head__titles {
+    touch-action: none;
+  }
+
+  .dj-handle__bar {
     width: 40px;
     height: 5px;
     border-radius: 3px;
     background: var(--border-field);
+  }
+
+  .dj-handle:focus-visible .dj-handle__bar {
+    background: var(--accent-2);
+  }
+
+  /* A hint that it moves: now and then the bar rises and settles, twice, then nothing for a while. It stops for good once the
+     handle has been used, and when the sheet is pulled up. Reduced motion (system or profile) switches every animation off. */
+  @keyframes dj-handle-hint {
+    0%, 14%, 100% { transform: translateY(0); }
+    4% { transform: translateY(-7px); }
+    8% { transform: translateY(0); }
+    10% { transform: translateY(-5px); }
+  }
+
+  .dj-dialog--dj:not([data-expanded='true']) .dj-handle:not(.dj-handle--seen) .dj-handle__bar {
+    animation: dj-handle-hint 12s ease-in-out 1.5s infinite;
   }
 
   .dj-dialog__header h2 {

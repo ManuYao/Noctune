@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import type { DjQueue, QueuedTrack, RoomRules, RoomStyle, Track } from '../../shared/protocol'
 import type { SendAddManyResult, SendAddTrackResult, SendDjResult, SendPlaylistStatusResult } from '../realtime/useRoom'
 import DjDialogContent from './DjDialogContent'
+import { useSheetDrag } from './useSheetDrag'
 import './DjDialog.css'
 
 interface DjDialogProps {
@@ -35,6 +36,8 @@ export default function DjDialog({ open, onClose, ...content }: DjDialogProps) {
   // Whether the press that ends in a click began on the backdrop too. Selecting the text of the link field and letting
   // go over the backdrop is a click on the dialog as well, and must not close it and lose what was typed.
   const pressStartedOnBackdrop = useRef(false)
+  // A phone: the sheet can be pulled up (as far as the video allows) to see more of the playlist and of the line-up.
+  const sheet = useSheetDrag(dialogRef, open)
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -66,7 +69,7 @@ export default function DjDialog({ open, onClose, ...content }: DjDialogProps) {
         pressStartedOnBackdrop.current = false
       }}
     >
-      {open && <DjDialogContent {...content} onClose={onClose} />}
+      {open && <DjDialogContent {...content} onClose={onClose} sheet={sheet} />}
     </dialog>
   )
 }

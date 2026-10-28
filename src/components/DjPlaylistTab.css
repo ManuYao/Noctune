@@ -346,7 +346,19 @@
     font-size: 0;
   }
 
-  .dj-track[aria-pressed='true'] .dj-track__pick::after {
+  /* Several chosen (alone in the queue): the circle holds the place in the order instead of a tick. */
+  .dj-track[aria-pressed='true'] .dj-track__pick[data-order]::after {
+    content: attr(data-order);
+    width: auto;
+    height: auto;
+    background: none;
+    mask: none;
+    color: var(--on-accent);
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .dj-track[aria-pressed='true'] .dj-track__pick:not([data-order])::after {
     content: '';
     width: 12px;
     height: 12px;

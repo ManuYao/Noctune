@@ -180,7 +180,7 @@ export default function DjPlaylistTab({ playlist, rules, pickedIds, multi, onPic
                   {verdict ? (
                     <span className="dj-track__verdict">{verdict.short}</span>
                   ) : (
-                    <span className="dj-track__pick" aria-hidden="true">
+                    <span className="dj-track__pick" aria-hidden="true" data-order={picked && multi && pickedIds.length > 1 ? order + 1 : undefined}>
                       {picked ? (multi && pickedIds.length > 1 ? `Choisi · n° ${order + 1}` : 'Choisi') : 'Choisir'}
                     </span>
                   )}
