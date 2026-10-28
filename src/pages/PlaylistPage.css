@@ -9,6 +9,22 @@
   display: none;
 }
 
+/* A confirmation: short, quiet, the colour of the page's secondary text (not an accent: nothing is wrong, nothing is asked). */
+.playlist__note {
+  position: sticky;
+  top: 8px;
+  z-index: 5;
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
+  padding: 6px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
 .playlist__layout {
   display: grid;
   grid-template-columns: minmax(0, 440px) minmax(0, 1fr);

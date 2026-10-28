@@ -72,6 +72,13 @@ function MemberPlaylists() {
     document.getElementById(`pl-move-${wanted}-${pending.trackId}`)?.focus()
   }, [trackList])
 
+  // A confirmation is a few words that go away by themselves: it is not something to read twice.
+  useEffect(() => {
+    if (note === '') return
+    const timer = window.setTimeout(() => setNote(''), 4000)
+    return () => window.clearTimeout(timer)
+  }, [note])
+
   function resetMessages() {
     setError('')
     setNote('')
@@ -87,7 +94,7 @@ function MemberPlaylists() {
     if (!result.ok) return setError(result.message)
     setCreating(false)
     setNewName('')
-    setNote(`La playlist « ${result.value.name} » est créée.`)
+    setNote('Playlist créée.')
     // After the screen has changed: the heading of the new playlist is not in the page yet.
     window.setTimeout(() => tracksHeading.current?.focus(), 0)
   }
@@ -101,7 +108,7 @@ function MemberPlaylists() {
     setBusy(false)
     if (!result.ok) return setError(result.message)
     setRenaming(false)
-    setNote('Le nom de la playlist est changé.')
+    setNote('Nom changé.')
   }
 
   async function handleDelete() {
@@ -112,7 +119,7 @@ function MemberPlaylists() {
     setBusy(false)
     setConfirmDelete(false)
     if (!result.ok) return setError(result.message)
-    setNote(`La playlist « ${active.name} » est supprimée.`)
+    setNote('Playlist supprimée.')
     window.setTimeout(() => listsHeading.current?.focus(), 0)
   }
 
@@ -128,10 +135,10 @@ function MemberPlaylists() {
     if (!result.ok) return setError(result.message)
     setLink('')
     lists.countChanged(active.id, trackList.length + 1)
-    setNote(`« ${result.value.title ?? 'Ce morceau'} » est ajouté à « ${active.name} ».`)
+    setNote('Morceau ajouté.')
   }
 
-  async function handleRemoveTrack(trackId: string, title: string) {
+  async function handleRemoveTrack(trackId: string) {
     if (busy || !active) return
     resetMessages()
     setBusy(true)
@@ -139,11 +146,11 @@ function MemberPlaylists() {
     setBusy(false)
     if (!result.ok) return setError(result.message)
     lists.countChanged(active.id, trackList.length - 1)
-    setNote(`« ${title} » est retiré de « ${active.name} ».`)
+    setNote('Morceau retiré.')
     window.setTimeout(() => tracksHeading.current?.focus(), 0)
   }
 
-  async function handleMove(trackId: string, title: string, direction: 'up' | 'down') {
+  async function handleMove(trackId: string, direction: 'up' | 'down') {
     if (busy) return
     const from = trackList.findIndex((track) => track.id === trackId)
     const position = direction === 'up' ? from - 1 : from + 1
@@ -152,7 +159,7 @@ function MemberPlaylists() {
     focusAfterMove.current = { trackId, direction }
     const result = await tracks.move(trackId, position)
     if (!result.ok) return setError(result.message)
-    setNote(`« ${title} » est maintenant le n° ${position + 1}.`)
+    setNote(`Morceau déplacé : n° ${position + 1}.`)
   }
 
   const wanted = fold(filter.trim())
@@ -172,7 +179,7 @@ function MemberPlaylists() {
         <p className="kit-feedback kit-feedback--error playlist__feedback" role="alert">
           {error}
         </p>
-        <p className="kit-feedback kit-feedback--done playlist__feedback" role="status">
+        <p className="kit-feedback playlist__feedback playlist__note" role="status">
           {note}
         </p>
 
@@ -467,7 +474,7 @@ function MemberPlaylists() {
                               className="playlist__icon-button"
                               aria-label={`Monter « ${title} »`}
                               disabled={busy || index === 0 || wanted !== ''}
-                              onClick={() => void handleMove(track.id, title, 'up')}
+                              onClick={() => void handleMove(track.id, 'up')}
                             >
                               <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M8 13 V3 M3.5 7.5 L8 3 L12.5 7.5" />
@@ -479,7 +486,7 @@ function MemberPlaylists() {
                               className="playlist__icon-button"
                               aria-label={`Descendre « ${title} »`}
                               disabled={busy || index === trackList.length - 1 || wanted !== ''}
-                              onClick={() => void handleMove(track.id, title, 'down')}
+                              onClick={() => void handleMove(track.id, 'down')}
                             >
                               <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M8 3 V13 M3.5 8.5 L8 13 L12.5 8.5" />
@@ -490,7 +497,7 @@ function MemberPlaylists() {
                               className="kit-btn kit-btn--ghost playlist__small"
                               aria-label={`Retirer « ${title} » de la playlist`}
                               disabled={busy}
-                              onClick={() => void handleRemoveTrack(track.id, title)}
+                              onClick={() => void handleRemoveTrack(track.id)}
                             >
                               Retirer
                             </button>
