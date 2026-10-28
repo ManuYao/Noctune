@@ -12,7 +12,7 @@ import {
 } from '../../shared/protocol'
 import { formatClock, formatSpan, formatWait } from '../data/duration'
 import { useServerNow } from '../player/useServerNow'
-import { keepInPlaylist } from '../playlists/keepInPlaylist'
+import KeepPicker, { type KeepOutcome } from './KeepPicker'
 import { djCount, estimateWaitSec, findMyPlace, type MyPlace } from '../realtime/djQueue'
 import { djErrorMessage } from '../realtime/djMessages'
 import type { SendAddTrackResult, SendDjResult, SendPlaylistStatusResult } from '../realtime/useRoom'
@@ -144,7 +144,8 @@ export default function DjDialogContent({
   // The last link that was lined up, which can be kept in a playlist; and how many times something was kept (the
   // playlist reads its tracks again when that goes up).
   const [lastAdded, setLastAdded] = useState<QueuedTrack | null>(null)
-  const [keeping, setKeeping] = useState(false)
+  // The playlist chooser under "Garder dans une playlist": open only after a press, so nothing is kept by accident.
+  const [keepOpen, setKeepOpen] = useState(false)
   const [keptVersion, setKeptVersion] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -201,6 +202,7 @@ export default function DjDialogContent({
       setSource(null)
       setDone(`Ajouté : « ${result.track.title} » est dans ta file.`)
       setLastAdded(result.track)
+      setKeepOpen(false)
       // Several tracks in a row: the field is empty and ready for the next link.
       if (!touchScreen()) inputRef.current?.focus()
     } else {
@@ -228,23 +230,18 @@ export default function DjDialogContent({
     }
   }
 
-  async function handleKeep() {
-    if (!lastAdded || keeping) return
-    setKeeping(true)
+  function handleKept(outcome: KeepOutcome) {
+    if (!lastAdded) return
     setError('')
     setErrorFromLink(false)
-    const result = await keepInPlaylist(lastAdded.videoId)
-    setKeeping(false)
-    if (result.ok) {
-      setDone(`« ${lastAdded.title} » est gardé dans « ${result.playlistName} ».`)
-      setLastAdded(null)
+    setKeepOpen(false)
+    if (outcome.kind === 'added') {
+      setDone(`« ${lastAdded.title} » est gardé dans « ${outcome.playlistName} ».`)
       setKeptVersion((version) => version + 1)
-    } else if (result.error === 'already') {
-      setDone(`« ${lastAdded.title} » est déjà dans « ${result.playlistName} ».`)
-      setLastAdded(null)
     } else {
-      setError(result.message)
+      setDone(`« ${lastAdded.title} » est déjà dans « ${outcome.playlistName} ».`)
     }
+    setLastAdded(null)
   }
 
   async function handleRemove(track: QueuedTrack) {
@@ -456,10 +453,14 @@ export default function DjDialogContent({
                     Lien reconnu
                   </span>
                 </div>
-                <button type="button" className="dj-pill" disabled={keeping} onClick={() => void handleKeep()}>
-                  <Plus />
-                  {keeping ? 'Un instant…' : 'Garder dans ma playlist'}
-                </button>
+                {keepOpen ? (
+                  <KeepPicker videoId={lastAdded.videoId} onDone={handleKept} onCancel={() => setKeepOpen(false)} />
+                ) : (
+                  <button type="button" className="dj-pill" aria-expanded={false} onClick={() => setKeepOpen(true)}>
+                    <Plus />
+                    Garder dans une playlist
+                  </button>
+                )}
               </div>
             )}
           </div>

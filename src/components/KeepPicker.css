@@ -1,0 +1,83 @@
+/* "Garder ce morceau" : the member's playlists as big rows to press, and a way to make a new one. */
+.keep {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.keep__error {
+  margin: 0;
+  color: var(--accent-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.keep__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: min(46dvh, 360px);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.keep__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: var(--tap-main, 48px);
+  padding: 0 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  background: var(--glass);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.keep__item:first-child:not(:disabled) {
+  border-color: var(--border-field);
+}
+
+.keep__item:disabled {
+  opacity: 0.6;
+}
+
+.keep__name {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.keep__count {
+  flex: none;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.keep__new {
+  min-height: var(--tap-main, 48px);
+  border: 1.5px dashed var(--border-field);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.keep__new:disabled {
+  opacity: 0.6;
+}
+
+.keep__form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

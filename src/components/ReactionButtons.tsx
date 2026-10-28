@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { trackPositionSec } from '../../shared/clock'
 import { OWN_SKIP_MIN_SEC, SKIP_PROTECTED_SEC, type MyReactions, type Reactions, type Track } from '../../shared/protocol'
 import { useAccount } from '../auth/useAccount'
-import { keepInPlaylist } from '../playlists/keepInPlaylist'
+import ModDialog from '../moderation/ModDialog'
 import { useServerNow } from '../player/useServerNow'
 import type { SendReactionResult } from '../realtime/useRoom'
+import KeepPicker, { type KeepOutcome } from './KeepPicker'
 import ReactionIcon from './ReactionIcon'
 import './ReactionButtons.css'
 
@@ -68,7 +69,8 @@ export default function ReactionButtons({
 }: ReactionButtonsProps) {
   const serverNow = useServerNow(clockOffsetMs, track !== null)
   const { account } = useAccount()
-  const [keeping, setKeeping] = useState(false)
+  // The window that asks which playlist the track goes to ("+ Playlist"): nothing is kept before the member has chosen.
+  const [keepOpen, setKeepOpen] = useState(false)
   const [heartBurst, setHeartBurst] = useState(0)
 
   const position = track ? trackPositionSec(track, serverNow) : 0
@@ -87,15 +89,10 @@ export default function ReactionButtons({
     onMessage('error', errorMessage(result, onDecks), MESSAGE_MS)
   }
 
-  /** "+ Playlist": keeps the track that plays in the member's active playlist (one is made for a member who has none). */
-  async function handleKeep() {
-    if (!track || keeping) return
-    setKeeping(true)
-    const result = await keepInPlaylist(track.videoId)
-    setKeeping(false)
-    if (result.ok) onMessage('info', `Gardé dans « ${result.playlistName} ».`, KEEP_MESSAGE_MS)
-    else if (result.error === 'already') onMessage('info', `Déjà dans « ${result.playlistName} ».`, KEEP_MESSAGE_MS)
-    else onMessage('error', result.message, KEEP_MESSAGE_MS)
+  /** The member has chosen a playlist (or made one): the window closes and the bar says where the track went. */
+  function handleKept(outcome: KeepOutcome) {
+    setKeepOpen(false)
+    onMessage('info', `${outcome.kind === 'added' ? 'Gardé dans' : 'Déjà dans'} « ${outcome.playlistName} ».`, KEEP_MESSAGE_MS)
   }
 
   function handleLike() {
@@ -178,10 +175,11 @@ export default function ReactionButtons({
           <button
             type="button"
             className="reactions__button reactions__keep"
-            aria-label="Garder ce morceau dans ma playlist"
-            title="Garder ce morceau dans ma playlist"
-            disabled={track === null || keeping}
-            onClick={() => void handleKeep()}
+            aria-label="Garder ce morceau dans une playlist"
+            aria-haspopup="dialog"
+            title="Garder ce morceau dans une playlist"
+            disabled={track === null}
+            onClick={() => setKeepOpen(true)}
           >
             <ReactionIcon kind="plus" />
             <span className="reactions__label">Playlist</span>
@@ -194,6 +192,16 @@ export default function ReactionButtons({
           </button>
         )}
       </div>
+      {account && (
+        <ModDialog open={keepOpen && track !== null} onClose={() => setKeepOpen(false)} titleId="keep-title" title="Garder ce morceau">
+          {track && (
+            <>
+              <p className="mod-hint">« {track.title} » : dans quelle playlist ?</p>
+              <KeepPicker videoId={track.videoId} onDone={handleKept} />
+            </>
+          )}
+        </ModDialog>
+      )}
       {/* The rule in words, for screen readers always (the buttons point at it), on screen on a phone for the DJ. */}
       {onDecks ? (
         <div className="reactions__notes">
