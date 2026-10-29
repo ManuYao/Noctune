@@ -260,7 +260,7 @@ describe('the schema of the rooms', () => {
     await insert()
     await assert.rejects(insert({ id: 'test-room-2', key: 'test room' }), rejected('23505'), 'a name once')
     await assert.rejects(insert({ key: 'another key' }), rejected('23505'), 'an id once')
-    await assert.rejects(insert({ id: 'test-room-3', key: 'rock progressif' }), rejected('23505'), 'not the name of a room of the team')
+    await assert.rejects(insert({ id: 'test-room-3', key: 'rock & legendes' }), rejected('23505'), 'not the name of a room of the team')
   })
 
   withPool('refuses what no room may be, whatever the code does', async (pool) => {
@@ -303,7 +303,7 @@ describe('migrations', () => {
   withPool('are all applied, and applying them again does nothing', async (pool) => {
     assert.deepEqual(await migrate(pool), [])
     const { rows } = await pool.query<{ name: string }>('SELECT name FROM schema_migrations ORDER BY name')
-    assert.deepEqual(rows.map((row) => row.name), ['001_accounts.sql', '002_playlists.sql', '003_rooms.sql', '004_room_name_keys.sql', '005_team_rooms_dark.sql', '006_team_room_themes.sql', '007_team_rooms_neon.sql', '008_afro_caribbean_rooms.sql', '009_account_activity.sql', '010_playlist_not_music.sql', '011_badges_announced.sql'])
+    assert.deepEqual(rows.map((row) => row.name), ['001_accounts.sql', '002_playlists.sql', '003_rooms.sql', '004_room_name_keys.sql', '005_team_rooms_dark.sql', '006_team_room_themes.sql', '007_team_rooms_neon.sql', '008_afro_caribbean_rooms.sql', '009_account_activity.sql', '010_playlist_not_music.sql', '011_badges_announced.sql', '012_team_rooms_renamed.sql', '013_rock_anthems.sql', '014_rock_legendes.sql'])
   })
 
   it('apply in order, once each, and a failing one leaves no trace and stops the rest', async (t: TestContext) => {

@@ -215,7 +215,7 @@ describe('changing and deleting a room', () => {
     await start()
     const ann = await member('Ann')
     const id = await make(ann)
-    const reply = await patch(ann, id, { ...SETTINGS, name: 'Hip-Hop Classics' })
+    const reply = await patch(ann, id, { ...SETTINGS, name: 'Hip-Hop Classique' })
     assert.deepEqual([reply.status, failure(reply)], [409, 'name-taken'])
   })
 })

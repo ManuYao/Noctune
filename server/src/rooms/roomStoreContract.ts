@@ -118,7 +118,7 @@ export function describeRoomStoreContract(name: string, open: () => Promise<Room
       await made(store, ann, 'Soirée Jazz')
       const sameName = await store.create({ accountId: ben.id, pseudo: ben.pseudo }, freshId(), input('SOIRÉE JAZZ'), MAX)
       assert.deepEqual(sameName, { ok: false, error: 'name-taken' })
-      const team = await store.create({ accountId: ben.id, pseudo: ben.pseudo }, freshId(), input('rock PROGRESSIF'), MAX)
+      const team = await store.create({ accountId: ben.id, pseudo: ben.pseudo }, freshId(), input('ROCK & LÉGENDES'), MAX)
       assert.deepEqual(team, { ok: false, error: 'name-taken' })
     })
 

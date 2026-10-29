@@ -9,6 +9,7 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadLocalEnv } from './env'
+import { HOUSE_TRACKS } from './houseTracks'
 import { parseAllowedOrigins } from './http/origin'
 import { PgPlaylistStore } from './playlists/PgPlaylistStore'
 import type { PlaylistStore } from './playlists/PlaylistStore'
@@ -138,6 +139,7 @@ const { httpServer, playlists, rooms, activity } = createNoctuneServer({
   roomStore: database?.roomStore ?? null,
   activityStore: database?.activityStore ?? null,
   initialRooms,
+  houseTracksByRoom: HOUSE_TRACKS,
   resolver,
   allowedOrigins,
   secureCookies,

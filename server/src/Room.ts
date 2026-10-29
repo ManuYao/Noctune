@@ -22,7 +22,7 @@ import {
 } from '../../shared/protocol'
 import { pseudoKey } from '../../shared/validation'
 import type { RoomActivity } from './activity/ActivityRecorder'
-import { TEST_TRACKS } from './catalog'
+import { TEST_TRACKS, type TestTrack } from './catalog'
 import { ChatLog } from './ChatLog'
 import { DjBooth, projectUpcoming, type DjEntry, type DropReason, type TurnContext, type TurnEvent } from './DjBooth'
 import { MinInterval } from './MinInterval'
@@ -76,6 +76,8 @@ export interface RoomOptions {
   skipProtectedSec?: number
   /** Seconds at the start of a track during which its own DJ cannot skip it either. */
   ownSkipMinSec?: number
+  /** What plays when no DJ does, in a random order (each round reshuffled). Without it, the test selection plays in order. */
+  houseTracks?: TestTrack[]
   /** What the room asks of the tracks its DJs bring. */
   rules?: RoomRules
   /** How long changes to the queue are gathered before the room hears of them (tests make it short). */
@@ -110,6 +112,10 @@ export class Room {
   private likeAccounts = new Set<string>()
   private earnedLikes = 0
   private trackIndex = 0
+  private readonly houseTracks: TestTrack[] | undefined
+  /** The round of the house selection being played (shuffled), and the track that ended the last round. */
+  private houseRound: TestTrack[] = []
+  private lastHouseId: string | undefined
   private timer: NodeJS.Timeout | undefined
   private likes = new Set<string>()
   private skipVotes = new Set<string>()
@@ -140,6 +146,7 @@ export class Room {
     this.ownSkipMinSec = options.ownSkipMinSec ?? OWN_SKIP_MIN_SEC
     this.queueBroadcastMs = options.queueBroadcastMs ?? QUEUE_BROADCAST_MS
     this.rules = options.rules ?? DEFAULT_RULES
+    this.houseTracks = options.houseTracks && options.houseTracks.length > 0 ? options.houseTracks : undefined
     this.moderation = new Moderation(options.moderation)
     this.activity = options.activity
   }
@@ -783,9 +790,27 @@ export class Room {
   }
 
   private startHouse() {
+    if (this.houseTracks) {
+      if (this.houseRound.length === 0) this.houseRound = this.shuffledRound(this.houseTracks)
+      const next = this.houseRound.shift()!
+      this.lastHouseId = next.id
+      this.start(next)
+      return
+    }
     const next = TEST_TRACKS[this.trackIndex % TEST_TRACKS.length]
     this.trackIndex += 1
     this.start(next)
+  }
+
+  /** Fisher-Yates; a new round never starts with the track that ended the last one (when there is a choice). */
+  private shuffledRound(tracks: TestTrack[]): TestTrack[] {
+    const round = [...tracks]
+    for (let i = round.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[round[i], round[j]] = [round[j], round[i]]
+    }
+    if (round.length > 1 && round[0].id === this.lastHouseId) [round[0], round[1]] = [round[1], round[0]]
+    return round
   }
 
   private start(track: QueuedTrack, djAccountId?: string) {

@@ -52,6 +52,23 @@ afterEach(() => {
   mock.timers.reset()
 })
 
+describe('house tracks of a room', () => {
+  it('plays every track of the list once per round, in a shuffled order, never the same one twice in a row', () => {
+    const tracks = [1, 2, 3].map((n) => ({ id: `t${n}`, videoId: `v${n}`, title: `T${n}`, artist: 'A', durationSec: 100 }))
+    newRoom({ houseTracks: tracks })
+    join(alice)
+    const played: string[] = [room.nowPlaying!.id]
+    for (let i = 0; i < 8; i += 1) {
+      mock.timers.tick(100 * 1000)
+      played.push(room.nowPlaying!.id)
+    }
+    for (let round = 0; round < 3; round += 1) {
+      assert.deepEqual([...played.slice(round * 3, round * 3 + 3)].sort(), ['t1', 't2', 't3'], 'a round plays each track once')
+    }
+    played.slice(1).forEach((id, i) => assert.notEqual(id, played[i], 'no repeat in a row'))
+  })
+})
+
 describe('TEST_TRACKS', () => {
   it('lists distinct YouTube videos with a positive whole duration', () => {
     for (const track of TEST_TRACKS) {

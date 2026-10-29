@@ -12,7 +12,8 @@ const KIND_OF_STYLE: Partial<Record<RoomStyle, DecorKind>> = {
   afro: 'afro',
 }
 
-// The room of the team that has its own scene although its style is "electro" (it would otherwise share Electro de nuit's).
+// The room of the team that has its own scene (Paris at sunset) although its style is "rap": today "Rap français", whose id
+// stayed the one of the French touch it replaced.
 const FRENCH_TOUCH_ID = 'french-touch'
 
 /**
