@@ -43,6 +43,8 @@ import type { TrackResolver } from './youtube/TrackResolver'
 export interface HandlerOptions extends RoomOptions {
   /** What each room (by id) plays when no DJ does. A room that is not listed plays the test selection. */
   houseTracksByRoom?: Record<string, TestTrack[]>
+  /** What a room that is not listed above plays, from its styles (rooms of members). Without it, the test selection plays. */
+  houseTracksForStyles?: (styles: readonly string[]) => TestTrack[]
   /** How long changes to the list of rooms are gathered before it is sent (tests make it short). */
   lobbyDelayMs?: number
   /** Without it, everybody is a visitor: the server runs without a database. */
@@ -174,7 +176,7 @@ export function registerRoomHandlers(io: IoServer, options: HandlerOptions = {})
         {
           ...options,
           rules: options.rules ?? def.rules,
-          houseTracks: options.houseTracks ?? options.houseTracksByRoom?.[def.id],
+          houseTracks: options.houseTracks ?? options.houseTracksByRoom?.[def.id] ?? options.houseTracksForStyles?.(def.styles),
           // Read from the live record at each event: the host may change the styles of the room while it lives.
           activity: options.activityRecorder?.forRoom({
             id: def.id,

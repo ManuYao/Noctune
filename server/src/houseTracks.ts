@@ -75,3 +75,22 @@ export const HOUSE_TRACKS: Record<string, TestTrack[]> = {
     { id: 'h-4Akn5os57_g', videoId: '4Akn5os57_g', title: 'Sip (Alcohol)', artist: 'Joeboy', durationSec: 159 },
   ],
 }
+
+// The rooms of the team whose tracks play in a member's room of the same style.
+const ROOMS_OF_STYLE: Record<string, string[]> = {
+  lofi: ['lofi-du-soir'],
+  rock: ['rock-progressif'],
+  electro: ['electro-nuit'],
+  jazz: ['jazz-cafe'],
+  rap: ['hip-hop-classics', 'french-touch'],
+  afro: ['afro-caribeen-zouk', 'mood-afro'],
+}
+
+/** What a room of a member plays when no DJ does: the tracks of the team's rooms of its styles, or of all of them (pop, classical, no style). */
+export function houseTracksForStyles(styles: readonly string[]): TestTrack[] {
+  const wanted = styles.flatMap((style) => ROOMS_OF_STYLE[style] ?? [])
+  const rooms = wanted.length > 0 ? wanted : Object.keys(HOUSE_TRACKS)
+  const byVideo = new Map<string, TestTrack>()
+  for (const room of rooms) for (const track of HOUSE_TRACKS[room] ?? []) byVideo.set(track.videoId, track)
+  return [...byVideo.values()]
+}
